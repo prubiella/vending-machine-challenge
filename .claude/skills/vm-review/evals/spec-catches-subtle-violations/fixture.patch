@@ -1,0 +1,186 @@
+diff --git a/src/Domain/Money/Coin.php b/src/Domain/Money/Coin.php
+new file mode 100644
+index 0000000..f62614e
+--- /dev/null
++++ b/src/Domain/Money/Coin.php
+@@ -0,0 +1,21 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Money;
++
++enum Coin: int
++{
++    case FiveCents = 5;
++    case TenCents = 10;
++    case TwentyFiveCents = 25;
++    case OneUnit = 100;
++
++    /**
++     * @return list<self>
++     */
++    public static function fromLargest(): array
++    {
++        return [self::OneUnit, self::TwentyFiveCents, self::TenCents, self::FiveCents];
++    }
++}
+diff --git a/src/Domain/Money/CoinStock.php b/src/Domain/Money/CoinStock.php
+new file mode 100644
+index 0000000..99c32e2
+--- /dev/null
++++ b/src/Domain/Money/CoinStock.php
+@@ -0,0 +1,47 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Money;
++
++final class CoinStock
++{
++    /**
++     * @var array<int, int>
++     */
++    private array $counts = [];
++
++    public function add(Coin $coin, int $quantity = 1): void
++    {
++        $this->counts[$coin->value] = $this->count($coin) + $quantity;
++    }
++
++    public function count(Coin $coin): int
++    {
++        return $this->counts[$coin->value] ?? 0;
++    }
++
++    /**
++     * @return list<Coin>
++     */
++    public function giveChange(int $cents): array
++    {
++        $available = $this->counts;
++        $change = [];
++        $remaining = $cents;
++
++        foreach (Coin::fromLargest() as $coin) {
++            while ($remaining >= $coin->value && ($available[$coin->value] ?? 0) > 0) {
++                $change[] = $coin;
++                $remaining -= $coin->value;
++                --$available[$coin->value];
++            }
++        }
++
++        if (0 !== $remaining) {
++            throw ExactChangeNotAvailable::for($cents);
++        }
++
++        return $change;
++    }
++}
+diff --git a/src/Domain/Money/ExactChangeNotAvailable.php b/src/Domain/Money/ExactChangeNotAvailable.php
+new file mode 100644
+index 0000000..3fc2a9a
+--- /dev/null
++++ b/src/Domain/Money/ExactChangeNotAvailable.php
+@@ -0,0 +1,13 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Money;
++
++final class ExactChangeNotAvailable extends \DomainException
++{
++    public static function for(int $cents): self
++    {
++        return new self(\sprintf('Cannot give exact change for %d cents with the coins in stock.', $cents));
++    }
++}
+diff --git a/src/Domain/Product/Product.php b/src/Domain/Product/Product.php
+new file mode 100644
+index 0000000..3edbbb4
+--- /dev/null
++++ b/src/Domain/Product/Product.php
+@@ -0,0 +1,21 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Product;
++
++enum Product: string
++{
++    case Water = 'water';
++    case Juice = 'juice';
++    case Soda = 'soda';
++
++    public function priceInCents(): int
++    {
++        return match ($this) {
++            self::Water => 65,
++            self::Juice => 100,
++            self::Soda => 155,
++        };
++    }
++}
+diff --git a/tests/Unit/Domain/Money/CoinStockTest.php b/tests/Unit/Domain/Money/CoinStockTest.php
+new file mode 100644
+index 0000000..b1d67cf
+--- /dev/null
++++ b/tests/Unit/Domain/Money/CoinStockTest.php
+@@ -0,0 +1,32 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Tests\Unit\Domain\Money;
++
++use App\Domain\Money\Coin;
++use App\Domain\Money\CoinStock;
++use App\Domain\Money\ExactChangeNotAvailable;
++use PHPUnit\Framework\TestCase;
++
++final class CoinStockTest extends TestCase
++{
++    public function testGivesTheChangeFromTheCoinsInStock(): void
++    {
++        $stock = new CoinStock();
++        $stock->add(Coin::TwentyFiveCents, 2);
++        $stock->add(Coin::TenCents);
++
++        self::assertSame([Coin::TwentyFiveCents, Coin::TenCents], $stock->giveChange(35));
++    }
++
++    public function testRefusesWhenTheExactChangeIsNotInStock(): void
++    {
++        $stock = new CoinStock();
++        $stock->add(Coin::TwentyFiveCents);
++
++        $this->expectException(ExactChangeNotAvailable::class);
++
++        $stock->giveChange(10);
++    }
++}
+diff --git a/tests/Unit/Domain/Product/ProductTest.php b/tests/Unit/Domain/Product/ProductTest.php
+new file mode 100644
+index 0000000..7c0cece
+--- /dev/null
++++ b/tests/Unit/Domain/Product/ProductTest.php
+@@ -0,0 +1,16 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Tests\Unit\Domain\Product;
++
++use App\Domain\Product\Product;
++use PHPUnit\Framework\TestCase;
++
++final class ProductTest extends TestCase
++{
++    public function testWaterCostsSixtyFiveCents(): void
++    {
++        self::assertSame(65, Product::Water->priceInCents());
++    }
++}

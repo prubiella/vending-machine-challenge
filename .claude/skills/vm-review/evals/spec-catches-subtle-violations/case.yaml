@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: spec-catches-subtle-violations
+expected_outcome: |
+  Reviews a domain change (local tag eval/spec-v2) that adds Coin, Product, CoinStock and
+  ExactChangeNotAvailable, against files/statement.md. Most of it matches the statement; two
+  details do not: Soda is priced at 155 cents instead of 150, and CoinStock::giveChange works on a
+  copy of the counts, so the coins it gives never leave the stock. A good review finds both,
+  ties each to the statement, and does not flag the parts that do match.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: finds-known-skeleton-bugs
+expected_outcome: |
+  Reviews the original Docker, Symfony and tooling skeleton (local tag eval/skeleton-v1, see
+  evals/README.md). Earlier reviews of that commit found the real bugs named in graders 01 to 06.
+  A good review reports them with file:line and a concrete failure scenario, does not raise false
+  alarms, and leaves the calling session with only a short summary.
