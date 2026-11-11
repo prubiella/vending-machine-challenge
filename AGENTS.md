@@ -73,7 +73,7 @@ git hooks: pre-commit runs the checks when code, configuration or tooling is sta
 the commit when those staged files also have unstaged changes, since the checks read the disk.
 
 `/vm-review [<pr-number>|<range>]` reviews a change in background subagents and writes the report
-to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/lenses/`.
+to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/references/lenses/`.
 
 ## Git
 
