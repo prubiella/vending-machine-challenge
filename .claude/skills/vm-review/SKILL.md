@@ -1,7 +1,7 @@
 ---
 name: vm-review
 description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
-argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--spec <path>]"
+argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--spec <path>] [--full]"
 disable-model-invocation: true
 allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*)
 ---

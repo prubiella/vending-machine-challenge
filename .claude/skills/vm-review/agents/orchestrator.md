@@ -28,6 +28,7 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 - `A..B` or `A...B`: a git range (refs, tags or SHAs).
 - `--lenses a,b`: only those lenses.
 - `--spec <path>`: the statement for the `spec` lens.
+- `--full`: every lens of the table in step 3, even for a change the light review would cover.
 - Nothing: the current branch.
 
 ## 2. Resolve the target
@@ -68,6 +69,12 @@ Use it only if the file exists.
 Correctness and silent failures get the stronger model because those are the findings that cost
 the most when missed: in this project's first review, the only critical bug (errors never logged)
 came from the silent-failure angle. `--lenses` replaces the table.
+
+**Light review.** When every changed path ends in `.md` and neither `--full` nor `--lenses` was
+given, run only the `docs` lens. A Markdown change cannot break code, so the code lenses would
+read the whole diff to say nothing: in this skill's first eval run, a one-line README fix went
+through four lenses to reach APPROVED. Its Critical and Important findings, if any, are still
+verified in step 6, and the review says it was a light one in its first line.
 
 ## 4. Run the lenses
 
