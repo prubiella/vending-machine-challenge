@@ -1,0 +1,10 @@
+framework:
+    messenger:
+        default_bus: command.bus
+        buses:
+            command.bus:
+                middleware:
+                    - 'App\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
+            query.bus:
+                middleware:
+                    - 'App\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
