@@ -1,0 +1,13 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/certs/local-cert.pem
+        keyFile: /etc/certs/local-key.pem
+
+http:
+  serversTransports:
+    nginx:
+      serverName: nginx
+      rootCAs:
+        - /etc/certs/rootCA.pem
