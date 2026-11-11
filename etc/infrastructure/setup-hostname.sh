@@ -15,4 +15,5 @@ if grep -q -w -F "${PROJECT_HOSTNAME}" /etc/hosts; then
 else
   echo -e "${GREEN}Adding '${host_entry}' to /etc/hosts (asks for sudo)${NC}"
   echo "${host_entry}" | sudo tee -a /etc/hosts >/dev/null
+  echo -e "${GREEN}Added '${host_entry}'${NC}"
 fi
