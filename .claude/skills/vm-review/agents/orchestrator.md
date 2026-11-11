@@ -107,7 +107,8 @@ positives, and a wrong Critical costs the user more time than a missed Minor. So
 Critical and Important finding to verifiers:
 
 - `subagent_type`: `Explore`, `model`: `opus`, `description`: `vm-review verify`
-- at most five findings per verifier, all verifiers in a single message
+- at most five findings per verifier, so `ceil(findings / 5)` verifiers (ten findings means two),
+  all in a single message: a verifier with too many findings skims them, which defeats the point
 - prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command and
   Local head matches lines from step 4, then each finding with its id and all its fields.
 
@@ -118,11 +119,13 @@ marked `unverified`.
 ## 7. Write the files
 
 Into `<repo root>/.audit/vm-review/<slug>-<YYYYMMDD-HHMM>/`, where the slug is `pr-<n>`,
-`range-<A>-<B>` (refs with `/` and `.` turned into `-`) or `branch-<name>`:
+`range-<A>-<B>` or `branch-<name>`, with every character other than a lowercase letter, a digit
+or `-` turned into `-` (refs carry `/`, `.`, `~` and `^`, which make awkward folder names):
 
-- `review.md`, following `<Skill dir>/assets/review-template.md`. (Not `report.md` or
-  `findings.md`: Claude Code refuses subagent writes of files with those names.) Verdict: BLOCKED when a Critical
-  finding remains, APPROVED_WITH_FINDINGS when any other finding remains, APPROVED when none does.
+- `review.md`, following `<Skill dir>/assets/review-template.md`. Not `report.md` or
+  `findings.md`: Claude Code refuses subagent writes of files with those names. Verdict: BLOCKED
+  when a Critical finding remains, APPROVED_WITH_FINDINGS when any other finding remains, APPROVED
+  when none does.
   Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
   at most four, only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
