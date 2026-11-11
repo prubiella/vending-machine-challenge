@@ -42,7 +42,8 @@ empty diff, bad argument). Relay it and stop.
 Otherwise:
 
 1. Relay the summary in the user's language, in at most 250 words: the verdict, the counts, the
-   top findings (at most five, one line each with its `file:line`) and the path of `review.md`.
+   top findings (at most five, one line each with its `file:line`; name no others, the counts
+   already say how many there are) and the path of `review.md`.
    Keep the rest of the review out of this session unless the user asks for it, for the same
    reason as above; the path is how they get to it.
 2. Ask with `AskUserQuestion` (`multiSelect: true`) what to do with the review:
