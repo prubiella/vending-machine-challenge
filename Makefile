@@ -1,6 +1,6 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
-TARGETS_WITH_ARGS := install update require require-dev logs
+TARGETS_WITH_ARGS := install update require require-dev logs run run-debug
 
 .DEFAULT_GOAL := help
 
@@ -35,6 +35,7 @@ first-run: ## Create .env, set up the host and start the containers
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
 	@$(MAKE) setup-host
 	@$(MAKE) start
+	@$(MAKE) install
 
 ##@ Composer
 .PHONY: install update require require-dev
@@ -52,7 +53,13 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: logs status shell db-shell
+.PHONY: run run-debug logs status shell db-shell
+
+run: ## Run a Symfony console command
+	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
+
+run-debug: ## Run a Symfony console command with Xdebug connecting to the IDE
+	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=debug php-fpm bin/console $(ARGS)
 
 logs: ## Show the containers logs
 	@$(DOCKER_COMPOSE) logs $(ARGS)

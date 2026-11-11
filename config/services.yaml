@@ -1,0 +1,13 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '%kernel.project_dir%/src/'
+        exclude:
+            - '%kernel.project_dir%/src/Kernel.php'
+            - '%kernel.project_dir%/src/Domain/'
+            - '%kernel.project_dir%/src/Application/Command/*/*Command.php'
+            - '%kernel.project_dir%/src/Application/Query/*/*Query.php'
+
