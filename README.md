@@ -10,6 +10,7 @@ Work in progress: the project is being built in small pull requests, infrastruct
 
 - PHP 8.5 (FPM, with Xdebug)
 - MySQL 8.4
+- nginx behind Traefik 3.7, HTTPS end to end
 
 Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 
@@ -17,7 +18,10 @@ Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 
 - Docker Engine with Compose v2 (`docker compose`)
 - GNU make
-- A free port 3307 on localhost for MySQL (change `MYSQL_PORT` in `.env` otherwise)
+- [mkcert](https://github.com/FiloSottile/mkcert#installation), for the local HTTPS certificate
+- `sudo` rights, once, to add the hostname to `/etc/hosts` and trust the mkcert authority
+- Free ports on localhost: 80, 443, 8080 (Traefik dashboard) and 3307 (MySQL). They can be changed
+  in `.env`.
 
 ## First run
 
@@ -25,14 +29,50 @@ Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 make first-run
 ```
 
-It creates `.env` from `.env.dist`, writes your user and group ids into it, and builds and starts
-the containers. Afterwards `make start` and `make stop` are enough. `make help` lists every target.
+It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
+below) and builds and starts the containers. Afterwards `make start` and `make stop` are enough.
+`make help` lists every target.
 
 | Service | Where |
 |---|---|
+| Web | <https://vending-machine.test> |
+| Traefik dashboard | <http://127.0.0.1:8080> |
 | MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
 
-The PHP container runs as your user, so files it writes through the bind mount stay yours.
+All ports bind to localhost only. The PHP container runs as your user, so files it writes through
+the bind mount stay yours.
+
+## What the setup changes on your machine
+
+`make setup-host` (part of `make first-run`) does two things, both idempotent:
+
+1. `etc/infrastructure/setup-hostname.sh` appends one line to `/etc/hosts` (asks for sudo):
+
+   ```
+   127.0.0.1 vending-machine.test
+   ```
+
+   `.test` is a top-level domain reserved for testing, so it never clashes with a real site.
+
+2. `etc/infrastructure/setup-ssl.sh` runs `mkcert -install`, which creates a local certificate
+   authority on your machine and adds it to the system and browser trust stores, then issues a
+   certificate for `vending-machine.test`, `*.vending-machine.test` and `nginx`. The certificate,
+   its key and a copy of the authority's public certificate go to `etc/infrastructure/certs/`, which
+   git ignores.
+
+To undo both: remove the line from `/etc/hosts`, and run `mkcert -uninstall` (only if no other
+project of yours uses mkcert).
+
+## How a request travels
+
+```
+client --HTTPS--> Traefik --HTTPS--> nginx --FastCGI--> php-fpm
+```
+
+Traefik terminates TLS with the mkcert certificate, redirects HTTP to HTTPS and logs every request
+(`make logs traefik`). It then opens a new TLS connection to nginx and verifies nginx's certificate
+against the mkcert authority, so traffic is encrypted inside the Docker network too. Traefik finds
+nginx through its Docker labels, which is why it mounts the Docker socket read-only.
 
 ## Debugging with PhpStorm
 
@@ -40,7 +80,8 @@ Xdebug is installed in the PHP image. `.env` enables it with `XDEBUG_MODE=develo
 and `start_with_request=yes`, so every PHP process tries to reach the IDE on port 9003. Set
 `XDEBUG_MODE=off` in `.env`, or start with `XDEBUG_MODE=off make start`, when you do not need it.
 
-1. Settings > PHP > Servers: add a server named `vending-machine.test` and map the project root to
-   `/var/www`. The container sends that name through `PHP_IDE_CONFIG`.
+1. Settings > PHP > Servers: add a server named `vending-machine.test`, host `vending-machine.test`,
+   port 443, and map the project root to `/var/www`. The container sends that name through
+   `PHP_IDE_CONFIG`.
 2. Listen for debug connections (port 9003, the default).
-3. Set a breakpoint and run the code inside the container.
+3. Set a breakpoint and send a request, or run the code inside the container.
