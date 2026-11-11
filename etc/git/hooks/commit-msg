@@ -1,0 +1,16 @@
+#!/usr/local/bin/php
+<?php
+
+declare(strict_types=1);
+
+const CONVENTIONAL_COMMIT = '/^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.\/-]+\))?!?: \S/';
+const GENERATED_BY_GIT = '/^(Merge |Revert "|fixup! |squash! |amend! )/';
+
+$message = (string) file_get_contents($argv[1] ?? '');
+
+if (1 === preg_match(CONVENTIONAL_COMMIT, $message) || 1 === preg_match(GENERATED_BY_GIT, $message)) {
+    exit(0);
+}
+
+fwrite(\STDERR, "Invalid commit message: use a Conventional Commits header (feat: ..., fix(scope): ..., feat!: ...).\n");
+exit(1);

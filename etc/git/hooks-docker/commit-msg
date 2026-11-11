@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/commit-msg "$1"
