@@ -11,6 +11,7 @@ Work in progress: the project is being built in small pull requests, infrastruct
 - PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
 - MySQL 8.4
 - nginx behind Traefik 3.7, HTTPS end to end
+- PHPUnit 13, PHPStan 2 (max level), deptrac, php-cs-fixer
 
 Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 
@@ -30,7 +31,8 @@ make first-run
 ```
 
 It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers and installs the Composer dependencies. Then:
+below), builds and starts the containers, installs the Composer dependencies and enables the git
+hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
@@ -83,6 +85,22 @@ nginx through its Docker labels, which is why it mounts the Docker socket read-o
 the proxies in the private address ranges (`TRUSTED_PROXIES`), so it sees the original scheme and
 client address. Errors always come back as JSON: `{"error": {"code": 404, "message": "..."}}`.
 
+## Quality checks
+
+| Command | What it does |
+|---|---|
+| `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
+| `make coverage` | The tests with an HTML coverage report in `var/coverage` |
+| `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
+| `make deptrac` | Domain depends on nothing, Application only on Domain, and only Infrastructure uses the framework |
+| `make cs-fixer` | Fixes the coding standard |
+| `make code-check` | All of the above, the coding standard in check mode |
+
+`make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
+the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
+configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
+the tests; `commit-msg` accepts [Conventional Commits](https://www.conventionalcommits.org/) only.
+
 ## Debugging with PhpStorm
 
 Xdebug is installed in the PHP image. `.env` enables it with `XDEBUG_MODE=develop,debug,coverage`
@@ -103,9 +121,15 @@ src/
   Application/     Use cases: commands, queries and their handlers. Depends only on Domain.
   Infrastructure/  Symfony, controllers, console commands, persistence.
 config/            Symfony configuration; routes in config/routes.php.
+tests/Unit/        Unit tests, mirroring src/.
+tests/Integration/ Tests that boot the kernel.
 etc/infrastructure Docker images and the host setup scripts.
+etc/git            Git hooks.
 ```
 
 Commands and queries go through two synchronous Messenger buses. Query handlers are registered on
 `query.bus` by their `QueryHandler` suffix in `config/services.yaml`, so the Application layer needs
 no framework attributes.
+
+`AGENTS.md` holds the conventions for anyone working on the code, human or agent; `CLAUDE.md`
+imports it.
