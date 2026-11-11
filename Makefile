@@ -78,7 +78,7 @@ db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
 
 ##@ Quality
-.PHONY: test coverage phpstan deptrac
+.PHONY: test coverage phpstan deptrac cs-fixer code-check
 
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
@@ -91,6 +91,15 @@ phpstan: ## Run the static analysis at the max level
 
 deptrac: ## Check the dependencies between layers
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac
+
+cs-fixer: ## Fix the coding standard
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer fix
+
+code-check: ## Run every check, the coding standard in check mode
+	@$(MAKE) test
+	@$(MAKE) phpstan
+	@$(MAKE) deptrac
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:
