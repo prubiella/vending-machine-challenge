@@ -74,7 +74,7 @@ db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
 
 ##@ Quality
-.PHONY: test coverage phpstan
+.PHONY: test coverage phpstan deptrac
 
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
@@ -84,6 +84,9 @@ coverage: ## Run the tests with an HTML coverage report in var/coverage
 
 phpstan: ## Run the static analysis at the max level
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpstan analyse
+
+deptrac: ## Check the dependencies between layers
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:
