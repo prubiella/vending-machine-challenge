@@ -1,7 +1,7 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
 CERTIFICATES := $(addprefix etc/infrastructure/certs/,local-cert.pem local-key.pem rootCA.pem)
-TARGETS_WITH_ARGS := install update require require-dev logs run run-debug
+TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test coverage
 
 .DEFAULT_GOAL := help
 
@@ -76,6 +76,15 @@ shell: ## Open a shell in the PHP container
 
 db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
+
+##@ Quality
+.PHONY: test coverage
+
+test: ## Run the unit and integration tests
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
+
+coverage: ## Run the tests with an HTML coverage report in var/coverage
+	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=coverage php-fpm vendor/bin/phpunit --coverage-html var/coverage $(ARGS)
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:
