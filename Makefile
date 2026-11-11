@@ -12,7 +12,11 @@ help: ## Show this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Build
-.PHONY: start stop down destroy first-run
+.PHONY: setup-host start stop down destroy first-run
+
+setup-host: ## Add the project hostname to /etc/hosts and create its local TLS certificate
+	@./etc/infrastructure/setup-hostname.sh
+	@./etc/infrastructure/setup-ssl.sh
 
 start: ## Build and start the containers
 	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
@@ -26,9 +30,10 @@ down: ## Stop and remove the containers
 destroy: ## Remove the containers and their volumes (the database is lost)
 	@$(DOCKER_COMPOSE) down -v
 
-first-run: ## Create .env and start the containers
+first-run: ## Create .env, set up the host and start the containers
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
+	@$(MAKE) setup-host
 	@$(MAKE) start
 
 ##@ Composer

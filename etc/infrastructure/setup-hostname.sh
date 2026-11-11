@@ -9,8 +9,9 @@ source .env
 set +a
 
 host_entry="127.0.0.1 ${PROJECT_HOSTNAME}"
+hostname_pattern="${PROJECT_HOSTNAME//./\\.}"
 
-if grep -q -w -F "${PROJECT_HOSTNAME}" /etc/hosts; then
+if grep -Eq "^[[:space:]]*127\.0\.0\.1[[:space:]]+([^#]*[[:space:]])?${hostname_pattern}([[:space:]]|$)" /etc/hosts; then
   echo -e "${YELLOW}${PROJECT_HOSTNAME} is already in /etc/hosts${NC}"
 else
   echo -e "${GREEN}Adding '${host_entry}' to /etc/hosts (asks for sudo)${NC}"
