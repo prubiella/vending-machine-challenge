@@ -1,0 +1,47 @@
+###> IDE (PhpStorm, Visual Studio Code, macOS) ###
+/.idea/
+.vscode
+.DS_Store
+###< IDE (PhpStorm, Visual Studio Code, macOS) ###
+
+###> Docker config ###
+/.env
+###< Docker config ###
+
+###> etc/infrastructure ###
+/etc/infrastructure/nginx/conf.d/app.conf
+/etc/infrastructure/certs/*.pem
+###< etc/infrastructure ###
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+.phpunit.result.cache
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> phpstan/phpstan ###
+/phpstan.neon
+###< phpstan/phpstan ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> deptrac/deptrac ###
+/.deptrac.cache
+###< deptrac/deptrac ###
