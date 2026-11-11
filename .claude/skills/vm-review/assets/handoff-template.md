@@ -1,7 +1,7 @@
 # Fix the review findings of <target>
 
 You are picking up the findings of a code review. The review was done in another session; nothing
-in it has been fixed yet. The full report is at `<absolute path of report.md>`.
+in it has been fixed yet. The full review is at `<absolute path of review.md>`.
 
 ## Where
 

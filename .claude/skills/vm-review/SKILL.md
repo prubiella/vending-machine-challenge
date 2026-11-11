@@ -1,6 +1,6 @@
 ---
 name: vm-review
-description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the report on the pull request or hand the fix off to a new session.
+description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
 argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--spec <path>]"
 disable-model-invocation: true
 allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*)
@@ -42,7 +42,7 @@ empty diff, bad argument). Relay it and stop.
 Otherwise:
 
 1. Relay the summary in the user's language: verdict, counts, the top findings with their
-   `file:line`, and the path of the report. Keep `report.md` out of this session unless the user
+   `file:line`, and the path of the review. Keep `review.md` out of this session unless the user
    asks for it, for the same reason as above.
 2. Ask with `AskUserQuestion` (`multiSelect: true`) what to do with the review:
    - **Post on the pull request**, only when `TARGET` is a pull request. Mention that the
@@ -51,7 +51,7 @@ Otherwise:
    - **Nothing**: keep the local files only.
 3. Do what was chosen:
    - Post: check the pull request is still open (`gh pr view <n> --json state`), then
-     `gh pr comment <n> --body-file <REPORT path>`, and give the comment URL. If a step fails,
+     `gh pr comment <n> --body-file <REVIEW path>`, and give the comment URL. If a step fails,
      show the error rather than retrying blindly.
    - Hand off: give this command, to run from the repository folder:
 
@@ -70,5 +70,5 @@ wrong, and changing code now would mix the review with its fix.
 | `agents/reviewer.md` | The contract every lens reviewer follows: read-only, finding format | each reviewer |
 | `agents/verifier.md` | How to try to refute a finding | each verifier |
 | `references/lenses/*.md` | One checklist per angle of review | the reviewer of that lens |
-| `assets/*-template.md` | Skeletons of `report.md` and `handoff.md` | the orchestrator |
+| `assets/*-template.md` | Skeletons of `review.md` and `handoff.md` | the orchestrator |
 | `evals/` | Test cases in the skill-creator layout, run against local `eval/*` tags | whoever improves the skill |

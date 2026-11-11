@@ -15,11 +15,11 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   `<repo root>/.audit/vm-review/` (`<repo root>` is `git rev-parse --show-toplevel`; git ignores
   `.audit/`). No checkout, switch, stash, fetch, commit, push, and no starting or stopping
   containers.
-- **Nothing leaves the machine.** Posting the report is the user's decision, taken later.
+- **Nothing leaves the machine.** Posting the review is the user's decision, taken later.
 - **Reviewers run as `Explore` subagents.** That agent type has no file-editing tools, which keeps
   the reviewers read-only by construction rather than by promise.
 - **When the review cannot run** (unknown pull request, empty diff, unknown lens), return one line
-  starting with `vm-review:` that says what went wrong, and write no files: a half-written report
+  starting with `vm-review:` that says what went wrong, and write no files: a half-written review
   is worse than none.
 
 ## 1. Read the arguments
@@ -120,14 +120,15 @@ marked `unverified`.
 Into `<repo root>/.audit/vm-review/<slug>-<YYYYMMDD-HHMM>/`, where the slug is `pr-<n>`,
 `range-<A>-<B>` (refs with `/` and `.` turned into `-`) or `branch-<name>`:
 
-- `report.md`, following `<Skill dir>/assets/report-template.md`. Verdict: BLOCKED when a Critical
+- `review.md`, following `<Skill dir>/assets/review-template.md`. (Not `report.md` or
+  `findings.md`: Claude Code refuses subagent writes of files with those names.) Verdict: BLOCKED when a Critical
   finding remains, APPROVED_WITH_FINDINGS when any other finding remains, APPROVED when none does.
   Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
   at most four, only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones.
 
-Write in English, without em or en dashes, and keep personal data out: the report may end up as a
+Write in English, without em or en dashes, and keep personal data out: the review may end up as a
 comment on a public pull request.
 
 ## 8. Return
@@ -142,6 +143,6 @@ LENSES: <lenses run>
 TOP:
 - <severity> <file:line>: <summary> (<lenses>)
 <at most five, most severe first>
-REPORT: <absolute path of report.md>
+REVIEW: <absolute path of review.md>
 HANDOFF: <absolute path of handoff.md>
 ```
