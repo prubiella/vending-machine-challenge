@@ -1,0 +1,86 @@
+#!/usr/local/bin/php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__.'/../../../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
+
+final class CodeQualityTool extends Application
+{
+    private const string PHP_FILE = '/^(src|tests)\/.*\.php$/';
+
+    private OutputInterface $output;
+
+    /** @var list<string> */
+    private array $stagedFiles = [];
+
+    public function __construct()
+    {
+        parent::__construct('Code Quality Tool', '2.0.0');
+    }
+
+    public function doRun(InputInterface $input, OutputInterface $output): int
+    {
+        $this->output = $output;
+        $this->stagedFiles = $this->stagedFiles();
+
+        $this->checkComposerLockIsStaged();
+
+        $phpFiles = array_values(array_filter(
+            $this->stagedFiles,
+            static fn (string $file): bool => 1 === preg_match(self::PHP_FILE, $file),
+        ));
+
+        if ([] !== $phpFiles) {
+            $this->runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--config=.php-cs-fixer.dist.php', '--path-mode=intersection', ...$phpFiles]);
+            $this->runCheck('PHPStan', ['vendor/bin/phpstan', 'analyse', '--no-progress', ...$phpFiles]);
+            $this->runCheck('Layer dependencies', ['vendor/bin/deptrac', '--no-progress']);
+            $this->runCheck('Unit tests', ['vendor/bin/phpunit']);
+        }
+
+        $output->writeln('<info>All checks passed.</info>');
+
+        return 0;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function stagedFiles(): array
+    {
+        $process = new Process(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM']);
+        $process->mustRun();
+
+        return array_values(array_filter(explode("\n", $process->getOutput())));
+    }
+
+    private function checkComposerLockIsStaged(): void
+    {
+        if (in_array('composer.json', $this->stagedFiles, true) && !in_array('composer.lock', $this->stagedFiles, true)) {
+            throw new RuntimeException('composer.json is staged without composer.lock.');
+        }
+    }
+
+    /**
+     * @param list<string> $command
+     */
+    private function runCheck(string $check, array $command): void
+    {
+        $this->output->writeln(sprintf('<info>%s</info>', $check));
+
+        $process = new Process($command);
+        $process->setTimeout(3600);
+        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
+
+        if (!$process->isSuccessful()) {
+            throw new RuntimeException(sprintf('%s failed, fix it before committing.', $check));
+        }
+    }
+}
+
+new CodeQualityTool()->run();

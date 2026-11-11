@@ -12,8 +12,9 @@ class HealthCheckController extends BaseController
 {
     public function __invoke(): Response
     {
-        $result = $this->query(new HealthCheckQuery());
+        /** @var array{php: string, symfony: string} $versions */
+        $versions = $this->query(new HealthCheckQuery());
 
-        return $this->json(array_merge(['status' => 'ok'], $result));
+        return $this->json(['status' => 'ok', ...$versions]);
     }
 }

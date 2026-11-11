@@ -14,7 +14,7 @@ final readonly class HealthCheckQueryHandler
     public function __invoke(HealthCheckQuery $query): array
     {
         return [
-            'php' => PHP_VERSION,
+            'php' => \PHP_VERSION,
             'symfony' => Kernel::VERSION,
         ];
     }

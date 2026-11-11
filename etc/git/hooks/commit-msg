@@ -1,0 +1,49 @@
+#!/usr/local/bin/php
+
+<?php
+
+require __DIR__ . '/../../../vendor/autoload.php';
+
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Application;
+
+class CheckCommitMessage extends Application
+{
+    private const CONVENTIONAL_COMMIT = '/^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.\/-]+\))?!?: \S/';
+
+    public function doRun(InputInterface $input, OutputInterface $output): int
+    {
+        $commitMessage = $this->extractCommitMessage($input);
+
+        if (!$this->isValidMessage($commitMessage)) {
+            throw new Exception('Invalid commit message: use a Conventional Commits header (feat: ..., fix(scope): ..., feat!: ...).');
+        }
+
+        return 0;
+    }
+
+    private function extractCommitMessage(InputInterface $input)
+    {
+        return file_get_contents($input->getFirstArgument());
+    }
+
+    private function isValidMessage($commitMessage)
+    {
+        return $this->isMerge()
+            || preg_match(self::CONVENTIONAL_COMMIT, $commitMessage);
+    }
+
+    private function isMerge()
+    {
+        foreach (['MERGE_MSG', 'MERGE_HEAD', 'MERGE_MODE'] as $fileName) {
+            if (file_exists(__DIR__ . '/../../../.git/' . $fileName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+$console = new CheckCommitMessage();
+$console->run();

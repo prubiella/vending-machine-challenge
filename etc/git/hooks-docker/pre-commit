@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+php_changed_files=$(git diff --name-only --staged --diff-filter=d | grep "\.php$" | tr '\n' ' ')
+
+source ./etc/git/hooks-docker/branch-name-validator.sh
+echo -ne "${GREEN}Let's start with pre-commit hook:${YELLOW} ${local_branch} ${GREEN}.\r\n${NC}"
+
+source .env
+image="${PROJECT_HOSTNAME}-php-fpm"
+
+docker run --user "$(id -u):$(id -g)" -e HOME=/tmp -e PHP_DISPLAY_ERRORS=1 --rm -w /var/www -v $(pwd):/var/www ${image} sh -c "git config --global --add safe.directory /var/www; etc/git/hooks/pre-commit;"

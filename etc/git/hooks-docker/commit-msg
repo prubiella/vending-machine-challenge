@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+args=("$@")
+source .env
+image="${PROJECT_HOSTNAME}-php-fpm"
+docker run --user "$(id -u):$(id -g)" -e HOME=/tmp -e PHP_DISPLAY_ERRORS=1 --rm -w /var/www -v $(pwd):/var/www ${image} sh -c "etc/git/hooks/commit-msg $args;"

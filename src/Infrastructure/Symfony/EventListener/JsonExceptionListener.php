@@ -20,13 +20,6 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 #[AsEventListener(event: 'kernel.exception', priority: -64)]
 final readonly class JsonExceptionListener
 {
-    /**
-     * Domain exceptions and the status they map to.
-     *
-     * @var array<class-string<\Throwable>, int>
-     */
-    private const array STATUS_BY_EXCEPTION = [];
-
     public function __construct(
         #[Autowire('%kernel.debug%')]
         private bool $debug,
@@ -53,12 +46,6 @@ final readonly class JsonExceptionListener
     {
         if ($exception instanceof HttpExceptionInterface) {
             return $exception->getStatusCode();
-        }
-
-        foreach (self::STATUS_BY_EXCEPTION as $class => $status) {
-            if ($exception instanceof $class) {
-                return $status;
-            }
         }
 
         return Response::HTTP_INTERNAL_SERVER_ERROR;

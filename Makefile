@@ -21,6 +21,7 @@ setup-host: ## Add the project hostname to /etc/hosts and create its local TLS c
 	@./etc/infrastructure/setup-ssl.sh
 
 start: ## Build and start the containers
+	@make hooks
 	@export USER_ID=$(USER); \
 	export GROUP_ID=$(GROUP); \
 	export XDEBUG_MODE=$(XDEBUG_MODE); \
@@ -39,6 +40,7 @@ first-run: ## Create .env, set up the host and start the containers
 	@-cp -n .env.dist .env
 	@make setup-host
 	@make start
+	@make install
 
 ##@ Composer
 .PHONY: install update require require-dev
@@ -56,7 +58,13 @@ require-dev: ## Add a development dependency
 	@-$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(filter-out $@,$(MAKECMDGOALS))
 
 ##@ Development
-.PHONY: logs status shell db-shell
+.PHONY: run run-debug logs status shell db-shell hooks
+
+run: ## Run a Symfony console command
+	@-$(DOCKER_COMPOSE) exec php-fpm bin/console $(filter-out $@,$(MAKECMDGOALS))
+
+run-debug: ## Run a Symfony console command with Xdebug connecting to the IDE
+	@-$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=debug php-fpm bin/console $(filter-out $@,$(MAKECMDGOALS))
 
 logs: ## Show the containers logs
 	@-$(DOCKER_COMPOSE) logs $(filter-out $@,$(MAKECMDGOALS))
@@ -69,3 +77,34 @@ shell: ## Open a shell in the PHP container
 
 db-shell: ## Open a MySQL shell on the dev database
 	@-$(DOCKER_COMPOSE) exec mysql mysql -uapp -papp app
+
+hooks: ## Install the git hooks (they run inside the PHP image)
+	@rm -rf .git/hooks
+	@ln -s ../etc/git/hooks-docker .git/hooks
+
+##@ Quality
+.PHONY: test coverage phpstan deptrac cs-fixer code-check
+
+test: ## Run the unit tests
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(filter-out $@,$(MAKECMDGOALS))
+
+coverage: ## Run the unit tests with an HTML coverage report in var/coverage
+	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=coverage php-fpm vendor/bin/phpunit --coverage-html var/coverage $(filter-out $@,$(MAKECMDGOALS))
+
+phpstan: ## Run the static analysis
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpstan analyse
+
+deptrac: ## Check the dependencies between layers
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac
+
+cs-fixer: ## Fix the coding standard
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer fix
+
+code-check: ## Run every check
+	@make test
+	@make phpstan
+	@make deptrac
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
+
+%:
+	@:
