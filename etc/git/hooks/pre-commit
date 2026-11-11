@@ -3,6 +3,11 @@
 
 declare(strict_types=1);
 
+if (!is_file(__DIR__.'/../../../vendor/autoload.php')) {
+    fwrite(\STDERR, "No vendor/ in this checkout (a new git worktree?). Install it with:\n  ./etc/git/hooks-docker/run-in-php-image.sh composer install\n");
+    exit(1);
+}
+
 require __DIR__.'/../../../vendor/autoload.php';
 
 use Symfony\Component\Process\Process;
