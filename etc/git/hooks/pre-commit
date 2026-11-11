@@ -50,7 +50,7 @@ if ([] === $checked) {
 $phpFiles = array_values(array_filter($checked, static fn (string $file): bool => 1 === preg_match(PHP_FILE, $file)));
 
 if ([] !== $phpFiles) {
-    runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--path-mode=intersection', ...$phpFiles]);
+    runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--config=.php-cs-fixer.dist.php', '--path-mode=intersection', ...$phpFiles]);
 }
 runCheck('Container', ['bin/console', 'lint:container']);
 runCheck('PHPStan', ['vendor/bin/phpstan', 'analyse', '--no-progress']);
