@@ -36,6 +36,7 @@ first-run: ## Create .env, set up the host and start the containers
 	@$(MAKE) setup-host
 	@$(MAKE) start
 	@$(MAKE) install
+	@$(MAKE) hooks
 
 ##@ Composer
 .PHONY: install update require require-dev
@@ -53,7 +54,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell
+.PHONY: run run-debug logs status shell db-shell hooks
 
 run: ## Run a Symfony console command
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -72,6 +73,9 @@ shell: ## Open a shell in the PHP container
 
 db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
+
+hooks: ## Use the project's git hooks (they run inside the PHP image)
+	@git config core.hooksPath etc/git/hooks-docker
 
 ##@ Quality
 .PHONY: test coverage phpstan deptrac cs-fixer code-check
