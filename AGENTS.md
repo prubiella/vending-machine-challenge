@@ -19,7 +19,9 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 - `.env` is git-ignored and created from `.env.dist`. New variables go in `.env.dist` with a safe
   default. Never commit a real secret; `.env.dev` and `.env.test` only hold Symfony's throwaway
   `APP_SECRET` for those environments.
-- Work on a branch, not a git worktree: the containers and the git hooks bind-mount this directory.
+- Work on a branch rather than a git worktree: the containers bind-mount the main checkout, so `make`
+  targets run its code, not the worktree's. The git hooks do work from a worktree once it has its
+  own `vendor/` (`./etc/git/hooks-docker/run-in-php-image.sh composer install`).
 
 ## Layers (checked by deptrac)
 
