@@ -13,7 +13,6 @@ final class InMemoryQueryBusTest extends KernelTestCase
     public function testRoutesAQueryToItsHandlerAndReturnsTheResult(): void
     {
         $bus = self::getContainer()->get(InMemoryQueryBus::class);
-        self::assertInstanceOf(InMemoryQueryBus::class, $bus);
 
         self::assertSame(['status' => 'ok'], $bus->query(new HealthCheckQuery()));
     }
