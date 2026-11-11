@@ -23,9 +23,15 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git blame:*)",
       "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
       "Bash(gh pr list:*)",
-      "Bash(gh pr checks:*)"
+      "Bash(gh pr checks:*)",
+      "Edit(.audit/vm-review/**)"
     ],
     "deny": [
       "Bash(git push --no-verify:*)",
