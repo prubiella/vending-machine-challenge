@@ -12,10 +12,8 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
- * Turns every exception into a JSON error. Runs after Symfony has logged it (priority 0) and
- * before its HTML error page (priority -128).
- *
- * Body: {"error": {"code": 404, "message": "..."}}.
+ * Priority -64: after Symfony has logged the exception (priority 0) and before its HTML error page
+ * (priority -128).
  */
 #[AsEventListener(event: 'kernel.exception', priority: -64)]
 final readonly class JsonExceptionListener

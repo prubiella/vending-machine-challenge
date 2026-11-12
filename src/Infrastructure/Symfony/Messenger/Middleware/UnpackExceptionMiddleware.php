@@ -9,7 +9,7 @@ use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
 use Symfony\Component\Messenger\Middleware\StackInterface;
 
-final class UnpackExceptionMiddleware implements MiddlewareInterface
+final readonly class UnpackExceptionMiddleware implements MiddlewareInterface
 {
     /**
      * @throws \Throwable

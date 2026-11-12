@@ -6,6 +6,6 @@ namespace App\Application\Query\HealthCheck;
 
 use App\Application\Bus\Query;
 
-final class HealthCheckQuery implements Query
+final readonly class HealthCheckQuery implements Query
 {
 }
