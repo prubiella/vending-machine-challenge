@@ -51,11 +51,14 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   `git ls-files --others --exclude-standard` to the changed files and tell the reviewers to read
   those files in full.
 
+`<head sha>` is the commit under review: the pull request's `headRefOid`,
+`git rev-parse B^{commit}` for a range, and `git rev-parse HEAD` for the current branch. Without
+`^{commit}`, an annotated tag resolves to the tag object's id, which is not a commit.
+
 `Local head matches` is `yes` only when the working tree is the head being reviewed:
-`git rev-parse HEAD` equals the pull request's `headRefOid` (or `B`) and `git status --porcelain`
-is empty; always `yes` for the current branch without a pull request. Reviewers only run `make`
-checks when it is `yes`, because otherwise they would be testing different code from the one
-under review.
+`git rev-parse HEAD` equals `<head sha>` and `git status --porcelain` is empty; always `yes` for
+the current branch without a pull request. Reviewers only run `make` checks when it is `yes`,
+because otherwise they would be testing different code from the one under review.
 
 The head's kind (`branch`, `tag` or `commit`) goes in the reviewers' `Head` line, because the
 branch-name rule of `AGENTS.md` only applies to a branch, and the review and handoff must not
