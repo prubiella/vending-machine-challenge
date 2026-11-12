@@ -110,8 +110,10 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
-the tests; `commit-msg` accepts [Conventional Commits](https://www.conventionalcommits.org/), plus
-git's own merge, revert, fixup, squash and amend messages.
+the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
+also have unstaged changes: stage them too, or set those changes aside first. `commit-msg` accepts
+[Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
+squash and amend messages.
 
 ## Debugging with PhpStorm
 

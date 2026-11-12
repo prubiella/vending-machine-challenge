@@ -68,7 +68,8 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 
 `make test`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or `make code-check` for
 all of them. They must pass before committing. `make hooks` (part of `make first-run`) enables the
-git hooks: pre-commit runs the checks when code, configuration or tooling is staged.
+git hooks: pre-commit runs the checks when code, configuration or tooling is staged, and refuses
+the commit when those staged files also have unstaged changes, since the checks read the disk.
 
 ## Git
 
