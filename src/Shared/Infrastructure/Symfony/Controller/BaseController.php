@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Symfony\Controller;
+namespace App\Shared\Infrastructure\Symfony\Controller;
 
-use App\Infrastructure\Symfony\Messenger\Bus\InMemoryCommandBus;
-use App\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\Query;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryCommandBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 abstract class BaseController extends AbstractController

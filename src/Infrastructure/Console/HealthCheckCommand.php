@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Console;
 
 use App\Application\Query\HealthCheck\HealthCheckQuery;
-use App\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;

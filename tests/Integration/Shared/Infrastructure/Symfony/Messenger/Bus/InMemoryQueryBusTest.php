@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Infrastructure\Symfony\Messenger\Bus;
+namespace App\Tests\Integration\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Application\Query\HealthCheck\HealthCheckQuery;
-use App\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class InMemoryQueryBusTest extends KernelTestCase

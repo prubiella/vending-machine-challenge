@@ -4,7 +4,7 @@ framework:
         buses:
             command.bus:
                 middleware:
-                    - 'App\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
+                    - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
             query.bus:
                 middleware:
-                    - 'App\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
+                    - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'

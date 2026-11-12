@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Infrastructure\Symfony\Messenger\Middleware;
+namespace App\Tests\Unit\Shared\Infrastructure\Symfony\Messenger\Middleware;
 
-use App\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware;
+use App\Shared\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;

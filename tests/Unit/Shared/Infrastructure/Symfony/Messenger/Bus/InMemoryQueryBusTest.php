@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Infrastructure\Symfony\Messenger\Bus;
+namespace App\Tests\Unit\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Application\Query\HealthCheck\HealthCheckQuery;
-use App\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Handler\HandlerDescriptor;
 use Symfony\Component\Messenger\Handler\HandlersLocator;

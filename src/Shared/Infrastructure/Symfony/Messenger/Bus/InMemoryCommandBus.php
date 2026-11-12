@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Symfony\Messenger\Bus;
+namespace App\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Shared\Application\Bus\Command;
 use Symfony\Component\Messenger\MessageBusInterface;

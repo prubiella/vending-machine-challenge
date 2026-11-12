@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Infrastructure\Symfony\EventListener;
+namespace App\Tests\Unit\Shared\Infrastructure\Symfony\EventListener;
 
-use App\Infrastructure\Symfony\EventListener\JsonExceptionListener;
+use App\Shared\Infrastructure\Symfony\EventListener\JsonExceptionListener;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
