@@ -77,4 +77,4 @@ wrong, and changing code now would mix the review with its fix.
 | `agents/verifier.md` | How to try to refute a finding | each verifier |
 | `references/lenses/*.md` | One checklist per angle of review | the reviewer of that lens |
 | `assets/*-template.md` | Skeletons of `review.md` and `handoff.md` | the orchestrator |
-| `evals/` | Test cases in the skill-creator layout, run against local `eval/*` tags | whoever improves the skill |
+| `evals/` | Test cases in the skill-creator layout, run against the published `eval/*` tags | whoever improves the skill |
