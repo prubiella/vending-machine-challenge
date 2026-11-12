@@ -64,7 +64,10 @@ $phpFiles = array_values(array_filter(
     static fn (string $file): bool => 1 === preg_match(CHECKED_PATHS, $file) && 1 === preg_match(PHP_FILE, $file),
 ));
 
-if ([] !== $phpFiles) {
+// A new fixer version or rule set can flag files that are not staged.
+if ([] !== array_intersect(['composer.lock', '.php-cs-fixer.dist.php'], $staged)) {
+    runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--config=.php-cs-fixer.dist.php']);
+} elseif ([] !== $phpFiles) {
     runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--config=.php-cs-fixer.dist.php', '--path-mode=intersection', ...$phpFiles]);
 }
 runCheck('Container', ['bin/console', 'lint:container']);
