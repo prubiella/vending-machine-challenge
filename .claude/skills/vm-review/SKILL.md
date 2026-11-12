@@ -57,7 +57,9 @@ Otherwise:
      `gh pr comment <n> --body-file <REVIEW path>`, and give the comment URL. If a step fails,
      show the error rather than retrying blindly.
    - Hand off: from the repository folder the review ran in, start the session with
-     `claude --bg "Read <HANDOFF path> and follow it."` and give the user the id it prints, with
+     `claude --bg --name vm-fix-<target> "Read <HANDOFF path> and follow it."`, where `<target>`
+     is `pr<n>` for a pull request and the review folder's name otherwise (the naming rule is in
+     `AGENTS.md`), and give the user the id it prints, with
      `claude attach <id>` to join it and `claude logs <id>` to read it. It is a background
      session rather than a headless `claude -p` one because fixing may need the user: it shows
      in `claude agents`, they can attach, and it can ask them a question instead of guessing.

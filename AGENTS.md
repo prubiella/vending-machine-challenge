@@ -75,6 +75,11 @@ the commit when those staged files also have unstaged changes, since the checks 
 `/vm-review [<pr-number>|<range>]` reviews a change in background subagents and writes the report
 to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/references/lenses/`.
 
+Every Claude session launched from this repository (`claude --bg` or `claude -p`) gets
+`--name vm-<type>-<target>[-<topic>]`: `vm-fix-pr7` for a fix, `vm-fix-pr7-rules` when one pull
+request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an eval run. The
+`vm-` prefix tells this project's sessions apart in `claude agents`, and the type first groups them.
+
 ## Git
 
 - Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`), lowercase, at most 15 characters
