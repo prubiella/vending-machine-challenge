@@ -1,9 +1,6 @@
-parameters:
-    env(DEFAULT_URI): 'https://vending-machine.test'
-
 framework:
     router:
-        default_uri: '%env(DEFAULT_URI)%'
+        default_uri: 'https://%env(PROJECT_HOSTNAME)%'
 
 when@prod:
     framework:
