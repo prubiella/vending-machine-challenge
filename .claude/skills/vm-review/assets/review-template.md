@@ -4,7 +4,7 @@ Reviewed `<base>...<head>` (<n> files, +<added> -<deleted>) through the lenses: 
 
 ## Verdict
 
-<BLOCKED | APPROVED_WITH_FINDINGS | APPROVED>: <one sentence why>.
+<BLOCKED | INCOMPLETE | APPROVED_WITH_FINDINGS | APPROVED>: <one sentence why>.
 
 ## Findings
 

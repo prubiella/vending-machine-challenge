@@ -130,9 +130,10 @@ Into `<repo root>/.audit/vm-review/<slug>-<YYYYMMDD-HHMM>/`, where the slug is `
 or `-` turned into `-` (refs carry `/`, `.`, `~` and `^`, which make awkward folder names):
 
 - `review.md`, following `<Skill dir>/assets/review-template.md`. Not `report.md` or
-  `findings.md`: Claude Code refuses subagent writes of files with those names. Verdict: BLOCKED
-  when a Critical finding remains, APPROVED_WITH_FINDINGS when any other finding remains, APPROVED
-  when none does.
+  `findings.md`: Claude Code refuses subagent writes of files with those names. Verdict, the first
+  that applies: BLOCKED when a Critical finding remains; INCOMPLETE when a lens failed, or a check
+  failed that no finding explains, because then the review cannot vouch for the change;
+  APPROVED_WITH_FINDINGS when any other finding remains; APPROVED when none does.
   Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
   at most four, only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
@@ -150,6 +151,7 @@ VERDICT: <verdict>
 TARGET: <pull request <n> <url> | range <A...B> | branch <name>>
 COUNTS: Critical <n>, Important <n>, Minor <n>, dropped <n>
 LENSES: <lenses run>
+FAILED: <each failed lens and each failed check no finding explains, or none>
 TOP:
 - <severity> <file:line>: <summary> (<lenses>)
 <at most five, most severe first>
