@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+# vendor/ is git-ignored, so a new git worktree starts without it. A file checkout ($3 = 0) or a
+# checkout that already has it stays instant.
+[[ "$3" == 1 && ! -f vendor/autoload.php ]] || exit 0
+
+echo "No vendor/ in this checkout (a new git worktree?): installing it."
+if ! ./etc/git/hooks-docker/run-in-php-image.sh composer install --no-interaction; then
+  echo "Could not install vendor/. Install it by hand with:" >&2
+  echo "  ./etc/git/hooks-docker/run-in-php-image.sh composer install" >&2
+fi
