@@ -9,7 +9,6 @@
 ###< Docker config ###
 
 ###> etc/infrastructure ###
-/etc/infrastructure/nginx/conf.d/app.conf
 /etc/infrastructure/certs/*.pem
 ###< etc/infrastructure ###
 
