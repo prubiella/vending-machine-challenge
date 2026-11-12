@@ -17,9 +17,17 @@ final readonly class InMemoryQueryBus
 
     public function query(Query $query): mixed
     {
-        /** @var HandledStamp $stamp */
-        $stamp = $this->queryBus->dispatch($query)->last(HandledStamp::class);
+        /** @var HandledStamp[] $stamps */
+        $stamps = $this->queryBus->dispatch($query)->all(HandledStamp::class);
 
-        return $stamp->getResult();
+        if (\count($stamps) !== 1) {
+            throw new \LogicException(\sprintf(
+                'Query "%s" must be handled by exactly one handler, %d handled it.',
+                $query::class,
+                \count($stamps),
+            ));
+        }
+
+        return $stamps[0]->getResult();
     }
 }
