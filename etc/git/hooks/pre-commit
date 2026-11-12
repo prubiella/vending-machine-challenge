@@ -15,9 +15,9 @@ use Symfony\Component\Process\Process;
 const CHECKED_PATHS = '/^(src\/|tests\/|config\/|composer\.(json|lock)$|phpunit\.dist\.xml$|phpstan\.dist\.neon$|deptrac\.yaml$|\.php-cs-fixer\.dist\.php$)/';
 const PHP_FILE = '/\.php$/';
 
-function stagedFiles(): array
+function stagedFiles(string $diffFilter): array
 {
-    $process = new Process(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACMR']);
+    $process = new Process(['git', 'diff', '--cached', '--name-only', "--diff-filter={$diffFilter}"]);
     $process->mustRun();
 
     return array_values(array_filter(explode("\n", $process->getOutput())));
@@ -39,7 +39,8 @@ function runCheck(string $check, array $command): void
     }
 }
 
-$staged = stagedFiles();
+// Deletions count: removing a class that other code still uses must run the checks.
+$staged = stagedFiles('ACMRD');
 
 if (in_array('composer.json', $staged, true) && !in_array('composer.lock', $staged, true)) {
     fwrite(\STDERR, "composer.json is staged without composer.lock.\n");
@@ -52,7 +53,10 @@ if ([] === $checked) {
     exit(0);
 }
 
-$phpFiles = array_values(array_filter($checked, static fn (string $file): bool => 1 === preg_match(PHP_FILE, $file)));
+$phpFiles = array_values(array_filter(
+    stagedFiles('ACMR'),
+    static fn (string $file): bool => 1 === preg_match(CHECKED_PATHS, $file) && 1 === preg_match(PHP_FILE, $file),
+));
 
 if ([] !== $phpFiles) {
     runCheck('Coding standard', ['vendor/bin/php-cs-fixer', 'check', '--config=.php-cs-fixer.dist.php', '--path-mode=intersection', ...$phpFiles]);
