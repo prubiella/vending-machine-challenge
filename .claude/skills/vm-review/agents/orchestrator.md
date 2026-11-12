@@ -18,9 +18,9 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 - **Nothing leaves the machine.** Posting the review is the user's decision, taken later.
 - **Reviewers run as `Explore` subagents.** That agent type has no file-editing tools, which keeps
   the reviewers read-only by construction rather than by promise.
-- **When the review cannot run** (unknown pull request, empty diff, unknown lens), return one line
-  starting with `vm-review:` that says what went wrong, and write no files: a half-written review
-  is worse than none.
+- **When the review cannot run** (unknown pull request, empty diff, unknown lens, missing
+  `--spec` file), return one line starting with `vm-review:` that says what went wrong, and write
+  no files: a half-written review is worse than none.
 
 ## 1. Read the arguments
 
@@ -54,8 +54,9 @@ under review.
 An empty diff ends the review (see the ground rules); for the current branch, only when there
 are no untracked files either.
 
-**Spec**: `--spec` when given. Otherwise `vending-machine-statement.md` in the folder that holds
-the main checkout:
+**Spec**: `--spec` when given; if that file does not exist the review cannot run, since the user
+asked for the spec lens to judge against it. Otherwise `vending-machine-statement.md` in the folder
+that holds the main checkout:
 `$(dirname "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")/vending-machine-statement.md`.
 Use it only if the file exists.
 
