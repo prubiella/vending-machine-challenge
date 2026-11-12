@@ -5,6 +5,7 @@ expected_outcome: |
   ExactChangeNotAvailable, against files/statement.md. Most of it matches the statement; two
   details do not: Soda is priced at 155 cents instead of 150, and CoinStock::giveChange works on a
   copy of the counts, so the coins it gives never leave the stock. A good review finds both,
-  ties each to the statement, and does not flag the parts that do match.
+  ties each to the statement, and does not flag the parts that do match. eval/spec-v2 is a tag, so
+  the review checks no branch name and does not call it a branch.
 context:
   scaffold_script: place-files.sh
