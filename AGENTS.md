@@ -51,8 +51,11 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
    `config/routes.php`, not in a `#[Route]` attribute. Bind bodies with `#[MapRequestPayload]`.
    Map each domain exception to an HTTP status in `JsonExceptionListener` (it has no map yet: add
    it with the first one).
-5. Tests: unit tests in `tests/Unit/` mirroring `src/`, for every domain rule and handler;
-   integration tests in `tests/Integration/` for wiring that only the kernel can prove.
+5. Tests: unit tests in `tests/Unit/` mirroring `src/`, for every domain rule and for every
+   handler with logic of its own; integration tests in `tests/Integration/` for wiring that only
+   the kernel can prove. A handler with no logic (one that returns a constant) is covered by the
+   integration test that routes a message to it, since PHPStan rejects a unit test of it as
+   tautological.
 
 ## Code
 
