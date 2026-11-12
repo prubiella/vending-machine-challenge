@@ -18,8 +18,8 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   recipe registers the bundle. Review what a recipe generates before committing: its defaults
   (attribute routing, YAML comments, sample folders) may clash with the conventions below.
 - `.env` is git-ignored and created from `.env.dist`. New variables go in `.env.dist` with a safe
-  default. Never commit a real secret; `.env.dev` and `.env.test` only hold Symfony's throwaway
-  `APP_SECRET` for those environments.
+  default. Never commit a real secret; `.env.dev` and `.env.test` only hold non-secret values:
+  Symfony's throwaway `APP_SECRET` for those environments and, in `.env.test`, `KERNEL_CLASS`.
 - Work on a branch rather than a git worktree: the containers bind-mount the main checkout, so `make`
   targets run its code, not the worktree's. The git hooks do work from a worktree once it has its
   own `vendor/` (`./etc/git/hooks-docker/run-in-php-image.sh composer install`).
