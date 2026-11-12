@@ -88,7 +88,9 @@ request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an e
 - Never `--no-verify`. Push with `FORCE_COLOR=0 git push`.
 - Small commits that each leave the project working, and small pull requests that a person can
   review in one sitting: the history is part of the deliverable.
-- No company names in code, docs, commits or pull requests.
+- Never write the name of the company that set this challenge, anywhere: code, tests, evals, docs,
+  commits, pull requests, reviews or comments. Do not look it up in the statement or search the
+  code for it; if you need to refer to it, say "the company".
 
 ## Discover, don't guess
 
