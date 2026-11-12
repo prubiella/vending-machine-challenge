@@ -172,8 +172,10 @@ make awkward folder names):
   that applies: BLOCKED when a Critical finding remains; INCOMPLETE when a lens failed, or a check
   failed that no finding explains, because then the review cannot vouch for the change;
   APPROVED_WITH_FINDINGS when any other finding remains; APPROVED when none does.
-  Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
-  at most four, only ones the reviewers reported.
+  Sort findings by severity, then file. Every row, Minor ones too, gives the failure scenario
+  after the summary: it is what tells the reader why the finding matters, and a summary alone can
+  read as a style remark. Merge every lens's Declined and Checks lists. Strengths: at most four,
+  only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
   (branch, tag or commit), never a tag or a commit as a branch.

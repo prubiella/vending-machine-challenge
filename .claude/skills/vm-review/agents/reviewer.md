@@ -40,7 +40,9 @@ its real result.
    version, so do not open it; read any other file you quote with `git show <head sha>:<path>`,
    and search with `git grep <pattern> <head sha>`. The lens checklists sum up today's
    `AGENTS.md`: a rule that the `Project rules` file does not contain is not a finding, and a
-   severity is never raised or lowered on its account.
+   severity is never raised or lowered on its account. The same holds the other way: a rule it
+   states applies as written, and an exception it does not state ("not needed yet", "nothing uses
+   it so far") is no reason to decline a breach.
 3. Read the changed files in full where the diff alone cannot tell you whether something is wrong,
    and follow callers or configuration as far as the finding needs.
 4. Go through the lens checklist.
