@@ -19,7 +19,8 @@ Check:
 - Configuration: new variables in `.env.dist` with a safe default, no real secret committed, no
   company names anywhere.
 - History: every commit message in the target follows Conventional Commits in English
-  (`git log --format='%h %s' <range>`); the branch name follows the `AGENTS.md` rule; each commit
+  (`git log --format='%h %s' <range>`); when `Head` is a branch, its name follows the `AGENTS.md`
+  rule (a tag or a commit has no branch name to check, so it is not a finding); each commit
   leaves the project working (flag a commit that obviously cannot, such as one adding a class that
   only a later commit registers).
 

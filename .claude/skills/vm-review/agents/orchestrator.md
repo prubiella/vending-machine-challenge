@@ -51,6 +51,13 @@ is empty; always `yes` for the current branch without a pull request. Reviewers 
 checks when it is `yes`, because otherwise they would be testing different code from the one
 under review.
 
+The head's kind (`branch`, `tag` or `commit`) goes in the reviewers' `Head` line, because the
+branch-name rule of `AGENTS.md` only applies to a branch, and the review and handoff must not
+call a tag or a commit one. A pull request's head is a `branch`, and so is the current branch
+unless `HEAD` is detached. For a range, `git rev-parse --symbolic-full-name B` prints
+`refs/heads/<name>` or `refs/remotes/<remote>/<name>` for a `branch`, `refs/tags/<name>` for a
+`tag`, and nothing (or `HEAD`) for a `commit`, such as a SHA or `tag~1`.
+
 An empty diff ends the review (see the ground rules); for the current branch, only when there
 are no untracked files either.
 
@@ -96,7 +103,7 @@ Start every lens **in a single message**, so they run in parallel, each as:
   Target: <pull request <n> (<url>) | range <A...B> | working tree against <merge-base>>
   Diff command: <gh pr diff <n> | git diff <A...B> | git diff <merge-base>>
   Untracked files, read in full: <paths, only for the working tree; or none>
-  Base: <base ref>  Head: <head ref and sha>
+  Base: <base ref>  Head: <head ref> (<branch|tag|commit>) at <head sha>
   Local head matches: <yes|no>
   Changed files:
   <one path per line>
@@ -152,7 +159,8 @@ or `-` turned into `-` (refs carry `/`, `.`, `~` and `^`, which make awkward fol
   Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
   at most four, only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
-  Important finding in the recommended order, then the Minor ones.
+  Important finding in the recommended order, then the Minor ones. Name the head by its kind
+  (branch, tag or commit), never a tag or a commit as a branch.
 
 Write in English, without em or en dashes, and keep personal data out: the review may end up as a
 comment on a public pull request.

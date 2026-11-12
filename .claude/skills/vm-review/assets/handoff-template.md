@@ -6,10 +6,11 @@ in it has been fixed yet. The full review is at `<absolute path of review.md>`.
 ## Where
 
 - Repository: `<repo root: the folder the review ran in, from git rev-parse --show-toplevel>`
-- Branch: `<head branch>`, based on `<base branch>`
+- Head: <branch `<name>` | tag `<name>` | commit `<sha>`>, based on `<base ref>`
 - Pull request: <url, or "none">
 
-Work on that branch. Before pushing, check that the pull request is still open
+Work on the head branch; if the head is a tag or a commit, first create a branch from it, named
+as `AGENTS.md` asks. Before pushing, check that the pull request is still open
 (`gh pr view <n> --json state`); if it was merged, start a new branch from the updated base.
 If other pull requests are stacked on that branch (`gh pr list --base <head branch>`), add commits
 on top and never rewrite it, so the stacked ones need no force-push.
