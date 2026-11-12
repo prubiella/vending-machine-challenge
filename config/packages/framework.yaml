@@ -1,0 +1,16 @@
+parameters:
+    env(TRUSTED_PROXIES): 'PRIVATE_SUBNETS'
+
+framework:
+    secret: '%env(APP_SECRET)%'
+    http_method_override: false
+    handle_all_throwables: true
+    session: false
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
+    php_errors:
+        log: true
+
+when@test:
+    framework:
+        test: true
