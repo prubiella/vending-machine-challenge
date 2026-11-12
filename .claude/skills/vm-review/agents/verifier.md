@@ -15,7 +15,10 @@ For each finding:
    line. If the code is elsewhere in the file, correct the line; if it is nowhere, the finding is
    REFUTED. Read enough around it to judge, and follow the path the `failure_scenario` describes,
    through callers and configuration if needed.
-2. Where a cheap read-only command settles it, run it.
+2. Where a cheap read-only command settles it, run it. Judge rules by `AGENTS.md` and `CLAUDE.md`
+   as they read at the head: when `Local head matches: no`, read them with
+   `git show <head sha>:<path>`, never from the working tree, which may hold a newer version. A
+   rule they do not contain at the head can neither support a finding nor change its severity.
 3. Decide:
    - **CONFIRMED**: you reproduced the failure or traced it line by line.
    - **PLAUSIBLE**: the reasoning holds but you could not trace it to the end; say what is missing.

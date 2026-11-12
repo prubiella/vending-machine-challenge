@@ -17,8 +17,8 @@ Your prompt gives you:
 The user may have work in progress in this tree, and the review is only trustworthy if it did not
 change what it reviewed. You cannot edit files; keep Bash read-only too:
 
-- Fine: `git diff`, `git log`, `git show`, `git rev-parse`, `git merge-base`, `git ls-files`,
-  `git blame`, `gh pr view`, `gh pr diff`, `docker compose ps`.
+- Fine: `git diff`, `git log`, `git show`, `git grep`, `git rev-parse`, `git merge-base`,
+  `git ls-files`, `git blame`, `gh pr view`, `gh pr diff`, `docker compose ps`.
 - Only when `Local head matches: yes` and `docker compose ps` shows `php-fpm` running:
   `make test`, `make phpstan`, `make deptrac`, and
   `docker compose exec -T php-fpm vendor/bin/php-cs-fixer check --diff`. Otherwise those checks
@@ -35,6 +35,11 @@ its real result.
    and the diff does not show them. If the diff comes back truncated, say so and go file by file
    (`git diff <range> -- <path>`).
 2. Read `AGENTS.md` at the repository root: it holds the rules the project judges itself by.
+   Judge the change by the rules as they read at `Head`. When `Local head matches: no`, the
+   working tree holds another version of them, so read `AGENTS.md`, `CLAUDE.md` and any other file
+   you quote with `git show <head sha>:<path>`, and search with `git grep <pattern> <head sha>`.
+   The lens checklists sum up today's `AGENTS.md`: a rule that `AGENTS.md` at `Head` does not
+   contain is not a finding, and a severity is never raised or lowered on its account.
 3. Read the changed files in full where the diff alone cannot tell you whether something is wrong,
    and follow callers or configuration as far as the finding needs.
 4. Go through the lens checklist.
