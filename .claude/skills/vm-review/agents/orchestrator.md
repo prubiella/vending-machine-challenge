@@ -156,3 +156,6 @@ TOP:
 REVIEW: <absolute path of review.md>
 HANDOFF: <absolute path of handoff.md>
 ```
+
+Both paths are the ones you actually wrote, under `<repo root>`. In a git worktree that is the
+worktree's folder, not the main checkout's; the same goes for every path inside `handoff.md`.

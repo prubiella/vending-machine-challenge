@@ -3,7 +3,7 @@ name: vm-review
 description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
 argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--spec <path>] [--full]"
 disable-model-invocation: true
-allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*)
+allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*), Bash(claude --bg:*)
 ---
 
 # vm-review
@@ -49,17 +49,18 @@ Otherwise:
 2. Ask with `AskUserQuestion` (`multiSelect: true`) what to do with the review:
    - **Post on the pull request**, only when `TARGET` is a pull request. Mention that the
      repository is public, so the comment is visible to anyone.
-   - **Hand off the fix**: a command that starts a new session on the findings.
+   - **Hand off the fix**: start a new background session that works through the findings.
    - **Nothing**: keep the local files only.
 3. Do what was chosen:
    - Post: check the pull request is still open (`gh pr view <n> --json state`), then
      `gh pr comment <n> --body-file <REVIEW path>`, and give the comment URL. If a step fails,
      show the error rather than retrying blindly.
-   - Hand off: give this command, to run from the repository folder:
-
-     ```
-     claude "Read <HANDOFF path> and follow it."
-     ```
+   - Hand off: from the repository folder the review ran in, start the session with
+     `claude --bg "Read <HANDOFF path> and follow it."` and give the user the id it prints, with
+     `claude attach <id>` to join it and `claude logs <id>` to read it. It is a background
+     session rather than a headless `claude -p` one because fixing may need the user: it shows
+     in `claude agents`, they can attach, and it can ask them a question instead of guessing.
+     If it does not start, give the same command for the user to run.
 
 Fixing is the handoff session's job, not this one's: here the user has just been told what is
 wrong, and changing code now would mix the review with its fix.

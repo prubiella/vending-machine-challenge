@@ -5,12 +5,19 @@ in it has been fixed yet. The full review is at `<absolute path of review.md>`.
 
 ## Where
 
-- Repository: `<absolute path of the main checkout>`
+- Repository: `<repo root: the folder the review ran in, from git rev-parse --show-toplevel>`
 - Branch: `<head branch>`, based on `<base branch>`
 - Pull request: <url, or "none">
 
 Work on that branch. Before pushing, check that the pull request is still open
 (`gh pr view <n> --json state`); if it was merged, start a new branch from the updated base.
+If other pull requests are stacked on that branch (`gh pr list --base <head branch>`), add commits
+on top and never rewrite it, so the stacked ones need no force-push.
+
+If the repository is a git worktree, the `make` targets run against the main checkout (the
+containers bind-mount it): run the checks through `./etc/git/hooks-docker/run-in-php-image.sh`
+instead (`vendor/bin/phpunit`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac`,
+`vendor/bin/php-cs-fixer check --config=.php-cs-fixer.dist.php`).
 
 ## How
 
