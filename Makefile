@@ -34,7 +34,7 @@ down: ## Stop and remove the containers
 destroy: ## Remove the containers and their volumes (the database is lost)
 	@$(DOCKER_COMPOSE) down -v
 
-first-run: ## Create .env, set up the host and start the containers
+first-run: ## Create .env, set up the host, start the containers, install the dependencies and enable the git hooks
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
 	@$(MAKE) setup-host
