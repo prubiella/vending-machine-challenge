@@ -1,7 +1,7 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
 CERTIFICATES := $(addprefix etc/infrastructure/certs/,local-cert.pem local-key.pem rootCA.pem)
-TARGETS_WITH_ARGS := install update require require-dev logs run run-debug
+TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test coverage
 
 .DEFAULT_GOAL := help
 
@@ -34,12 +34,13 @@ down: ## Stop and remove the containers
 destroy: ## Remove the containers and their volumes (the database is lost)
 	@$(DOCKER_COMPOSE) down -v
 
-first-run: ## Create .env, set up the host and start the containers
+first-run: ## Create .env, set up the host, start the containers, install the dependencies and enable the git hooks
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
 	@$(MAKE) setup-host
 	@$(MAKE) start
 	@$(MAKE) install
+	@$(MAKE) hooks
 
 ##@ Composer
 .PHONY: install update require require-dev
@@ -57,7 +58,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell
+.PHONY: run run-debug logs status shell db-shell hooks
 
 run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -76,6 +77,33 @@ shell: ## Open a shell in the PHP container
 
 db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
+
+hooks: ## Use the project's git hooks (they run inside the PHP image)
+	@git config core.hooksPath etc/git/hooks-docker
+
+##@ Quality
+.PHONY: test coverage phpstan deptrac cs-fixer code-check
+
+test: ## Run the unit and integration tests
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
+
+coverage: ## Run the tests with an HTML coverage report in var/coverage
+	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=coverage php-fpm vendor/bin/phpunit --coverage-html var/coverage $(ARGS)
+
+phpstan: ## Run the static analysis at the max level
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpstan analyse
+
+deptrac: ## Check the dependencies between layers
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac
+
+cs-fixer: ## Fix the coding standard
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer fix
+
+code-check: ## Run every check, the coding standard in check mode
+	@$(MAKE) test
+	@$(MAKE) phpstan
+	@$(MAKE) deptrac
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:

@@ -1,0 +1,4 @@
+#!/bin/bash -e
+
+./etc/git/hooks-docker/branch-name-validator.sh
+./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/pre-commit

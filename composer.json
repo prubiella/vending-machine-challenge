@@ -21,7 +21,8 @@
     "config": {
         "allow-plugins": {
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "phpstan/extension-installer": true
         },
         "bump-after-update": true,
         "sort-packages": true
@@ -70,5 +71,15 @@
             "require": "8.1.*",
             "docker": false
         }
+    },
+    "require-dev": {
+        "deptrac/deptrac": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpstan/phpstan-symfony": "^2.1",
+        "phpunit/phpunit": "^13.4",
+        "symfony/process": "8.1.*"
     }
 }
