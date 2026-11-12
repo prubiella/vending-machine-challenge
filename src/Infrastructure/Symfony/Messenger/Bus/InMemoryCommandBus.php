@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Symfony\Messenger\Bus;
 
-use App\Application\Bus\Command;
+use App\Shared\Application\Bus\Command;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 final readonly class InMemoryCommandBus
