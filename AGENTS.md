@@ -21,8 +21,9 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   default. Never commit a real secret; `.env.dev` and `.env.test` only hold non-secret values:
   Symfony's throwaway `APP_SECRET` for those environments and, in `.env.test`, `KERNEL_CLASS`.
 - Work on a branch rather than a git worktree: the containers bind-mount the main checkout, so `make`
-  targets run its code, not the worktree's. The git hooks do work from a worktree once it has its
-  own `vendor/` (`./etc/git/hooks-docker/run-in-php-image.sh composer install`).
+  targets run its code, not the worktree's. The git hooks do work from a worktree: `post-checkout`
+  installs its `vendor/` when git creates it (by hand:
+  `./etc/git/hooks-docker/run-in-php-image.sh composer install`).
 
 ## Layers (checked by deptrac)
 

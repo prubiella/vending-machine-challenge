@@ -113,7 +113,8 @@ configuration or tooling is staged, runs the coding standard, a container lint, 
 the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. `commit-msg` accepts
 [Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
-squash and amend messages.
+squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
+such as a new git worktree.
 
 ## Debugging with PhpStorm
 
