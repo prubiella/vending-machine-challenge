@@ -20,12 +20,8 @@ final readonly class InMemoryQueryBus
         /** @var HandledStamp[] $stamps */
         $stamps = $this->queryBus->dispatch($query)->all(HandledStamp::class);
 
-        if (\count($stamps) !== 1) {
-            throw new \LogicException(\sprintf(
-                'Query "%s" must be handled by exactly one handler, %d handled it.',
-                $query::class,
-                \count($stamps),
-            ));
+        if (1 !== \count($stamps)) {
+            throw new \LogicException(\sprintf('Query "%s" must be handled by exactly one handler, %d handled it.', $query::class, \count($stamps)));
         }
 
         return $stamps[0]->getResult();

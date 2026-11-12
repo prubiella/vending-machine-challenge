@@ -21,7 +21,7 @@ final readonly class UnpackExceptionMiddleware implements MiddlewareInterface
         } catch (HandlerFailedException $e) {
             $wrapped = $e->getWrappedExceptions();
 
-            throw \count($wrapped) === 1 ? array_first($wrapped) : $e;
+            throw 1 === \count($wrapped) ? array_first($wrapped) : $e;
         }
     }
 }
