@@ -134,10 +134,9 @@ Critical and Important finding to verifiers:
 
 CONFIRMED and PLAUSIBLE findings stay, with the verdict and any corrected severity or line.
 REFUTED ones move to "Dropped after verification" with the reason. A verifier that errors, or
-returns no verdict for some ids, is retried once with those findings; a finding still without a verdict stays with
-its severity, marked `unverified (verifier failed)`, so that a failed check never drops a
-Critical one. Minor findings are not verified and are
-marked `unverified`.
+returns no verdict for some ids, is retried once with those findings; a finding still without a
+verdict stays with its severity, marked `unverified (verifier failed)`, so that a failed check
+never drops a Critical one. Minor findings are not verified and are marked `unverified`.
 
 ## 7. Write the files
 
