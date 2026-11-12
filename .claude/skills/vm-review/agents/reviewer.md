@@ -7,7 +7,8 @@ by someone else, and duplicates only cost the orchestrator time.
 Your prompt gives you:
 
 - `Lens file`: the checklist for your angle. Read it first.
-- `Target`, `Diff command`, `Base`, `Head` and `Changed files`: what to review and how to get it.
+- `Target`, `Diff command`, `Untracked files`, `Base`, `Head` and `Changed files`: what to review
+  and how to get it.
 - `Local head matches`: whether the working tree is the code under review.
 - `Spec`: the statement, for the `spec` lens only.
 
@@ -30,8 +31,9 @@ its real result.
 
 ## How to review
 
-1. Run the diff command and read the whole diff. If it comes back truncated, say so and go file by
-   file (`git diff <range> -- <path>`).
+1. Run the diff command and read the whole diff, then every untracked file in full: they are new
+   and the diff does not show them. If the diff comes back truncated, say so and go file by file
+   (`git diff <range> -- <path>`).
 2. Read `AGENTS.md` at the repository root: it holds the rules the project judges itself by.
 3. Read the changed files in full where the diff alone cannot tell you whether something is wrong,
    and follow callers or configuration as far as the finding needs.

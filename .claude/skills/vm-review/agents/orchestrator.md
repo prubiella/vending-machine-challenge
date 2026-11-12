@@ -40,7 +40,9 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   dots compare against the merge base, which is what a pull request shows.
 - **Current branch**: if `gh pr view --json <same fields>` finds an open pull request for it, use
   that. Otherwise compare `git merge-base origin/master HEAD` with the working tree, uncommitted
-  changes included (`git diff <merge-base>`).
+  changes included (`git diff <merge-base>`). `git diff` leaves untracked files out, so add
+  `git ls-files --others --exclude-standard` to the changed files and tell the reviewers to read
+  those files in full.
 
 `Local head matches` is `yes` only when the working tree is the head being reviewed:
 `git rev-parse HEAD` equals the pull request's `headRefOid` (or `B`) and `git status --porcelain`
@@ -48,7 +50,8 @@ is empty; always `yes` for the current branch without a pull request. Reviewers 
 checks when it is `yes`, because otherwise they would be testing different code from the one
 under review.
 
-An empty diff ends the review (see the ground rules).
+An empty diff ends the review (see the ground rules); for the current branch, only when there
+are no untracked files either.
 
 **Spec**: `--spec` when given. Otherwise `vending-machine-statement.md` in the folder that holds
 the main checkout:
@@ -90,6 +93,7 @@ Start every lens **in a single message**, so they run in parallel, each as:
   Lens file: <Skill dir>/references/lenses/<lens>.md
   Target: <pull request <n> (<url>) | range <A...B> | working tree against <merge-base>>
   Diff command: <gh pr diff <n> | git diff <A...B> | git diff <merge-base>>
+  Untracked files, read in full: <paths, only for the working tree; or none>
   Base: <base ref>  Head: <head ref and sha>
   Local head matches: <yes|no>
   Changed files:
@@ -116,8 +120,8 @@ Critical and Important finding to verifiers:
 - `subagent_type`: `Explore`, `model`: `opus`, `description`: `vm-review verify`
 - at most five findings per verifier, so `ceil(findings / 5)` verifiers (ten findings means two),
   all in a single message: a verifier with too many findings skims them, which defeats the point
-- prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command and
-  Local head matches lines from step 4, then each finding with its id and all its fields.
+- prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command, Untracked
+  files and Local head matches lines from step 4, then each finding with its id and all its fields.
 
 CONFIRMED and PLAUSIBLE findings stay, with the verdict and any corrected severity. REFUTED ones
 move to "Dropped after verification" with the reason. Minor findings are not verified and are
