@@ -35,7 +35,12 @@ below), builds and starts the containers and installs the Composer dependencies.
 ```bash
 curl https://vending-machine.test/health-check
 # {"status":"ok"}
+make run -- app:health-check
+# {"status":"ok"}
 ```
+
+The same use case has two entry points: the controller behind `/health-check` and the
+`app:health-check` console command both send a `HealthCheckQuery` to the query bus.
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
 `make run -- <command> <options>` runs a Symfony console command, for example
@@ -100,6 +105,8 @@ and `start_with_request=yes`, so every PHP process tries to reach the IDE on por
    `PHP_IDE_CONFIG`.
 2. Listen for debug connections (port 9003, the default).
 3. Set a breakpoint and send a request, or run a console command with `make run-debug -- <command> <options>`.
+   `make run-debug -- app:health-check` steps through the project's own code from the CLI: put the
+   breakpoint in `HealthCheckQueryHandler`.
 
 ## Project layout
 
