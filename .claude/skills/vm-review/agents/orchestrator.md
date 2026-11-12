@@ -34,8 +34,9 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 ## 2. Resolve the target
 
 - **Pull request**:
-  `gh pr view <n> --json number,url,title,body,state,baseRefName,headRefName,headRefOid,files`.
-  The reviewers get the diff with `gh pr diff <n>`.
+  `gh pr view <n> --json number,url,title,body,state,baseRefName,headRefName,headRefOid`, and
+  `gh pr diff <n> --name-only` for the changed files (the `files` field of `gh pr view` stops at
+  100). The reviewers get the diff with `gh pr diff <n>`.
 - **Range**: `git diff A...B` for the diff and `git diff --name-only A...B` for the files. Three
   dots compare against the merge base, which is what a pull request shows.
 - **Current branch**: if `gh pr view --json <same fields>` finds an open pull request for it, use
