@@ -147,8 +147,11 @@ positives, and a wrong Critical costs the user more time than a missed Minor. So
 Critical and Important finding to verifiers:
 
 - `subagent_type`: `Explore`, `model`: `opus`, `description`: `vm-review verify`
-- at most five findings per verifier, so `ceil(findings / 5)` verifiers (ten findings means two),
-  all in a single message: a verifier with too many findings skims them, which defeats the point
+- at most five findings per verifier: a verifier with too many findings skims them, which defeats
+  the point. Split the findings into batches in id order before starting any (ten findings: one
+  batch up to the fifth, one with the rest), then start one verifier per batch, all in a single
+  message. Before sending, count the verifier calls in that message: there must be one per batch,
+  never one carrying them all. An eval run announced two verifiers and started one with ten.
 - prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command, Untracked
   files, Head, Local head matches and Project rules lines from step 4, then each finding with its
   id and all its fields. A note may point the verifier at what to check, but never says what a
