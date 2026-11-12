@@ -72,6 +72,9 @@ all of them. They must pass before committing. `make hooks` (part of `make first
 git hooks: pre-commit runs the checks when code, configuration or tooling is staged, and refuses
 the commit when those staged files also have unstaged changes, since the checks read the disk.
 
+`/vm-review [<pr-number>|<range>]` reviews a change in background subagents and writes the report
+to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/references/lenses/`.
+
 ## Git
 
 - Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`), lowercase, at most 15 characters

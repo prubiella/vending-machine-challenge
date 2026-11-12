@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: clean-docs-change-stays-quiet
+expected_outcome: |
+  Reviews a one-line README fix (local tag eval/clean-v1): the make code-check row now says it runs
+  the tests, PHPStan, deptrac and the coding standard in check mode, without coverage, which is
+  what the Makefile does. A good review approves it without inventing problems.

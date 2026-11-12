@@ -40,3 +40,7 @@
 ###> deptrac/deptrac ###
 /.deptrac.cache
 ###< deptrac/deptrac ###
+
+###> vm-review ###
+/.audit/
+###< vm-review ###
