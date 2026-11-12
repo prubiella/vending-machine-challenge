@@ -10,6 +10,7 @@ Your prompt gives you:
 - `Target`, `Diff command`, `Untracked files`, `Base`, `Head` and `Changed files`: what to review
   and how to get it.
 - `Local head matches`: whether the working tree is the code under review.
+- `Project rules`: `AGENTS.md` as it reads at `Head`, the rules you judge by.
 - `Spec`: the statement, for the `spec` lens only.
 
 ## Leave everything as you found it
@@ -34,12 +35,14 @@ its real result.
 1. Run the diff command and read the whole diff, then every untracked file in full: they are new
    and the diff does not show them. If the diff comes back truncated, say so and go file by file
    (`git diff <range> -- <path>`).
-2. Read `AGENTS.md` at the repository root: it holds the rules the project judges itself by.
-   Judge the change by the rules as they read at `Head`. When `Local head matches: no`, the
-   working tree holds another version of them, so read `AGENTS.md`, `CLAUDE.md` and any other file
-   you quote with `git show <head sha>:<path>`, and search with `git grep <pattern> <head sha>`.
-   The lens checklists sum up today's `AGENTS.md`: a rule that `AGENTS.md` at `Head` does not
-   contain is not a finding, and a severity is never raised or lowered on its account.
+2. Read the `Project rules` file: it holds the rules the project judges itself by, as they read
+   at `Head`. When `Local head matches: no`, the `AGENTS.md` of the working tree is another
+   version, so do not open it; read any other file you quote with `git show <head sha>:<path>`,
+   and search with `git grep <pattern> <head sha>`. The lens checklists sum up today's
+   `AGENTS.md`: a rule that the `Project rules` file does not contain is not a finding, and a
+   severity is never raised or lowered on its account. The same holds the other way: a rule it
+   states applies as written, and an exception it does not state ("not needed yet", "nothing uses
+   it so far") is no reason to decline a breach.
 3. Read the changed files in full where the diff alone cannot tell you whether something is wrong,
    and follow callers or configuration as far as the finding needs.
 4. Go through the lens checklist.
@@ -77,3 +80,5 @@ Exactly these three sections, nothing before or after, because the orchestrator 
   bug, a silent failure or a broken `AGENTS.md` rule. **Minor** is style or clarity.
 - Only findings with confidence 80 or more. `- None` under an empty section.
 - Under 600 words, in English, without em or en dashes.
+- Never write the name of the company that set the challenge, not even in a check's command: what
+  you write may be published on a public pull request.

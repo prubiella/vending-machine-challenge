@@ -18,6 +18,12 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 - **Nothing leaves the machine.** Posting the review is the user's decision, taken later.
 - **Reviewers run as `Explore` subagents.** That agent type has no file-editing tools, which keeps
   the reviewers read-only by construction rather than by promise.
+- **The project rules are the ones at the head, and your context does not hold them.** Claude
+  Code loads the working tree's `CLAUDE.md`, and through it `AGENTS.md`, into your context. When
+  `Local head matches` is `no`, that is another version of the rules than the one under review:
+  in an eval run, an allowance found only in the newer file dropped a real finding. So never state
+  a rule from memory, not in a prompt to a subagent, a severity or a reason in the review. Quote
+  only the `Project rules` file of step 4, and take a dropped finding's reason from its verifier.
 - **When the review cannot run** (unknown pull request, empty diff, unknown lens, missing
   `--spec` file), return one line starting with `vm-review:` that says what went wrong, and write
   no files: a half-written review is worse than none.
@@ -90,6 +96,13 @@ verified in step 6, and the review says it was a light one in its first line.
 
 ## 4. Run the lenses
 
+First fix the project rules every subagent judges by, so that none has to work out which version
+applies. When `Local head matches` is `yes`, the `Project rules` file is `<repo root>/AGENTS.md`.
+When it is `no`, create the review folder of step 7 now and extract the head's version into it:
+`git show <head sha>:AGENTS.md > <review folder>/AGENTS-at-head.md`. `CLAUDE.md` only imports
+`AGENTS.md`, so that one file holds the rules. If the head has no `AGENTS.md`, the line says
+`none at the head`.
+
 Start every lens **in a single message**, so they run in parallel, each as:
 
 - `subagent_type`: `Explore`
@@ -105,6 +118,7 @@ Start every lens **in a single message**, so they run in parallel, each as:
   Untracked files, read in full: <paths, only for the working tree; or none>
   Base: <base ref>  Head: <head ref> (<branch|tag|commit>) at <head sha>
   Local head matches: <yes|no>
+  Project rules: <absolute path of AGENTS.md as it reads at the head | none at the head>
   Changed files:
   <one path per line>
   Spec: <absolute path, only for the spec lens>
@@ -133,11 +147,15 @@ positives, and a wrong Critical costs the user more time than a missed Minor. So
 Critical and Important finding to verifiers:
 
 - `subagent_type`: `Explore`, `model`: `opus`, `description`: `vm-review verify`
-- at most five findings per verifier, so `ceil(findings / 5)` verifiers (ten findings means two),
-  all in a single message: a verifier with too many findings skims them, which defeats the point
+- at most five findings per verifier: a verifier with too many findings skims them, which defeats
+  the point. Split the findings into batches in id order before starting any (ten findings: one
+  batch up to the fifth, one with the rest), then start one verifier per batch, all in a single
+  message. Before sending, count the verifier calls in that message: there must be one per batch,
+  never one carrying them all. An eval run announced two verifiers and started one with ten.
 - prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command, Untracked
-  files, Head and Local head matches lines from step 4, then each finding with its id and all its
-  fields.
+  files, Head, Local head matches and Project rules lines from step 4, then each finding with its
+  id and all its fields. A note may point the verifier at what to check, but never says what a
+  rule reads: that is what the verifier is there to look up.
 
 CONFIRMED and PLAUSIBLE findings stay, with the verdict and any corrected severity or line.
 REFUTED ones move to "Dropped after verification" with the reason. A verifier that errors, or
@@ -147,22 +165,30 @@ never drops a Critical one. Minor findings are not verified and are marked `unve
 
 ## 7. Write the files
 
-Into `<repo root>/.audit/vm-review/<slug>-<YYYYMMDD-HHMM>/`, where the slug is `pr-<n>`,
-`range-<A>-<B>` or `branch-<name>`, with every character other than a lowercase letter, a digit
-or `-` turned into `-` (refs carry `/`, `.`, `~` and `^`, which make awkward folder names):
+Into `<repo root>/.audit/vm-review/<slug>-<YYYYMMDD-HHMM>/` (the folder step 4 created, if it
+did), where the slug is `pr-<n>`, `range-<A>-<B>` or `branch-<name>`, with every character other
+than a lowercase letter, a digit or `-` turned into `-` (refs carry `/`, `.`, `~` and `^`, which
+make awkward folder names):
 
 - `review.md`, following `<Skill dir>/assets/review-template.md`. Not `report.md` or
   `findings.md`: Claude Code refuses subagent writes of files with those names. Verdict, the first
   that applies: BLOCKED when a Critical finding remains; INCOMPLETE when a lens failed, or a check
   failed that no finding explains, because then the review cannot vouch for the change;
   APPROVED_WITH_FINDINGS when any other finding remains; APPROVED when none does.
-  Sort findings by severity, then file. Merge every lens's Declined and Checks lists. Strengths:
-  at most four, only ones the reviewers reported.
+  Sort findings by severity, then file. Every row, Minor ones too, gives the failure scenario
+  after the summary: it is what tells the reader why the finding matters, and a summary alone can
+  read as a style remark. Merge every lens's Declined and Checks lists. Strengths: at most four,
+  only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
-  (branch, tag or commit), never a tag or a commit as a branch.
+  (branch, tag or commit), never a tag or a commit as a branch. The fixer starts from the head,
+  not from this working tree, so the handoff names only scripts, paths and `make` targets that
+  exist there (`git cat-file -e <head sha>:<path>`, `git show <head sha>:Makefile`): where the
+  template offers a choice, pick by what the head has, and leave out any other line whose tool is
+  missing there. An eval handoff sent the fixer to a script that the reviewed tag did not have.
 
-Write in English, without em or en dashes, and keep personal data out: the review may end up as a
+Write in English, without em or en dashes, and keep personal data and the name of the company
+that set the challenge out, even when a reviewer's check quotes it: the review may end up as a
 comment on a public pull request.
 
 ## 8. Return

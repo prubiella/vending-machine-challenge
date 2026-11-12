@@ -15,10 +15,16 @@ as `AGENTS.md` asks. Before pushing, check that the pull request is still open
 If other pull requests are stacked on that branch (`gh pr list --base <head branch>`), add commits
 on top and never rewrite it, so the stacked ones need no force-push.
 
-If the repository is a git worktree, the `make` targets run against the main checkout (the
-containers bind-mount it): run the checks through `./etc/git/hooks-docker/run-in-php-image.sh`
-instead (`vendor/bin/phpunit`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac`,
+<Only when the repository is a git worktree, one of these two paragraphs.>
+<When `etc/git/hooks-docker/run-in-php-image.sh` exists at the head:>
+The `make` targets run against the main checkout (the containers bind-mount it), not this
+worktree: run the checks through `./etc/git/hooks-docker/run-in-php-image.sh` instead
+(`vendor/bin/phpunit`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac`,
 `vendor/bin/php-cs-fixer check --config=.php-cs-fixer.dist.php`).
+<When it does not:>
+The `make` targets run against the main checkout (the containers bind-mount it), not this
+worktree, so they would not test your changes. Ask the user how to run the checks before
+relying on them.
 
 ## How
 

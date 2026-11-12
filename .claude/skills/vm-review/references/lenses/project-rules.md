@@ -16,8 +16,9 @@ Check:
   exception mapped in `JsonExceptionListener`.
 - Code: `declare(strict_types=1)`, `final` and `readonly` by default, constructor promotion, money
   in integer cents, no comments that narrate behaviour, PHPDoc only for types PHP cannot express.
-- Configuration: new variables in `.env.dist` with a safe default, no real secret committed, no
-  company names anywhere.
+- Configuration: new variables in `.env.dist` with a safe default, no real secret committed. The
+  rule about the company that set the challenge is checked by reading what the diff adds, never
+  by looking the name up or searching for it.
 - History: every commit message in the target follows Conventional Commits in English
   (`git log --format='%h %s' <range>`); when `Head` is a branch, its name follows the `AGENTS.md`
   rule (a tag or a commit has no branch name to check, so it is not a finding); each commit

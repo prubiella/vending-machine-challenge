@@ -57,7 +57,9 @@ Otherwise:
      `gh pr comment <n> --body-file <REVIEW path>`, and give the comment URL. If a step fails,
      show the error rather than retrying blindly.
    - Hand off: from the repository folder the review ran in, start the session with
-     `claude --bg "Read <HANDOFF path> and follow it."` and give the user the id it prints, with
+     `claude --bg --name vm-fix-<target> "Read <HANDOFF path> and follow it."`, where `<target>`
+     is `pr<n>` for a pull request and the review folder's name otherwise (the naming rule is in
+     `AGENTS.md`), and give the user the id it prints, with
      `claude attach <id>` to join it and `claude logs <id>` to read it. It is a background
      session rather than a headless `claude -p` one because fixing may need the user: it shows
      in `claude agents`, they can attach, and it can ask them a question instead of guessing.
@@ -75,4 +77,5 @@ wrong, and changing code now would mix the review with its fix.
 | `agents/verifier.md` | How to try to refute a finding | each verifier |
 | `references/lenses/*.md` | One checklist per angle of review | the reviewer of that lens |
 | `assets/*-template.md` | Skeletons of `review.md` and `handoff.md` | the orchestrator |
-| `evals/` | Test cases in the skill-creator layout, run against local `eval/*` tags | whoever improves the skill |
+| `README.md` | The flow as a diagram, for developers changing the skill | people, not Claude |
+| `evals/` | Test cases in the skill-creator layout, run against the published `eval/*` tags | whoever improves the skill |

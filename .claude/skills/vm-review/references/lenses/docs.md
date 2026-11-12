@@ -14,7 +14,8 @@ Check:
 - Comments: no comment narrates what the code does; a comment that records a non-obvious reason is
   fine. Leftover recipe or boilerplate comments are Minor findings.
 - Prose written for people (Markdown, pull request body): English, no em dash or en dash, no
-  company names.
+  mention of the company that set the challenge (see the `Project rules` file; never search for
+  its name).
 
 Each finding quotes the wrong text and gives the corrected text in `fix`.
 
