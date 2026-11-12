@@ -82,7 +82,7 @@ request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an e
 
 ## Git
 
-- Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`), lowercase, at most 15 characters
+- Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`, `refactor/`), lowercase, at most 15 characters
   after the prefix. The pre-commit hook rejects other names.
 - Commits: Conventional Commits (`feat(scope): ...`), in English. The `commit-msg` hook enforces it.
 - Never `--no-verify`. Push with `FORCE_COLOR=0 git push`.
