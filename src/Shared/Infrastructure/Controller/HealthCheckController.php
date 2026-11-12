@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Controller;
+namespace App\Shared\Infrastructure\Controller;
 
-use App\Application\Query\HealthCheck\HealthCheckQuery;
+use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
 use App\Shared\Infrastructure\Symfony\Controller\BaseController;
 use Symfony\Component\HttpFoundation\Response;
 

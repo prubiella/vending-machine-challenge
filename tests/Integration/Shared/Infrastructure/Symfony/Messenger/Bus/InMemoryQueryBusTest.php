@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Shared\Infrastructure\Symfony\Messenger\Bus;
 
-use App\Application\Query\HealthCheck\HealthCheckQuery;
+use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
 use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 

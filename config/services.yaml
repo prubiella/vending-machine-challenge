@@ -7,12 +7,12 @@ services:
         resource: '%kernel.project_dir%/src/'
         exclude:
             - '%kernel.project_dir%/src/Kernel.php'
-            - '%kernel.project_dir%/src/Domain/'
-            - '%kernel.project_dir%/src/Application/Command/*/*Command.php'
-            - '%kernel.project_dir%/src/Application/Query/*/*Query.php'
+            - '%kernel.project_dir%/src/*/Domain/'
+            - '%kernel.project_dir%/src/*/Application/Command/*/*Command.php'
+            - '%kernel.project_dir%/src/*/Application/Query/*/*Query.php'
 
     query_handlers:
-        namespace: App\Application\Query\
-        resource: '%kernel.project_dir%/src/Application/Query/**/*QueryHandler.php'
+        namespace: App\
+        resource: '%kernel.project_dir%/src/*/Application/Query/**/*QueryHandler.php'
         tags: [ { name: messenger.message_handler, bus: query.bus } ]
         autoconfigure: false
