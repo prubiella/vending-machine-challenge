@@ -187,7 +187,8 @@ make awkward folder names):
   template offers a choice, pick by what the head has, and leave out any other line whose tool is
   missing there. An eval handoff sent the fixer to a script that the reviewed tag did not have.
 
-Write in English, without em or en dashes, and keep personal data out: the review may end up as a
+Write in English, without em or en dashes, and keep personal data and the name of the company
+that set the challenge out, even when a reviewer's check quotes it: the review may end up as a
 comment on a public pull request.
 
 ## 8. Return

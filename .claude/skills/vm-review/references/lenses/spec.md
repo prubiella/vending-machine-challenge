@@ -1,6 +1,8 @@
 # Lens: spec
 
 Whether the change does what the statement asks. Read the whole statement at the `Spec` path first.
+The statement names the company that set the challenge: never copy that name into a finding or a
+check, and never search the code for it.
 
 1. List the requirements of the statement that the changed code touches.
 2. For each, check the change implements it fully: every operation, input, output, error case and

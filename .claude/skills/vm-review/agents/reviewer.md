@@ -80,3 +80,5 @@ Exactly these three sections, nothing before or after, because the orchestrator 
   bug, a silent failure or a broken `AGENTS.md` rule. **Minor** is style or clarity.
 - Only findings with confidence 80 or more. `- None` under an empty section.
 - Under 600 words, in English, without em or en dashes.
+- Never write the name of the company that set the challenge, not even in a check's command: what
+  you write may be published on a public pull request.
