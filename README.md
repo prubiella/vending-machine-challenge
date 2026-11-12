@@ -33,6 +33,9 @@ It creates `.env` from `.env.dist`, writes your user and group ids into it, prep
 below) and builds and starts the containers. Afterwards `make start` and `make stop` are enough.
 `make help` lists every target.
 
+A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
+message until the certificate files exist in `etc/infrastructure/certs/`.
+
 | Service | Where |
 |---|---|
 | Web | <https://vending-machine.test> |

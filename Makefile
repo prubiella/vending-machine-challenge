@@ -1,5 +1,6 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
+CERTIFICATES := $(addprefix etc/infrastructure/certs/,local-cert.pem local-key.pem rootCA.pem)
 TARGETS_WITH_ARGS := install update require require-dev logs
 
 .DEFAULT_GOAL := help
@@ -19,6 +20,9 @@ setup-host: ## Add the project hostname to /etc/hosts and create its local TLS c
 	@./etc/infrastructure/setup-ssl.sh
 
 start: ## Build and start the containers
+	@for file in $(CERTIFICATES); do \
+		[ -f "$$file" ] || { echo "Missing $$file: run 'make setup-host' first"; exit 1; }; \
+	done
 	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
 
 stop: ## Stop the containers
