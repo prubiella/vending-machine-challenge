@@ -42,9 +42,15 @@ function runCheck(string $check, array $command): void
 // Deletions count: removing a class that other code still uses must run the checks.
 $staged = stagedFiles('ACMRD');
 
-if (in_array('composer.json', $staged, true) && !in_array('composer.lock', $staged, true)) {
-    fwrite(\STDERR, "composer.json is staged without composer.lock.\n");
-    exit(1);
+if (in_array('composer.json', $staged, true)) {
+    // Validate the staged copies, not the working tree, so an updated but unstaged lock is caught.
+    // The directory lives in the container's /tmp, which goes away with the container.
+    $stagedComposer = sys_get_temp_dir().'/staged-composer';
+    mkdir($stagedComposer);
+    foreach (['composer.json', 'composer.lock'] as $file) {
+        file_put_contents("{$stagedComposer}/{$file}", (new Process(['git', 'show', ":{$file}"]))->mustRun()->getOutput());
+    }
+    runCheck('composer.json and composer.lock', ['composer', 'validate', '--no-check-publish', '--no-check-all', "{$stagedComposer}/composer.json"]);
 }
 
 $checked = array_values(array_filter($staged, static fn (string $file): bool => 1 === preg_match(CHECKED_PATHS, $file)));
