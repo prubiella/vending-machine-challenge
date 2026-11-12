@@ -19,7 +19,9 @@ final class UnpackExceptionMiddleware implements MiddlewareInterface
         try {
             return $stack->next()->handle($envelope, $stack);
         } catch (HandlerFailedException $e) {
-            throw $e->getPrevious() ?? $e;
+            $wrapped = $e->getWrappedExceptions();
+
+            throw \count($wrapped) === 1 ? array_first($wrapped) : $e;
         }
     }
 }
