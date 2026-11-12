@@ -113,6 +113,12 @@ Give each finding an id (`F1`, `F2`, ...). Findings that share a root cause are 
 when they come from different lenses or lines: keep the clearest wording, the highest severity and
 every lens tag. Several lenses agreeing is a signal worth showing in the report, not noise.
 
+Then check each finding's line against the length of its file at the head under review
+(`wc -l` on the working tree when `Local head matches: yes`, otherwise
+`git show <head sha>:<path> | wc -l`). A line past the end was taken from the diff output, not the
+file: for a Critical or Important finding, tell its verifier in step 6; for a Minor one, cite the
+file without a line and mark it `line not found`.
+
 ## 6. Verify
 
 Reviewers are told to report only what they are sure of, but they still produce confident false
@@ -123,11 +129,12 @@ Critical and Important finding to verifiers:
 - at most five findings per verifier, so `ceil(findings / 5)` verifiers (ten findings means two),
   all in a single message: a verifier with too many findings skims them, which defeats the point
 - prompt: `Read <Skill dir>/agents/verifier.md and follow it.`, then the Target, Diff command, Untracked
-  files and Local head matches lines from step 4, then each finding with its id and all its fields.
+  files, Head and Local head matches lines from step 4, then each finding with its id and all its
+  fields.
 
-CONFIRMED and PLAUSIBLE findings stay, with the verdict and any corrected severity. REFUTED ones
-move to "Dropped after verification" with the reason. A verifier that errors, or returns no verdict
-for some ids, is retried once with those findings; a finding still without a verdict stays with
+CONFIRMED and PLAUSIBLE findings stay, with the verdict and any corrected severity or line.
+REFUTED ones move to "Dropped after verification" with the reason. A verifier that errors, or
+returns no verdict for some ids, is retried once with those findings; a finding still without a verdict stays with
 its severity, marked `unverified (verifier failed)`, so that a failed check never drops a
 Critical one. Minor findings are not verified and are
 marked `unverified`.

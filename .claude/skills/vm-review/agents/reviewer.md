@@ -40,6 +40,11 @@ its real result.
 4. Go through the lens checklist.
 5. Before keeping a finding, try to prove it wrong. If you cannot point at the line and at the
    input or state that breaks it, drop it: a false finding costs the user more than a missing one.
+6. Cite each finding by its line number in the file at `Head`, never by its position in the diff
+   output. Read it from the hunk header (`@@ -a,b +c,d @@`: the first `+` or context line is line
+   `c`) or open the file (the working tree when `Local head matches: yes`, otherwise
+   `git show <head sha>:<path>`), and check that the line shows what the finding describes. A
+   finding about a removed line cites the nearest line that remains.
 
 ## Output
 
@@ -48,7 +53,7 @@ Exactly these three sections, nothing before or after, because the orchestrator 
 ```
 ## Findings
 - file: <repo-relative path>
-  line: <line>
+  line: <line number in the file at Head, not in the diff>
   severity: Critical | Important | Minor
   confidence: <80-100>
   summary: <one sentence: what is wrong>
