@@ -12,7 +12,8 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 
 - Use the `make` targets or `docker compose exec php-fpm ...`. Never a host PHP, Composer or
   `symfony serve`.
-- `make help` lists the targets. `make run <command>` runs `bin/console`.
+- `make help` lists the targets. `make run -- <command> <options>` runs `bin/console`; give an
+  option its value after a space (`--format json`), since make takes `--format=json` as a variable.
 - Add dependencies with `make require <package>` / `make require-dev <package>`, so the Flex
   recipe registers the bundle. Review what a recipe generates before committing: its defaults
   (attribute routing, YAML comments, sample folders) may clash with the conventions below.
