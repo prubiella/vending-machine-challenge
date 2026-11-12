@@ -38,7 +38,10 @@ curl https://vending-machine.test/health-check
 ```
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
-`make run <command>` runs a Symfony console command.
+`make run -- <command> <options>` runs a Symfony console command, for example
+`make run -- debug:router --format json`. The `--` keeps make from reading the options as its own.
+Give an option its value after a space: make takes a word with `=` (`--format=json`) as a variable
+and drops it.
 
 A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
 message until the certificate files exist in `etc/infrastructure/certs/`.
@@ -96,7 +99,7 @@ and `start_with_request=yes`, so every PHP process tries to reach the IDE on por
    port 443, and map the project root to `/var/www`. The container sends that name through
    `PHP_IDE_CONFIG`.
 2. Listen for debug connections (port 9003, the default).
-3. Set a breakpoint and send a request, or run a console command with `make run-debug <command>`.
+3. Set a breakpoint and send a request, or run a console command with `make run-debug -- <command> <options>`.
 
 ## Project layout
 

@@ -59,10 +59,10 @@ require-dev: ## Add a development dependency
 ##@ Development
 .PHONY: run run-debug logs status shell db-shell
 
-run: ## Run a Symfony console command
+run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
 
-run-debug: ## Run a Symfony console command with Xdebug connecting to the IDE
+run-debug: ## Same as run, with Xdebug connecting to the IDE: make run-debug -- <command> [options]
 	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=debug php-fpm bin/console $(ARGS)
 
 logs: ## Show the containers logs
