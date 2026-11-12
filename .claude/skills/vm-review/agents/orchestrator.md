@@ -181,7 +181,11 @@ make awkward folder names):
   only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
-  (branch, tag or commit), never a tag or a commit as a branch.
+  (branch, tag or commit), never a tag or a commit as a branch. The fixer starts from the head,
+  not from this working tree, so the handoff names only scripts, paths and `make` targets that
+  exist there (`git cat-file -e <head sha>:<path>`, `git show <head sha>:Makefile`): where the
+  template offers a choice, pick by what the head has, and leave out any other line whose tool is
+  missing there. An eval handoff sent the fixer to a script that the reviewed tag did not have.
 
 Write in English, without em or en dashes, and keep personal data out: the review may end up as a
 comment on a public pull request.
