@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain\Money;
 
-use App\Shared\Domain\Money\InsufficientMoney;
+use App\Shared\Domain\Money\InsufficientMoneyException;
 use App\Shared\Domain\Money\Money;
-use App\Shared\Domain\Money\NegativeMoney;
+use App\Shared\Domain\Money\NegativeMoneyException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +24,7 @@ final class MoneyTest extends TestCase
 
     public function testRejectsANegativeAmount(): void
     {
-        $this->expectException(NegativeMoney::class);
+        $this->expectException(NegativeMoneyException::class);
 
         Money::fromCents(-1);
     }
@@ -56,7 +56,7 @@ final class MoneyTest extends TestCase
 
     public function testRejectsSubtractingMoreThanTheAmount(): void
     {
-        $this->expectException(InsufficientMoney::class);
+        $this->expectException(InsufficientMoneyException::class);
 
         Money::fromCents(65)->subtract(Money::fromCents(100));
     }

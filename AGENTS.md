@@ -102,9 +102,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 
 - `declare(strict_types=1)`, `final` and `readonly` by default, constructor property promotion.
 - Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
-- A domain exception is a `final` class named after what went wrong (`InsufficientMoney`), that
-  extends `Shared\Domain\DomainException` and is built through a named constructor
-  (`InsufficientMoney::toSubtract(...)`).
+- A domain exception is a `final` class named after what went wrong and ending in `Exception`
+  (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
+  through a named constructor (`InsufficientMoneyException::toSubtract(...)`).
 - Names explain the code. No comments that narrate behaviour; a comment is fine when it records a
   non-obvious reason. PHPDoc only for types PHP cannot express (`list<Coin>`, array shapes).
 

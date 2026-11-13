@@ -42,7 +42,7 @@ final readonly class CoinCollection
     public function remove(Coin $coin): self
     {
         $countsByCents = $this->countsByCents;
-        $count = $countsByCents[$coin->value] ?? throw CoinNotInCollection::forCoin($coin);
+        $count = $countsByCents[$coin->value] ?? throw CoinNotInCollectionException::forCoin($coin);
 
         if (1 === $count) {
             unset($countsByCents[$coin->value]);

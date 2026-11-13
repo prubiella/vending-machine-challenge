@@ -6,7 +6,7 @@ namespace App\Shared\Domain\Money;
 
 use App\Shared\Domain\DomainException;
 
-final class InsufficientMoney extends DomainException
+final class InsufficientMoneyException extends DomainException
 {
     public static function toSubtract(Money $amount, Money $subtrahend): self
     {

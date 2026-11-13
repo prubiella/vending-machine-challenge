@@ -6,7 +6,7 @@ namespace App\VendingMachine\Domain\Coin;
 
 use App\Shared\Domain\DomainException;
 
-final class CoinNotInCollection extends DomainException
+final class CoinNotInCollectionException extends DomainException
 {
     public static function forCoin(Coin $coin): self
     {

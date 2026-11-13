@@ -13,7 +13,7 @@ final readonly class Money
     public static function fromCents(int $cents): self
     {
         if ($cents < 0) {
-            throw NegativeMoney::fromCents($cents);
+            throw NegativeMoneyException::fromCents($cents);
         }
 
         return new self($cents);
@@ -32,7 +32,7 @@ final readonly class Money
     public function subtract(self $other): self
     {
         if ($other->cents > $this->cents) {
-            throw InsufficientMoney::toSubtract($this, $other);
+            throw InsufficientMoneyException::toSubtract($this, $other);
         }
 
         return new self($this->cents - $other->cents);

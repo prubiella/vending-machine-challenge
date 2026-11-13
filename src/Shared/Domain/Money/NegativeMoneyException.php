@@ -6,7 +6,7 @@ namespace App\Shared\Domain\Money;
 
 use App\Shared\Domain\DomainException;
 
-final class NegativeMoney extends DomainException
+final class NegativeMoneyException extends DomainException
 {
     public static function fromCents(int $cents): self
     {

@@ -6,7 +6,7 @@ namespace App\Tests\Unit\VendingMachine\Domain\Coin;
 
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
-use App\VendingMachine\Domain\Coin\CoinNotInCollection;
+use App\VendingMachine\Domain\Coin\CoinNotInCollectionException;
 use PHPUnit\Framework\TestCase;
 
 final class CoinCollectionTest extends TestCase
@@ -81,7 +81,7 @@ final class CoinCollectionTest extends TestCase
 
     public function testRejectsRemovingACoinItDoesNotHold(): void
     {
-        $this->expectException(CoinNotInCollection::class);
+        $this->expectException(CoinNotInCollectionException::class);
 
         CoinCollection::of(Coin::TenCents)->remove(Coin::TwentyFiveCents);
     }
