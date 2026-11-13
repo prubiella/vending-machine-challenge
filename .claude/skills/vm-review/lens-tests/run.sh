@@ -26,13 +26,18 @@ findings() {
   awk '/^## Findings/ { on = 1; next } /^## / { on = 0 } on' "$1"
 }
 
-# Succeeds when one finding block names a file matching $2, says something matching $3 and has a
-# severity matching $4. Case and Markdown emphasis around the field names do not matter.
+# Succeeds when one finding block names a file matching $2, has a summary matching $3 and a
+# severity matching $4. Only the summary is matched, since it states the claim: a finding's scenario
+# and evidence often mention the neighbouring defect that another lens owns. Case and Markdown
+# emphasis around the field names do not matter.
 has_finding() {
   findings "$1" | awk -v file="$2" -v text="$3" -v severity="$4" '
-    function check(b) {
+    function check(b, lines, n, i, summary) {
       b = tolower(block); gsub(/[*_`]/, "", b)
-      if (b ~ ("file: *(" tolower(file) ")") && b ~ tolower(text) && b ~ ("severity: *(" tolower(severity) ")")) found = 1
+      summary = ""
+      n = split(b, lines, "\n")
+      for (i = 1; i <= n; i++) if (lines[i] ~ /summary:/) summary = lines[i]
+      if (b ~ ("file: *(" tolower(file) ")") && summary ~ tolower(text) && b ~ ("severity: *(" tolower(severity) ")")) found = 1
     }
     tolower($0) ~ /^[-*] *[*_`]*file/ { check(); block = "" }
     { block = block "\n" $0 }
