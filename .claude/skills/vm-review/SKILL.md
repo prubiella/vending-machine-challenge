@@ -1,7 +1,7 @@
 ---
 name: vm-review
 description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
-argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--spec <path>] [--full]"
+argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--full]"
 disable-model-invocation: true
 allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*), Bash(claude --bg:*)
 ---
@@ -10,10 +10,9 @@ allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*)
 
 A useful review reads the whole diff, the code around it and the project rules, and looks at the
 change from several angles: does it work, does it fail loudly, does it follow `AGENTS.md`, is it
-tested, are the docs true, does it do what the statement asks. Doing that in this session would
-fill it with diffs and file dumps that the user then has to work around. So this session only
-starts one orchestrator in the background and deals with what it returns; the reading happens in
-subagents.
+tested, are the docs true. Doing that in this session would fill it with diffs and file dumps
+that the user then has to work around. So this session only starts one orchestrator in the
+background and deals with what it returns; the reading happens in subagents.
 
 ## Launch
 

@@ -6,9 +6,9 @@ the input, state or command sequence, and the wrong result.
 Look for:
 
 - Logic errors: wrong condition, off-by-one, inverted check, missing case in a `match` or `if` chain.
-- Domain rules: money handled as integer cents everywhere (no floats, no rounding drift), change
-  given back correctly, stock and coin counts never negative, state transitions that the aggregate
-  should reject but accepts.
+- Invariants: a value the code must keep valid (a quantity or balance going negative, an amount
+  rounded or stored in another unit than the project rules require, a state transition that should
+  be rejected but is accepted).
 - Wiring that compiles but does not run: a handler not registered on its bus, a route pointing to
   the wrong controller, a service that receives the wrong implementation, a config key ignored
   because of a typo.
@@ -19,4 +19,5 @@ Look for:
 - Persistence once it exists: lost updates, missing transactions, queries without parameters.
 
 Not this lens: swallowed errors and logging (silent-failures), project conventions (project-rules),
-missing tests (tests), documentation accuracy (docs), the statement's requirements (spec).
+missing tests (tests), documentation accuracy (docs). Whether the change meets the product's
+requirements is for the project's own tests, not for a review.

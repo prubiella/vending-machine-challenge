@@ -11,7 +11,6 @@ Your prompt gives you:
   and how to get it.
 - `Local head matches`: whether the working tree is the code under review.
 - `Project rules`: `AGENTS.md` as it reads at `Head`, the rules you judge by.
-- `Spec`: the statement, for the `spec` lens only.
 
 ## Leave everything as you found it
 

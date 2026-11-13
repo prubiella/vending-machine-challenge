@@ -24,16 +24,15 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   in an eval run, an allowance found only in the newer file dropped a real finding. So never state
   a rule from memory, not in a prompt to a subagent, a severity or a reason in the review. Quote
   only the `Project rules` file of step 4, and take a dropped finding's reason from its verifier.
-- **When the review cannot run** (unknown pull request, empty diff, unknown lens, missing
-  `--spec` file), return one line starting with `vm-review:` that says what went wrong, and write
-  no files: a half-written review is worse than none.
+- **When the review cannot run** (unknown pull request, empty diff, unknown lens), return one
+  line starting with `vm-review:` that says what went wrong, and write no files: a half-written
+  review is worse than none.
 
 ## 1. Read the arguments
 
 - A number or a pull request URL: that pull request.
 - `A..B` or `A...B`: a git range (refs, tags or SHAs).
 - `--lenses a,b`: only those lenses.
-- `--spec <path>`: the statement for the `spec` lens.
 - `--full`: every lens of the table in step 3, even for a change the light review would cover, with
   `correctness` and `silent-failures` on `opus`.
 - Nothing: the current branch.
@@ -71,12 +70,6 @@ unless `HEAD` is detached. For a range, `git rev-parse --symbolic-full-name B` p
 An empty diff ends the review (see the ground rules); for the current branch, only when there
 are no untracked files either.
 
-**Spec**: `--spec` when given; if that file does not exist the review cannot run, since the user
-asked for the spec lens to judge against it. Otherwise `vending-machine-statement.md` in the folder
-that holds the main checkout:
-`$(dirname "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")/vending-machine-statement.md`.
-Use it only if the file exists.
-
 ## 3. Pick the lenses
 
 | Lens | Model | Runs when |
@@ -86,7 +79,6 @@ Use it only if the file exists.
 | `project-rules` | sonnet | always |
 | `tests` | sonnet | a changed path is under `src/` or `tests/` |
 | `docs` | sonnet | a changed path ends in `.md`, the target is a pull request with a body, or the diff adds comments |
-| `spec` | sonnet | a changed path is under `src/*/Domain/` or `src/*/Application/` and a spec exists |
 
 Correctness and silent failures get the stronger model where those findings cost the most when
 missed: in this project's first review, the only critical bug (errors never logged) came from the
@@ -134,7 +126,6 @@ Start every lens **in a single message**, so they run in parallel, each as:
   Project rules: <absolute path of AGENTS.md as it reads at the head | none at the head>
   Changed files:
   <one path per line>
-  Spec: <absolute path, only for the spec lens>
   ```
 
 If a spawn fails with `Concurrent subagent limit reached`, wait for the running reviewers to

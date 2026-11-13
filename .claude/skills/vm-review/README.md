@@ -3,7 +3,7 @@
 For developers who want to understand or change the skill. Claude reads `SKILL.md` and the files
 under `agents/`; this file is only for people.
 
-`/vm-review [<pr-number>|<range>] [--lenses a,b] [--spec <path>] [--full]` reviews a pull request,
+`/vm-review [<pr-number>|<range>] [--lenses a,b] [--full]` reviews a pull request,
 a git range or the current branch. The session you type it in never reads the diff: it starts an
 orchestrator in the background, and only a short summary comes back.
 
@@ -24,8 +24,7 @@ flowchart TD
         P --> C3[project-rules]
         P --> C4[tests]
         P --> C5[docs]
-        P --> C6[spec]
-        C1 & C2 & C3 & C4 & C5 & C6 --> M[5. Merge<br/>one id per root cause<br/>check lines against file length]
+        C1 & C2 & C3 & C4 & C5 --> M[5. Merge<br/>one id per root cause<br/>check lines against file length]
         M --> V{{6. Verifiers<br/>Critical and Important only<br/>batches of five<br/>agents/verifier.md}}
         V --> W[7. Write review.md and handoff.md<br/>.audit/vm-review/&lt;slug&gt;-&lt;time&gt;/]
     end
