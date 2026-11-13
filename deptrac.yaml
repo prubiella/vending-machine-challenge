@@ -6,6 +6,10 @@ deptrac:
       collectors:
         - type: classLike
           value: ^(Symfony|Doctrine|Psr)\\.*
+    - name: Kernel
+      collectors:
+        - type: classLike
+          value: ^App\\Kernel$
 
     - name: SharedDomain
       collectors:
@@ -34,6 +38,9 @@ deptrac:
           value: ^App\\VendingMachine\\Infrastructure\\.*
 
   ruleset:
+    Kernel:
+      - Framework
+
     SharedDomain:
     SharedApplication:
       - SharedDomain

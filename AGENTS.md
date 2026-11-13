@@ -58,7 +58,9 @@ Every context has the same three layers:
   Application and on all of `Shared`.
 
 deptrac allows each context only its own layers and `Shared`, so no context uses another
-context's Domain, and `Shared` uses no context.
+context's Domain, and `Shared` uses no context. `make deptrac` also fails when a class in `src/`
+belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside every layer
+(`--fail-on-uncovered`): a new vendor namespace goes into `Framework` or a layer of its own.
 
 ## Adding a bounded context
 
@@ -66,7 +68,8 @@ context's Domain, and `Shared` uses no context.
    `tests/Integration/<Context>/`.
 2. `deptrac.yaml`: the layers `<Context>Domain`, `<Context>Application` and
    `<Context>Infrastructure` (collector `^App\\<Context>\\<Layer>\\.*`) and their rules, copied
-   from the `VendingMachine` entries.
+   from the `VendingMachine` entries, in the same commit as the context's first class: without
+   them `make deptrac` and the pre-commit hook fail on its unassigned classes.
 3. Routes: `config/routes/<context>.php` (snake_case). The kernel imports every file in
    `config/routes/`, so nothing else references it.
 4. `config/services.yaml`: nothing to add. Its exclusions and handler resources use `src/*/`, so
