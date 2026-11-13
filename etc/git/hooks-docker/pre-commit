@@ -1,4 +1,9 @@
 #!/bin/bash -e
 
 ./etc/git/hooks-docker/branch-name-validator.sh
+
+if git diff --cached --name-only | grep -qE '^(\.claude/skills/|AGENTS\.md$)'; then
+  ./etc/skills/check.sh
+fi
+
 ./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/pre-commit
