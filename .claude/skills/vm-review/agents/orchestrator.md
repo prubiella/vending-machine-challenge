@@ -34,7 +34,8 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 - `A..B` or `A...B`: a git range (refs, tags or SHAs).
 - `--lenses a,b`: only those lenses.
 - `--spec <path>`: the statement for the `spec` lens.
-- `--full`: every lens of the table in step 3, even for a change the light review would cover.
+- `--full`: every lens of the table in step 3, even for a change the light review would cover, with
+  `correctness` and `silent-failures` on `opus`.
 - Nothing: the current branch.
 
 ## 2. Resolve the target
@@ -80,16 +81,24 @@ Use it only if the file exists.
 
 | Lens | Model | Runs when |
 |---|---|---|
-| `correctness` | opus | always |
-| `silent-failures` | opus | always |
+| `correctness` | opus when a changed path is under `src/`, sonnet otherwise | always |
+| `silent-failures` | opus when a changed path is under `src/Infrastructure/` or `config/`, sonnet otherwise | always |
 | `project-rules` | sonnet | always |
 | `tests` | sonnet | a changed path is under `src/` or `tests/` |
 | `docs` | sonnet | a changed path ends in `.md`, the target is a pull request with a body, or the diff adds comments |
 | `spec` | sonnet | a changed path is under `src/Domain/` or `src/Application/` and a spec exists |
 
-Correctness and silent failures get the stronger model because those are the findings that cost
-the most when missed: in this project's first review, the only critical bug (errors never logged)
-came from the silent-failure angle. `--lenses` replaces the table.
+Correctness and silent failures get the stronger model where those findings cost the most when
+missed: in this project's first review, the only critical bug (errors never logged) came from the
+silent-failure angle, in `config/packages/monolog.yaml`. Elsewhere the change is tooling, tests,
+or application and domain code that throws rather than catches, and `sonnet` costs less for the
+same checklist; the eval case `tooling-silent-failure` checks that it still catches a hook that
+swallows a failing check. `--full` runs both on `opus` whatever changed. `--lenses` replaces
+which lenses run; their models still come from the table.
+
+Every lens on `sonnet` runs with `effort: medium`: its lens file already says what to look for,
+and the reasoning budget is better spent on the `opus` lenses and the verifiers, which take the
+session's effort.
 
 **Light review.** When every changed path ends in `.md` and neither `--full` nor `--lenses` was
 given, run only the `docs` lens. A Markdown change cannot break code, so the code lenses would
@@ -110,6 +119,7 @@ Start every lens **in a single message**, so they run in parallel, each as:
 
 - `subagent_type`: `Explore`
 - `model`: from the table
+- `effort`: `medium` when the model is `sonnet`; leave it out for `opus`
 - `description`: `vm-review <lens>`
 - `prompt`, with every `<...>` filled in:
 
