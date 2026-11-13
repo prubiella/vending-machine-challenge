@@ -56,10 +56,16 @@ for skill_dir in .claude/skills/*/; do
   done
 done
 
-# Reviews and handoffs must not use em or en dashes, and agents copy the wording they read.
-while IFS= read -r line; do
-  fail "${line}: em or en dash"
-done < <(grep -rnP '\x{2014}|\x{2013}' .claude/skills AGENTS.md | cut -d: -f1,2)
+# Reviews and handoffs must not use em or en dashes, and agents copy the wording they read. The
+# dashes are matched as their UTF-8 bytes, so the check does not depend on the locale, and a grep
+# error (status 2) fails the check instead of passing as "no dashes".
+if dash_lines=$(LC_ALL=C grep -rnF -e $'\xe2\x80\x94' -e $'\xe2\x80\x93' .claude/skills AGENTS.md); then
+  while IFS= read -r line; do
+    fail "${line}: em or en dash"
+  done < <(cut -d: -f1,2 <<< "${dash_lines}")
+elif (($? > 1)); then
+  fail "grep failed while looking for em or en dashes"
+fi
 
 if ((errors > 0)); then
   echo "skill-check: ${errors} problem(s)" >&2
