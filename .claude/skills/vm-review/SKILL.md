@@ -80,3 +80,4 @@ wrong, and changing code now would mix the review with its fix.
 | `assets/*-template.md` | Skeletons of `review.md` and `handoff.md` | the orchestrator |
 | `README.md` | The flow as a diagram, for developers changing the skill | people, not Claude |
 | `evals/` | Test cases in the skill-creator layout, run against the published `eval/*` tags | whoever improves the skill |
+| `lens-tests/` | One lens at a time on sonnet, graded without a model (`lens-tests/run.sh [<test> ...]`) | whoever changes a lens |

@@ -61,6 +61,7 @@ flowchart TD
 | `references/lenses/*.md` | One checklist per lens |
 | `assets/*-template.md` | Skeletons of `review.md` and `handoff.md` |
 | `evals/` | Test cases and graders; see `evals/README.md` |
+| `lens-tests/` | Cheap tests of one lens each, on the `eval/*` tags: `lens-tests/run.sh [<test> ...]` |
 
 ## Changing the skill
 

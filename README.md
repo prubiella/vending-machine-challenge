@@ -111,7 +111,9 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
 the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
-also have unstaged changes: stage them too, or set those changes aside first. `commit-msg` accepts
+also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
+skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
+with the same refusal. `commit-msg` accepts
 [Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
 squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
 such as a new git worktree.

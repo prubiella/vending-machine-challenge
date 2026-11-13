@@ -116,8 +116,25 @@ to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/references/
 
 Every Claude session launched from this repository (`claude --bg` or `claude -p`) gets
 `--name vm-<type>-<target>[-<topic>]`: `vm-fix-pr7` for a fix, `vm-fix-pr7-rules` when one pull
-request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an eval run. The
-`vm-` prefix tells this project's sessions apart in `claude agents`, and the type first groups them.
+request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an eval run,
+`vm-lens-docs-quiet` for a lens test. The `vm-` prefix tells this project's sessions apart in
+`claude agents`, and the type first groups them.
+
+## Changing a skill
+
+Skills live in `.claude/skills/<name>/`. Test a change with the cheapest check that covers it:
+
+| What changed | Run | Cost |
+|---|---|---|
+| Anything under `.claude/skills/` | `.claude/scripts/skill-check.sh`, which pre-commit runs: frontmatter, cited paths, eval cases and their tags, no em or en dashes | no tokens |
+| A part with tests of its own, such as a vm-review lens or `agents/reviewer.md` | its tests: `.claude/skills/vm-review/lens-tests/run.sh [<test> ...]` | 50k to 80k input tokens per test, on sonnet |
+| What the skill does (`SKILL.md`, the orchestrator, the models it picks), before merging | one eval iteration of the affected cases, as the skill's `evals/README.md` says | millions of tokens |
+
+A headless session that tests a skill runs with `--setting-sources project --strict-mcp-config`,
+so the user's own plugins, hooks, MCP servers and effort settings neither change the result nor
+add to its cost (`CLAUDE.md` files still load). A plugin the session needs, such as skill-creator
+for an eval, comes back with `--plugin-dir`. A skill whose parts can be tested apart gives them
+cheap tests like vm-review's `lens-tests/`; one without goes from `skill-check` to its evals.
 
 ## Git
 
