@@ -7,6 +7,7 @@ namespace App\Tests\Unit\VendingMachine\Domain\Inventory;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Inventory\DuplicateSelectorException;
 use App\VendingMachine\Domain\Inventory\Inventory;
+use App\VendingMachine\Domain\Inventory\NegativeUnitsException;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
@@ -75,6 +76,37 @@ final class InventoryTest extends TestCase
         $this->expectException(UnknownSelectorException::class);
 
         $inventory->dispense(Selector::fromString('JUICE'));
+    }
+
+    public function testRestockingSetsTheUnitsOfOneSlot(): void
+    {
+        $water = Selector::fromString('WATER');
+        $soda = Selector::fromString('SODA');
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 0), Slot::of(self::product('SODA', 150), 2));
+
+        $restocked = $inventory->restock($water, 10);
+
+        self::assertSame(10, $restocked->slotFor($water)->units());
+        self::assertSame(2, $restocked->slotFor($soda)->units());
+        self::assertSame(0, $inventory->slotFor($water)->units());
+    }
+
+    public function testCannotRestockAnUnknownSelector(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $this->expectException(UnknownSelectorException::class);
+
+        $inventory->restock(Selector::fromString('JUICE'), 3);
+    }
+
+    public function testCannotRestockANegativeNumberOfUnits(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $this->expectException(NegativeUnitsException::class);
+
+        $inventory->restock(Selector::fromString('WATER'), -1);
     }
 
     private static function product(string $selector, int $cents): Product

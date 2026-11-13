@@ -39,6 +39,11 @@ final readonly class Inventory
         return $this->replacing($this->slotFor($selector)->dispense());
     }
 
+    public function restock(Selector $selector, int $units): self
+    {
+        return $this->replacing($this->slotFor($selector)->withUnits($units));
+    }
+
     private function replacing(Slot $slot): self
     {
         $slotsBySelector = $this->slotsBySelector;
