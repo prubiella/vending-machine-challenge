@@ -70,12 +70,15 @@ Spec: ${skill_dir}/${SPEC}"
     --output-format json "${prompt}" > "${out_dir}/${test}.json"
   jq -r '.result' "${out_dir}/${test}.json" > "${out_dir}/${test}.md"
 
-  if [[ -n "${QUIET}" ]]; then
+  # A quiet test passes on the absence of a finding, so first make sure there was a review at all.
+  if [[ $(jq -r '.is_error' "${out_dir}/${test}.json") != false ]] || ! grep -q '^## Findings' "${out_dir}/${test}.md"; then
+    verdict='FAIL (no review: see the json)'
+  elif [[ -n "${QUIET}" ]]; then
     ! has_finding "${out_dir}/${test}.md" '.*' '.*' 'Critical|Important' && verdict=PASS || verdict=FAIL
   else
     has_finding "${out_dir}/${test}.md" "${EXPECT_FILE}" "${EXPECT_TEXT}" "${EXPECT_SEVERITY}" && verdict=PASS || verdict=FAIL
   fi
-  [[ ${verdict} == PASS ]] || failures=$((failures + 1))
+  [[ "${verdict}" == PASS ]] || failures=$((failures + 1))
 
   tokens=$(jq -r '.usage | .input_tokens + .cache_creation_input_tokens + .cache_read_input_tokens' "${out_dir}/${test}.json")
   echo "${verdict} ${test} (${LENS}): ${tokens} input tokens, output in ${out_dir}/${test}.md"
