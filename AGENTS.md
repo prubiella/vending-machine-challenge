@@ -120,6 +120,25 @@ request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an e
 `vm-lens-docs-quiet` for a lens test. The `vm-` prefix tells this project's sessions apart in
 `claude agents`, and the type first groups them.
 
+## Working with agent sessions
+
+The project is built with Claude Code sessions that one orchestrating session coordinates. The
+steps below take a change from a session to `master`. They live in this file on purpose, so
+whoever reviews the repository can see how the work was done; in a team they would usually sit in
+each developer's own agent memory or settings, since they describe a personal way of working
+rather than a rule of the codebase.
+
+1. A session that changes code runs in its own git worktree (`claude --bg -w <name>`), so the
+   main checkout stays untouched while it works. It commits on its branch, runs the checks with
+   `./etc/git/hooks-docker/run-in-php-image.sh`, and stops there: no push, no pull request.
+2. The developer tests the branch in the main checkout, where the containers, `make`, the IDE and
+   Xdebug point. A branch can be checked out in one worktree only, so the session and its
+   worktree go first (`claude rm <id>`), then `git switch <branch>`.
+3. Only with the developer's approval is the branch pushed and a pull request opened
+   (`gh pr create --assignee @me`).
+4. A review (`/vm-review`) runs when the developer asks for it, not as soon as a pull request
+   opens.
+
 ## Changing a skill
 
 Skills live in `.claude/skills/<name>/`. Test a change with the cheapest check that covers it:
