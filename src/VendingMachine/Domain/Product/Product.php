@@ -17,6 +17,14 @@ final readonly class Product
 
     public static function of(Selector $selector, string $name, Money $price): self
     {
+        if ('' === trim($name)) {
+            throw EmptyProductNameException::forSelector($selector);
+        }
+
+        if (0 === $price->cents()) {
+            throw NonPositivePriceException::forSelector($selector);
+        }
+
         return new self($selector, $name, $price);
     }
 
