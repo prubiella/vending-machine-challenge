@@ -45,7 +45,7 @@ flowchart TD
 | Orchestrator | Writes only under `.audit/vm-review/`, never posts | A review that changes the tree, or publishes on its own, cannot be trusted |
 | Reviewers | `Explore` subagents | That agent type cannot edit files, so read-only holds by construction |
 | Project rules | One copy of `AGENTS.md` at the head, passed to every subagent | The session loads the working tree's rules, which may be newer than the reviewed code |
-| Lens models | `opus` for correctness when `src/` changes and for silent failures when `src/Infrastructure/` or `config/` does (always with `--full`); `sonnet` at `effort: medium` for the rest | Those two find the bugs that cost most when missed, and mostly where that code lives |
+| Lens models | `opus` for correctness when `src/` changes and for silent failures when `config/` or an `Infrastructure/` folder under `src/` does (always with `--full`); `sonnet` at `effort: medium` for the rest | Those two find the bugs that cost most when missed, and mostly where that code lives |
 | Verifiers | At most five findings each, try to refute them | Reviewers still produce confident false positives |
 | Line check | Lines past the end of the file are flagged | Reviewers sometimes cite a position in the diff output |
 | Handoff | Names only tools and paths that exist at the head | The fixer starts from the head, not from this working tree |

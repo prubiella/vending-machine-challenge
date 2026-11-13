@@ -82,7 +82,7 @@ Use it only if the file exists.
 | Lens | Model | Runs when |
 |---|---|---|
 | `correctness` | opus when a changed path is under `src/`, sonnet otherwise | always |
-| `silent-failures` | opus when a changed path is under `src/Infrastructure/` or `config/`, sonnet otherwise | always |
+| `silent-failures` | opus when a changed path is under `config/`, or under `src/` inside an `Infrastructure/` folder; sonnet otherwise | always |
 | `project-rules` | sonnet | always |
 | `tests` | sonnet | a changed path is under `src/` or `tests/` |
 | `docs` | sonnet | a changed path ends in `.md`, the target is a pull request with a body, or the diff adds comments |
