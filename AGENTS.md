@@ -132,7 +132,8 @@ Skills live in `.claude/skills/<name>/`. Test a change with the cheapest check t
 
 A headless session that tests a skill runs with `--setting-sources project --strict-mcp-config`,
 so the user's own plugins, hooks, MCP servers and effort settings neither change the result nor
-add to its cost (`CLAUDE.md` files still load). A skill whose parts can be tested apart gives them
+add to its cost (`CLAUDE.md` files still load). A plugin the session needs, such as skill-creator
+for an eval, comes back with `--plugin-dir`. A skill whose parts can be tested apart gives them
 cheap tests like vm-review's `lens-tests/`; one without goes from `make skill-check` to its evals.
 
 ## Git
