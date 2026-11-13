@@ -27,13 +27,23 @@ findings() {
 }
 
 # Succeeds when one finding block names a file matching $2, says something matching $3 and has a
-# severity matching $4.
+# severity matching $4. Case and Markdown emphasis around the field names do not matter.
 has_finding() {
   findings "$1" | awk -v file="$2" -v text="$3" -v severity="$4" '
-    function check() { if (block ~ ("file: (" file ")") && tolower(block) ~ tolower(text) && block ~ ("severity: (" severity ")")) found = 1 }
-    /^- file:/ { check(); block = "" }
+    function check(b) {
+      b = tolower(block); gsub(/[*_`]/, "", b)
+      if (b ~ ("file: *(" tolower(file) ")") && b ~ tolower(text) && b ~ ("severity: *(" tolower(severity) ")")) found = 1
+    }
+    tolower($0) ~ /^[-*] *[*_`]*file/ { check(); block = "" }
     { block = block "\n" $0 }
     END { check(); exit found ? 0 : 1 }'
+}
+
+# Succeeds when the Findings section never says Critical or Important, in any format. A quiet test
+# passes on that absence, so it must not depend on the reviewer keeping the expected layout; a Minor
+# finding that uses one of those words fails it too, which a rerun or a look at the output settles.
+is_quiet() {
+  ! findings "$1" | grep -qiwE 'critical|important'
 }
 
 failures=0
@@ -74,7 +84,7 @@ Spec: ${skill_dir}/${SPEC}"
   if [[ $(jq -r '.is_error' "${out_dir}/${test}.json") != false ]] || ! grep -q '^## Findings' "${out_dir}/${test}.md"; then
     verdict='FAIL (no review: see the json)'
   elif [[ -n "${QUIET}" ]]; then
-    ! has_finding "${out_dir}/${test}.md" '.*' '.*' 'Critical|Important' && verdict=PASS || verdict=FAIL
+    is_quiet "${out_dir}/${test}.md" && verdict=PASS || verdict=FAIL
   else
     has_finding "${out_dir}/${test}.md" "${EXPECT_FILE}" "${EXPECT_TEXT}" "${EXPECT_SEVERITY}" && verdict=PASS || verdict=FAIL
   fi
