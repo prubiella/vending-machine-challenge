@@ -15,10 +15,20 @@ A fresh clone already has them; an older one gets them with `git fetch --tags`.
 | `eval/spec-v2` | `spec-catches-subtle-violations` | Domain code with planted spec violations; that case's `fixture.patch` recreates it the same way. |
 
 Name the session that runs an iteration `vm-eval-it<N>` (see `AGENTS.md`) and start it with
-`--model sonnet`. It only starts the runs, collects their outputs and writes the benchmark, yet in
+`--model sonnet`, isolated from the user's own plugins, hooks and MCP servers except skill-creator:
+
+```
+claude -p --name vm-eval-it<N> --model sonnet --setting-sources project --strict-mcp-config \
+  --plugin-dir <skill-creator plugin> "<task>"
+```
+
+With the official marketplace installed, the plugin folder is
+`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator`.
+
+The session only starts the runs, collects their outputs and writes the benchmark, yet in
 iteration 9 it took more tokens than any other part, because on `opus` every turn re-read a
 context that grew past 100k. Its model changes nothing that the evals measure: the skill pins the
-models of its own orchestrator, lenses and verifiers.
+models of its own orchestrator, lenses and verifiers, and the runners get theirs below.
 
 Reuse a case's runs without the skill when nothing they depend on changed since an earlier
 iteration: the case's `prompt.md`, `fixture.patch`, `files/` and tag, and the runners' model. Those
@@ -34,9 +44,9 @@ that points to the full review, an untouched repository, `review.md` and `handof
 review without the skill is not expected to meet.
 
 Start the grading subagents with `model: sonnet`: each checks one condition against files already
-written, and without it they inherit the session's model, which costs more. Leave
-the runners on the session's model, so the run without the skill stays a fair baseline for the
-`opus` lenses inside it.
+written. Start the runners, with and without the skill, with `model: opus`, the model a user's
+session calls the skill from: without it they would inherit the session's `sonnet`, and the run
+without the skill would stop being a fair baseline for the `opus` lenses inside it.
 
 Results go to `.audit/vm-review-workspace/` (ignored by git), never next to the skill: they hold
 diffs and reports that do not belong in the repository.
