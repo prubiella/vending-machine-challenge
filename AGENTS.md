@@ -103,6 +103,11 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Code
 
 - `declare(strict_types=1)`, `final` and `readonly` by default, constructor property promotion.
+- Domain objects keep their properties private and expose them through methods (`Money::cents()`).
+  Value objects have a private constructor and are built through named constructors
+  (`Money::fromCents()`, `Selector::fromString()`, `Product::of()`). DTOs (commands, queries,
+  their results, request payloads) are data without behaviour: `final readonly` classes with
+  public promoted properties.
 - Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
 - A domain exception is a `final` class named after what went wrong and ending in `Exception`
   (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
