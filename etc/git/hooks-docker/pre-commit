@@ -1,4 +1,8 @@
 #!/bin/bash -e
 
 ./etc/git/hooks-docker/branch-name-validator.sh
-./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/pre-commit
+
+# The checks print hundreds of lines; keep the last run so a failure can still be read after the
+# terminal has scrolled past it.
+log_file="$(git rev-parse --git-dir)/pre-commit.log"
+./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/pre-commit 2>&1 | tee "${log_file}"

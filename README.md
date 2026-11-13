@@ -114,7 +114,8 @@ the tests. The checks read the files on disk, so `pre-commit` refuses a commit w
 also have unstaged changes: stage them too, or set those changes aside first. `commit-msg` accepts
 [Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
 squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
-such as a new git worktree.
+such as a new git worktree. `pre-commit` also keeps the output of its last run in the git directory
+(`.git/pre-commit.log` in the main checkout), to read a failure after the terminal has scrolled.
 
 ## Debugging with PhpStorm
 
