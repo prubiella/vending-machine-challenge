@@ -24,6 +24,20 @@ final readonly class Money
         return $this->cents;
     }
 
+    public function add(self $other): self
+    {
+        return new self($this->cents + $other->cents);
+    }
+
+    public function subtract(self $other): self
+    {
+        if ($other->cents > $this->cents) {
+            throw InsufficientMoney::toSubtract($this, $other);
+        }
+
+        return new self($this->cents - $other->cents);
+    }
+
     public function equals(self $other): bool
     {
         return $this->cents === $other->cents;
