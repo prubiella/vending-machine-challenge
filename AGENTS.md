@@ -25,16 +25,52 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   installs its `vendor/` when git creates it (by hand:
   `./etc/git/hooks-docker/run-in-php-image.sh composer install`).
 
+## Bounded contexts
+
+`src/` is split by bounded context first and by layer second: `src/<Context>/<Layer>/`. Only
+`src/Kernel.php` lives outside a context. A folder exists once it holds code, never empty.
+
+- `Shared`: a small, stable shared kernel that every context may use and that uses no context.
+  `Shared/Application/Bus` holds the `Command` and `Query` interfaces; `Shared/Infrastructure`
+  holds the Messenger buses, `UnpackExceptionMiddleware`, `BaseController`,
+  `JsonExceptionListener` and the health check. Only what several contexts need belongs here.
+- `VendingMachine`: the machine of the statement (coins, products, change, service). Its layers
+  are ready in deptrac; its folder arrives with its first code.
+- `Maintenance` (planned): technicians and their login, with technician authentication.
+
 ## Layers (checked by deptrac)
 
-- `src/Domain`: entities, aggregates, value objects, domain services, repository interfaces and
-  domain exceptions. Plain PHP: no Symfony, no Doctrine, no attributes.
-- `src/Application`: one folder per use case. `Command/<UseCase>/<UseCase>Command` plus its
-  `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on
-  Domain. Handlers are registered on their bus by name suffix in `config/services.yaml`, so keep
-  the suffixes and do not use `#[AsMessageHandler]`. Only `query_handlers` exists so far; add the
-  matching `command_handlers` block (`bus: command.bus`) with the first command.
-- `src/Infrastructure`: Symfony glue, controllers, console commands, persistence adapters.
+Every context has the same three layers:
+
+- `Domain`: entities, aggregates, value objects, domain services, repository interfaces and
+  domain exceptions. Plain PHP: no Symfony, no Doctrine, no attributes. Depends only on
+  `Shared/Domain`.
+- `Application`: one folder per use case. `Command/<UseCase>/<UseCase>Command` plus its
+  `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on its
+  own Domain, `Shared/Domain` and `Shared/Application`. Handlers are registered on their bus by
+  name suffix in `config/services.yaml`, for every context at once
+  (`src/*/Application/Query/**/*QueryHandler.php`), so keep the suffixes and do not use
+  `#[AsMessageHandler]`. Only `query_handlers` exists so far; add the matching `command_handlers`
+  block (`src/*/Application/Command/**/*CommandHandler.php`, `bus: command.bus`) with the first
+  command.
+- `Infrastructure`: Symfony glue, controllers, console commands, persistence adapters. The only
+  layer that may use the framework (Symfony, Doctrine, PSR). Depends on its own Domain and
+  Application and on all of `Shared`.
+
+deptrac allows each context only its own layers and `Shared`, so no context uses another
+context's Domain, and `Shared` uses no context.
+
+## Adding a bounded context
+
+1. Folder: `src/<Context>/` with the layers that have code, tests in `tests/Unit/<Context>/` and
+   `tests/Integration/<Context>/`.
+2. `deptrac.yaml`: the layers `<Context>Domain`, `<Context>Application` and
+   `<Context>Infrastructure` (collector `^App\\<Context>\\<Layer>\\.*`) and their rules, copied
+   from the `VendingMachine` entries.
+3. Routes: `config/routes/<context>.php` (snake_case). The kernel imports every file in
+   `config/routes/`, so nothing else references it.
+4. `config/services.yaml`: nothing to add. Its exclusions and handler resources use `src/*/`, so
+   they match the new context as long as the use case naming above is kept.
 
 ## Buses
 
@@ -49,14 +85,14 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 2. Application: the command or query and its handler, which only loads, calls the domain and saves.
 3. Infrastructure: the adapter (controller, console command, repository).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
-   `config/routes.php`, not in a `#[Route]` attribute. Bind bodies with `#[MapRequestPayload]`.
-   Map each domain exception to an HTTP status in `JsonExceptionListener` (it has no map yet: add
-   it with the first one).
-5. Tests: unit tests in `tests/Unit/` mirroring `src/`, for every domain rule and for every
-   handler with logic of its own; integration tests in `tests/Integration/` for wiring that only
-   the kernel can prove. A handler with no logic (one that returns a constant) is covered by the
-   integration test that routes a message to it, since PHPStan rejects a unit test of it as
-   tautological.
+   the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
+   `#[MapRequestPayload]`. Map each domain exception to an HTTP status in `JsonExceptionListener`
+   (it has no map yet: add it with the first one).
+5. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
+   and for every handler with logic of its own; integration tests in `tests/Integration/<Context>/`
+   for wiring that only the kernel can prove. A handler with no logic (one that returns a
+   constant) is covered by the integration test that routes a message to it, since PHPStan rejects
+   a unit test of it as tautological.
 
 ## Code
 
@@ -82,8 +118,8 @@ request gets more than one, `vm-review-pr7` for a review, `vm-eval-it6` for an e
 
 ## Git
 
-- Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`, `refactor/`), lowercase, at most 15 characters
-  after the prefix. The pre-commit hook rejects other names.
+- Branches: `feature/<name>` (also `fix/`, `chore/`, `docs/`, `refactor/`), lowercase, at most
+  15 characters after the prefix. The pre-commit hook rejects other names.
 - Commits: Conventional Commits (`feat(scope): ...`), in English. The `commit-msg` hook enforces it.
 - Never `--no-verify`. Push with `FORCE_COLOR=0 git push`.
 - Small commits that each leave the project working, and small pull requests that a person can
