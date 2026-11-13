@@ -126,15 +126,15 @@ Skills live in `.claude/skills/<name>/`. Test a change with the cheapest check t
 
 | What changed | Run | Cost |
 |---|---|---|
-| Anything under `.claude/skills/` | `make skill-check`, which pre-commit runs: frontmatter, cited paths, eval cases and their tags, no em or en dashes | no tokens |
-| A part with tests of its own, such as a vm-review lens or `agents/reviewer.md` | its tests: `make lens-test [<test> ...]` | 50k to 80k input tokens per test, on sonnet |
+| Anything under `.claude/skills/` | `.claude/scripts/skill-check.sh`, which pre-commit runs: frontmatter, cited paths, eval cases and their tags, no em or en dashes | no tokens |
+| A part with tests of its own, such as a vm-review lens or `agents/reviewer.md` | its tests: `.claude/skills/vm-review/lens-tests/run.sh [<test> ...]` | 50k to 80k input tokens per test, on sonnet |
 | What the skill does (`SKILL.md`, the orchestrator, the models it picks), before merging | one eval iteration of the affected cases, as the skill's `evals/README.md` says | millions of tokens |
 
 A headless session that tests a skill runs with `--setting-sources project --strict-mcp-config`,
 so the user's own plugins, hooks, MCP servers and effort settings neither change the result nor
 add to its cost (`CLAUDE.md` files still load). A plugin the session needs, such as skill-creator
 for an eval, comes back with `--plugin-dir`. A skill whose parts can be tested apart gives them
-cheap tests like vm-review's `lens-tests/`; one without goes from `make skill-check` to its evals.
+cheap tests like vm-review's `lens-tests/`; one without goes from `skill-check` to its evals.
 
 ## Git
 

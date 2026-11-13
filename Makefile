@@ -1,7 +1,7 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
 CERTIFICATES := $(addprefix etc/infrastructure/certs/,local-cert.pem local-key.pem rootCA.pem)
-TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test coverage lens-test
+TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test coverage
 
 .DEFAULT_GOAL := help
 
@@ -105,16 +105,6 @@ code-check: ## Run every check, the coding standard in check mode
 	@$(MAKE) phpstan
 	@$(MAKE) deptrac
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
-	@$(MAKE) skill-check
-
-##@ Skills
-.PHONY: skill-check lens-test
-
-skill-check: ## Check the project skills without a model: frontmatter, cited paths, eval cases, dashes
-	@./etc/skills/check.sh
-
-lens-test: ## Run the vm-review lens tests on sonnet (costs tokens): make lens-test [<test> ...]
-	@./.claude/skills/vm-review/lens-tests/run.sh $(ARGS)
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:

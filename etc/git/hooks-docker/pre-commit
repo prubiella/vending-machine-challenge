@@ -12,7 +12,7 @@ if git diff --cached --name-only --no-renames | grep -qE '^(\.claude/skills/|AGE
     echo "Stage them too, or set them aside (git stash push --keep-index -u -m <unique-message>)." >&2
     exit 1
   fi
-  ./etc/skills/check.sh
+  ./.claude/scripts/skill-check.sh
 fi
 
 ./etc/git/hooks-docker/run-in-php-image.sh etc/git/hooks/pre-commit
