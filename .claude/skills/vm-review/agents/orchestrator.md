@@ -13,8 +13,10 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
 - **The repository stays exactly as you found it.** The user may have uncommitted work, and a
   review that changes the tree cannot be trusted afterwards. The only files you write are under
   `<repo root>/.audit/vm-review/` (`<repo root>` is `git rev-parse --show-toplevel`; git ignores
-  `.audit/`). No checkout, switch, stash, fetch, commit, push, and no starting or stopping
-  containers.
+  `.audit/`). No checkout, switch, stash, commit, push, and no starting or stopping containers.
+  No fetch either, with the one exception of step 2: a plain `git fetch` moves the remote-tracking
+  branches and rewrites `FETCH_HEAD`, which is changing the repository. One review ran
+  `git fetch -q` anyway, with the head already in the clone.
 - **Nothing leaves the machine.** Posting the review is the user's decision, taken later.
 - **Reviewers run as `Explore` subagents.** That agent type has no file-editing tools, which keeps
   the reviewers read-only by construction rather than by promise.
@@ -43,6 +45,11 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   `gh pr view <n> --json number,url,title,body,state,baseRefName,headRefName,headRefOid`, and
   `gh pr diff <n> --name-only` for the changed files (the `files` field of `gh pr view` stops at
   100). The reviewers get the diff with `gh pr diff <n>`.
+  Every later step reads files at the head with `git show <head sha>:<path>`, so the head commit
+  must be in this clone. Check with `git cat-file -e <headRefOid>^{commit}`. Only if that fails,
+  download it with `git fetch --no-write-fetch-head origin pull/<n>/head`: with no destination
+  and that flag it adds the commit's objects and moves no ref, not even `FETCH_HEAD`. If that
+  fails too, the review cannot run. This is the only fetch the review ever runs.
 - **Range**: `git diff A...B` for the diff and `git diff --name-only A...B` for the files. Three
   dots compare against the merge base, which is what a pull request shows.
 - **Current branch**: if `gh pr view --json <same fields>` finds an open pull request for it, use
