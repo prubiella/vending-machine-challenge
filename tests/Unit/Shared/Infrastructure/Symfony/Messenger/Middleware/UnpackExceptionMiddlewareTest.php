@@ -21,7 +21,7 @@ final class UnpackExceptionMiddlewareTest extends TestCase
     public function testRethrowsTheExceptionThrownByTheHandler(): void
     {
         $envelope = new Envelope(new \stdClass());
-        $original = new \DomainException('Sold out');
+        $original = new \RuntimeException('Handler failed');
         $failingHandler = new class($envelope, $original) implements MiddlewareInterface {
             public function __construct(private readonly Envelope $envelope, private readonly \Throwable $original)
             {
@@ -40,8 +40,8 @@ final class UnpackExceptionMiddlewareTest extends TestCase
 
     public function testRethrowsTheHandlerFailedExceptionWhenSeveralHandlersFail(): void
     {
-        $first = new \DomainException('Sold out');
-        $second = new \RuntimeException('Out of change');
+        $first = new \RuntimeException('First handler failed');
+        $second = new \RuntimeException('Second handler failed');
         $bus = new MessageBus([
             new UnpackExceptionMiddleware(),
             new HandleMessageMiddleware(new HandlersLocator([\stdClass::class => [
