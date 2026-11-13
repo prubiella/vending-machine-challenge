@@ -31,11 +31,12 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 `src/Kernel.php` lives outside a context. A folder exists once it holds code, never empty.
 
 - `Shared`: a small, stable shared kernel that every context may use and that uses no context.
-  `Shared/Application/Bus` holds the `Command` and `Query` interfaces; `Shared/Infrastructure`
-  holds the Messenger buses, `UnpackExceptionMiddleware`, `BaseController`,
-  `JsonExceptionListener` and the health check. Only what several contexts need belongs here.
-- `VendingMachine`: the machine of the statement (coins, products, change, service). Its layers
-  are ready in deptrac; its folder arrives with its first code.
+  `Shared/Domain` holds `Money` and `DomainException`, the abstract base that every domain
+  exception of every context extends; `Shared/Application/Bus` holds the `Command` and `Query`
+  interfaces; `Shared/Infrastructure` holds the Messenger buses, `UnpackExceptionMiddleware`,
+  `BaseController`, `JsonExceptionListener` and the health check. Only what several contexts need
+  belongs here.
+- `VendingMachine`: the machine of the statement (coins, products, change, service).
 - `Maintenance` (planned): technicians and their login, with technician authentication.
 
 ## Layers (checked by deptrac)
@@ -100,7 +101,10 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Code
 
 - `declare(strict_types=1)`, `final` and `readonly` by default, constructor property promotion.
-- Money is integer cents, never floats.
+- Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
+- A domain exception is a `final` class named after what went wrong and ending in `Exception`
+  (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
+  through a named constructor (`InsufficientMoneyException::toSubtract(...)`).
 - Names explain the code. No comments that narrate behaviour; a comment is fine when it records a
   non-obvious reason. PHPDoc only for types PHP cannot express (`list<Coin>`, array shapes).
 
