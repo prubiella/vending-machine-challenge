@@ -14,7 +14,18 @@ A fresh clone already has them; an older one gets them with `git fetch --tags`.
 | `eval/clean-v1` | `clean-docs-change-stays-quiet` | A docs-only change; that case's `fixture.patch` recreates it on a throwaway branch. |
 | `eval/spec-v2` | `spec-catches-subtle-violations` | Domain code with planted spec violations; that case's `fixture.patch` recreates it the same way. |
 
-Name the session that runs an iteration `vm-eval-it<N>` (see `AGENTS.md`).
+Name the session that runs an iteration `vm-eval-it<N>` (see `AGENTS.md`) and start it with
+`--model sonnet`. It only starts the runs, collects their outputs and writes the benchmark, yet in
+iteration 9 it took more tokens than any other part, because on `opus` every turn re-read a
+context that grew past 100k. Its model changes nothing that the evals measure: the skill pins the
+models of its own orchestrator, lenses and verifiers.
+
+Reuse a case's runs without the skill when nothing they depend on changed since an earlier
+iteration: the case's `prompt.md`, `fixture.patch`, `files/` and tag, and the runners' model. Those
+runs never load the skill, so changing the skill or its graders cannot change their output. Copy
+their `outputs/` and `timing.json` from that iteration, grade them again with the current graders,
+and record in the benchmark which iteration they came from. Run them again whenever one of those
+inputs changed.
 
 Graders check one condition each. Graders 01 to 08 and 15 of the skeleton case, 01 to 03 of the
 clean case and 01 to 04 and 11 of the spec case judge the review itself (what it finds and
