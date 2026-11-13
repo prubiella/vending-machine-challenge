@@ -23,7 +23,7 @@ that points to the full review, an untouched repository, `review.md` and `handof
 review without the skill is not expected to meet.
 
 Start the grading subagents with `model: sonnet`: each checks one condition against files already
-written, and without it they inherit the session's model, which costs several times more. Leave
+written, and without it they inherit the session's model, which costs more. Leave
 the runners on the session's model, so the run without the skill stays a fair baseline for the
 `opus` lenses inside it.
 
