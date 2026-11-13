@@ -10,17 +10,13 @@ final readonly class Product
 {
     private function __construct(
         private Selector $selector,
-        private string $name,
+        private ProductName $name,
         private Money $price,
     ) {
     }
 
-    public static function of(Selector $selector, string $name, Money $price): self
+    public static function of(Selector $selector, ProductName $name, Money $price): self
     {
-        if ('' === trim($name)) {
-            throw EmptyProductNameException::forSelector($selector);
-        }
-
         if (0 === $price->cents()) {
             throw NonPositivePriceException::forSelector($selector);
         }
@@ -33,7 +29,7 @@ final readonly class Product
         return $this->selector;
     }
 
-    public function name(): string
+    public function name(): ProductName
     {
         return $this->name;
     }

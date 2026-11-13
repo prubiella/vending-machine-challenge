@@ -8,8 +8,8 @@ use App\Shared\Domain\DomainException;
 
 final class EmptyProductNameException extends DomainException
 {
-    public static function forSelector(Selector $selector): self
+    public static function fromString(string $value): self
     {
-        return new self(\sprintf('The product of selector %s needs a name.', $selector->value()));
+        return new self(\sprintf('A product name cannot be blank, got "%s".', $value));
     }
 }

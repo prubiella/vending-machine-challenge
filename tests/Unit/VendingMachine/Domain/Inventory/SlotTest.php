@@ -9,6 +9,7 @@ use App\VendingMachine\Domain\Inventory\NegativeUnitsException;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Product\Product;
+use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
 use PHPUnit\Framework\TestCase;
 
@@ -75,6 +76,6 @@ final class SlotTest extends TestCase
 
     private static function water(): Product
     {
-        return Product::of(Selector::fromString('WATER'), 'Water', Money::fromCents(65));
+        return Product::of(Selector::fromString('WATER'), ProductName::fromString('Water'), Money::fromCents(65));
     }
 }

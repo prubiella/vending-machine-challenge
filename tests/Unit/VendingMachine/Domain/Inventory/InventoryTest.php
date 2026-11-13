@@ -12,6 +12,7 @@ use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\Product;
+use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
 use PHPUnit\Framework\TestCase;
 
@@ -111,6 +112,6 @@ final class InventoryTest extends TestCase
 
     private static function product(string $selector, int $cents): Product
     {
-        return Product::of(Selector::fromString($selector), ucfirst(strtolower($selector)), Money::fromCents($cents));
+        return Product::of(Selector::fromString($selector), ProductName::fromString(ucfirst(strtolower($selector))), Money::fromCents($cents));
     }
 }
