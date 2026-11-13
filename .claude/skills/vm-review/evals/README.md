@@ -22,5 +22,10 @@ whether it is right); the rest check what the skill promises the calling session
 that points to the full review, an untouched repository, `review.md` and `handoff.md`), which a
 review without the skill is not expected to meet.
 
+Start the grading subagents with `model: sonnet`: each checks one condition against files already
+written, and without it they inherit the session's model, which costs several times more. Leave
+the runners on the session's model, so the run without the skill stays a fair baseline for the
+`opus` lenses inside it.
+
 Results go to `.audit/vm-review-workspace/` (ignored by git), never next to the skill: they hold
 diffs and reports that do not belong in the repository.
