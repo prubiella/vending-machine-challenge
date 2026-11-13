@@ -8,6 +8,7 @@ use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Inventory\DuplicateSelectorException;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\Selector;
@@ -43,6 +44,37 @@ final class InventoryTest extends TestCase
             Slot::of(self::product('WATER', 65), 5),
             Slot::of(self::product('WATER', 70), 1),
         );
+    }
+
+    public function testDispensingReturnsAnInventoryWithOneUnitLess(): void
+    {
+        $water = Selector::fromString('WATER');
+        $soda = Selector::fromString('SODA');
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5), Slot::of(self::product('SODA', 150), 2));
+
+        $dispensed = $inventory->dispense($water);
+
+        self::assertSame(4, $dispensed->slotFor($water)->units());
+        self::assertSame(2, $dispensed->slotFor($soda)->units());
+        self::assertSame(5, $inventory->slotFor($water)->units());
+    }
+
+    public function testCannotDispenseFromASoldOutSlot(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 0));
+
+        $this->expectException(SoldOutException::class);
+
+        $inventory->dispense(Selector::fromString('WATER'));
+    }
+
+    public function testCannotDispenseAnUnknownSelector(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $this->expectException(UnknownSelectorException::class);
+
+        $inventory->dispense(Selector::fromString('JUICE'));
     }
 
     private static function product(string $selector, int $cents): Product

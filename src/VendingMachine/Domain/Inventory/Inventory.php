@@ -33,4 +33,17 @@ final readonly class Inventory
     {
         return $this->slotsBySelector[$selector->value()] ?? throw UnknownSelectorException::forSelector($selector);
     }
+
+    public function dispense(Selector $selector): self
+    {
+        return $this->replacing($this->slotFor($selector)->dispense());
+    }
+
+    private function replacing(Slot $slot): self
+    {
+        $slotsBySelector = $this->slotsBySelector;
+        $slotsBySelector[$slot->product()->selector()->value()] = $slot;
+
+        return new self($slotsBySelector);
+    }
 }
