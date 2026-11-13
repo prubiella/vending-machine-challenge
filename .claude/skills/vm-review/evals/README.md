@@ -13,6 +13,7 @@ A fresh clone already has them; an older one gets them with `git fetch --tags`.
 | `eval/skeleton-v1` | `finds-known-skeleton-bugs` | The original skeleton (Docker, Symfony, tooling) on top of the initial commit `1d0a7b3`, before the review fixes. |
 | `eval/clean-v1` | `clean-docs-change-stays-quiet` | A docs-only change; that case's `fixture.patch` recreates it on a throwaway branch. |
 | `eval/spec-v2` | `spec-catches-subtle-violations` | Domain code with planted spec violations; that case's `fixture.patch` recreates it the same way. |
+| `eval/tooling-v1` | `tooling-silent-failure` | A tooling-only change to the pre-commit hook with a planted silent failure, reviewed by the `sonnet` lenses; that case's `fixture.patch` recreates it the same way. |
 
 Name the session that runs an iteration `vm-eval-it<N>` (see `AGENTS.md`) and start it with
 `--model sonnet`. It only starts the runs, collects their outputs and writes the benchmark, yet in
@@ -28,10 +29,10 @@ and record in the benchmark which iteration they came from. Run them again whene
 inputs changed.
 
 Graders check one condition each. Graders 01 to 08 and 15 of the skeleton case, 01 to 03 of the
-clean case and 01 to 04 and 11 of the spec case judge the review itself (what it finds and
-whether it is right); the rest check what the skill promises the calling session (a short message
-that points to the full review, an untouched repository, `review.md` and `handoff.md`), which a
-review without the skill is not expected to meet.
+clean case, 01 to 04 and 11 of the spec case and 01 to 03 and 10 of the tooling case judge the
+review itself (what it finds and whether it is right); the rest check what the skill promises the
+calling session (a short message that points to the full review, an untouched repository,
+`review.md` and `handoff.md`), which a review without the skill is not expected to meet.
 
 Start the grading subagents with `model: sonnet`: each checks one condition against files already
 written, and without it they inherit the session's model, which costs more. Leave
