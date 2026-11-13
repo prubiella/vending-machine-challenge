@@ -1,0 +1,49 @@
+{
+	"info": {
+		"_postman_id": "6a545872-00eb-434b-9673-d4943a38673a",
+		"name": "Vending machine",
+		"description": "HTTP API of the vending machine. One folder per bounded context. Select the `vending-machine.test` environment, which sets `baseUrl`.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Shared",
+			"item": [
+				{
+					"name": "Health check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('reports ok', () => pm.expect(pm.response.json()).to.eql({ status: 'ok' }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/health-check",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health-check"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
