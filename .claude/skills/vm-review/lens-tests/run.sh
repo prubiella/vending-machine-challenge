@@ -48,7 +48,7 @@ is_quiet() {
 
 failures=0
 for test in "${tests[@]}"; do
-  LENS='' RANGE='' SPEC='' EXPECT_FILE='' EXPECT_TEXT='' EXPECT_SEVERITY='Critical|Important' QUIET=''
+  LENS='' RANGE='' EXPECT_FILE='' EXPECT_TEXT='' EXPECT_SEVERITY='Critical|Important' QUIET=''
   # shellcheck source=/dev/null
   source "${tests_dir}/${test}.conf"
 
@@ -68,8 +68,6 @@ Local head matches: no
 Project rules: ${rules}
 Changed files:
 $(git diff --name-only "${RANGE}")"
-  [[ -z "${SPEC}" ]] || prompt+="
-Spec: ${skill_dir}/${SPEC}"
 
   # Isolated from the user's plugins, hooks, MCP servers and effort settings: only what the
   # project configures, so the result and its cost do not depend on whose machine runs it.
