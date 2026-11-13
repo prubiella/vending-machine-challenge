@@ -2,11 +2,14 @@ schema_version: "1.1"
 name: spec-catches-subtle-violations
 expected_outcome: |
   Reviews a domain change (local tag eval/spec-v2) that adds Coin, Product, CoinStock and
-  ExactChangeNotAvailable, against files/statement.md. Most of it matches the statement; three
-  details do not: Soda is priced at 155 cents instead of 150, CoinStock::giveChange works on a
-  copy of the counts, so the coins it gives never leave the stock, and it takes the largest coins
-  first without backtracking, so it refuses change the stock could give. A good review finds all
-  three, ties each to the statement, and does not flag the parts that do match. eval/spec-v2 is a
+  ExactChangeNotAvailable, against files/statement.md. Most of it matches the statement; two
+  planted details do not: Soda is priced at 155 cents instead of 150, and CoinStock::giveChange
+  works on a copy of the counts, so the coins it gives never leave the stock. A good review finds
+  both, ties each to the statement, and does not flag the parts that do match. eval/spec-v2 is a
   tag, so the review checks no branch name and does not call it a branch.
+  A third mismatch is real but was not planted: giveChange takes the largest coins first without
+  backtracking, so it refuses change the stock could give (30 cents with one 25 and three 10s).
+  The case tests the skill, not the fixture, so no grader requires that finding; grader 04 only
+  keeps it from counting as a false alarm.
 context:
   scaffold_script: place-files.sh
