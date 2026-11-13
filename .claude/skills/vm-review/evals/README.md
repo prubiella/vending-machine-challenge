@@ -17,7 +17,7 @@ A fresh clone already has them; an older one gets them with `git fetch --tags`.
 Name the session that runs an iteration `vm-eval-it<N>` (see `AGENTS.md`).
 
 Graders check one condition each. Graders 01 to 08 and 15 of the skeleton case, 01 to 03 of the
-clean case and 01 to 04, 11 and 12 of the spec case judge the review itself (what it finds and
+clean case and 01 to 04 and 11 of the spec case judge the review itself (what it finds and
 whether it is right); the rest check what the skill promises the calling session (a short message
 that points to the full review, an untouched repository, `review.md` and `handoff.md`), which a
 review without the skill is not expected to meet.
