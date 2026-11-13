@@ -42,4 +42,24 @@ final readonly class Money
     {
         return $this->cents === $other->cents;
     }
+
+    public function isGreaterThan(self $other): bool
+    {
+        return $this->cents > $other->cents;
+    }
+
+    public function isGreaterThanOrEqualTo(self $other): bool
+    {
+        return $this->cents >= $other->cents;
+    }
+
+    public function isLessThan(self $other): bool
+    {
+        return $this->cents < $other->cents;
+    }
+
+    public function isLessThanOrEqualTo(self $other): bool
+    {
+        return $this->cents <= $other->cents;
+    }
 }
