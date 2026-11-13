@@ -17,7 +17,12 @@ Look for:
   pipes that mask the exit code of the first command.
 - Git hooks: checks that print a warning but exit 0, file filters that skip renamed, deleted or
   out-of-scope files and still print "passed", hooks that check the working tree instead of the
-  index.
+  index, hooks that run git in a container or subshell without the environment git gives them
+  (`GIT_DIR`, `GIT_INDEX_FILE`), so `git commit -a`, a commit with paths or a worktree checks
+  another index than the one being committed.
+- A hook or check that validates something other than what it claims to (another index, another
+  file set, another environment) is a silent failure, not a "known limitation". It is only known
+  when the `Project rules` file, a comment or the docs state it; otherwise report it.
 - Configuration: defaults that silently disable a check, a tool that is skipped when missing instead
   of failing.
 

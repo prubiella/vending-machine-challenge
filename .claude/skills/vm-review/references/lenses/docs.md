@@ -17,6 +17,11 @@ Check:
   mention of the company that set the challenge (see the `Project rules` file; never search for
   its name).
 
+Before reporting a claim as wrong, read it whole, qualifiers included ("in the main checkout",
+"when Docker is running", "for a pull request"). A claim that is true in the case it names is not
+wrong because another case behaves differently; do not report it, not even as a Minor
+clarification.
+
 Each finding quotes the wrong text and gives the corrected text in `fix`.
 
 Not this lens: whether the code is right (correctness); only whether the text matches it.
