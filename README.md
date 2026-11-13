@@ -132,6 +132,20 @@ and `start_with_request=yes`, so every PHP process tries to reach the IDE on por
    `make run-debug -- app:health-check` steps through the project's own code from the CLI: put the
    breakpoint in `HealthCheckQueryHandler`.
 
+## Trying the API with Postman
+
+`etc/postman/` holds a collection with every endpoint, one folder per bounded context, and an
+environment that points `baseUrl` at `https://vending-machine.test`.
+
+1. Import both files (File > Import).
+2. Settings > Certificates: turn on CA certificates and select `etc/infrastructure/certs/rootCA.pem`,
+   so Postman trusts the mkcert certificate.
+3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
+
+The repository is the source of the collection: after changing it in Postman, export it (v2.1)
+over the file in `etc/postman/`. If you change `TRAEFIK_HTTPS_PORT` in `.env`, add the port to
+`baseUrl`.
+
 ## Project layout
 
 The code is split by bounded context first and by layer second:
@@ -152,6 +166,7 @@ tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).
 etc/infrastructure   Docker images and the host setup scripts.
 etc/git              Git hooks.
+etc/postman          Postman collection and environment.
 ```
 
 A second context, `Maintenance` (technicians and their login), will arrive with technician
