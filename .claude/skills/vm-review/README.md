@@ -30,7 +30,7 @@ flowchart TD
         V --> W[7. Write review.md and handoff.md<br/>.audit/vm-review/&lt;slug&gt;-&lt;time&gt;/]
     end
 
-    W -->|summary under 250 words| S
+    W -->|8. Return a summary<br/>under 250 words| S
     S --> Q{Ask the user}
     Q -->|Post| G[gh pr comment<br/>public repository]
     Q -->|Hand off the fix| F[claude --bg --name vm-fix-&lt;target&gt;<br/>works through handoff.md]
