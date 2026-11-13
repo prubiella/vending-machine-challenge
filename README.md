@@ -140,9 +140,10 @@ The code is split by bounded context first and by layer second:
 src/
   Kernel.php
   Shared/            Shared kernel: small, stable, used by every context, uses none.
+    Domain/          Money and DomainException, the base of every domain exception.
     Application/     The Command and Query interfaces, and the health check query.
     Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
-  VendingMachine/    The machine of the statement (arrives with its first code).
+  VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
     Application/     Use cases: commands, queries and their handlers.
     Infrastructure/  Symfony, controllers, console commands, persistence.
