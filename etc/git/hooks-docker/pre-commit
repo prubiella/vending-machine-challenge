@@ -2,7 +2,16 @@
 
 ./etc/git/hooks-docker/branch-name-validator.sh
 
-if git diff --cached --name-only | grep -qE '^(\.claude/skills/|AGENTS\.md$)'; then
+# --no-renames lists both sides of a rename, so moving a file out of a skill still runs the check.
+if git diff --cached --name-only --no-renames | grep -qE '^(\.claude/skills/|AGENTS\.md$)'; then
+  # The check reads the disk, so it would pass a staged skill whose fix is unstaged or untracked.
+  dirty=$(git status --porcelain --untracked-files=all -- .claude/skills AGENTS.md | grep -E '^(.[^ ]|\?\?)' || true)
+  if [[ -n "${dirty}" ]]; then
+    echo "The skills or AGENTS.md have changes that are not staged, and skill-check would read those:" >&2
+    echo "${dirty}" >&2
+    echo "Stage them too, or set them aside (git stash push --keep-index -u -m <unique-message>)." >&2
+    exit 1
+  fi
   ./etc/skills/check.sh
 fi
 

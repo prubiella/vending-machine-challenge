@@ -105,13 +105,17 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
 | `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
 | `make cs-fixer` | Fixes the coding standard |
-| `make code-check` | The tests, PHPStan, deptrac and the coding standard in check mode (no coverage) |
+| `make code-check` | The tests, PHPStan, deptrac, the coding standard in check mode (no coverage) and `make skill-check` |
+| `make skill-check` | Checks the Claude Code skills in `.claude/skills/` without calling a model (see "Changing a skill" in `AGENTS.md`) |
+| `make lens-test` | Runs the `vm-review` lens tests on sonnet; costs tokens (`make lens-test <test>` for one) |
 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
 the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
-also have unstaged changes: stage them too, or set those changes aside first. `commit-msg` accepts
+also have unstaged changes: stage them too, or set those changes aside first. When a skill or
+`AGENTS.md` is staged, `pre-commit` first runs `make skill-check` on the host, with the same
+refusal for unstaged or untracked changes in the skills. `commit-msg` accepts
 [Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
 squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
 such as a new git worktree.
