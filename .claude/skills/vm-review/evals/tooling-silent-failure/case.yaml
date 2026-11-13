@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: tooling-silent-failure
+expected_outcome: |
+  Reviews a tooling-only change (local tag eval/tooling-v1): the pre-commit hook now pipes the
+  checks into tee to keep a log of the last run, and the README says where that log lands. No path
+  under src/ or tests/ changes, so the review runs its correctness and silent-failures lenses on
+  sonnet. One defect is planted: the hook sets -e but not pipefail, so the pipeline's status is
+  tee's and a commit whose checks fail goes through. A good review finds it, rates it as blocking,
+  and does not flag the README text, which is accurate. eval/tooling-v1 is a tag, so the review
+  checks no branch name and does not call it a branch.

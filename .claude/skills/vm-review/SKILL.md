@@ -20,7 +20,8 @@ subagents.
 Start one subagent and nothing else:
 
 - `subagent_type`: `general-purpose`
-- `model`: `sonnet` (it coordinates; the reviewers it starts pick their own models)
+- `model`: `sonnet` and `effort`: `medium` (it coordinates by written steps; the reviewers it
+  starts pick their own models)
 - `run_in_background`: `true`, so the user can keep working
 - `description`: `vm-review $ARGUMENTS`
 - `prompt`, exactly:
