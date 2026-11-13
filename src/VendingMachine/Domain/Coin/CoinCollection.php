@@ -39,6 +39,20 @@ final readonly class CoinCollection
         return new self($countsByCents);
     }
 
+    public function remove(Coin $coin): self
+    {
+        $countsByCents = $this->countsByCents;
+        $count = $countsByCents[$coin->value] ?? throw CoinNotInCollection::forCoin($coin);
+
+        if (1 === $count) {
+            unset($countsByCents[$coin->value]);
+        } else {
+            $countsByCents[$coin->value] = $count - 1;
+        }
+
+        return new self($countsByCents);
+    }
+
     public function countOf(Coin $coin): int
     {
         return $this->countsByCents[$coin->value] ?? 0;

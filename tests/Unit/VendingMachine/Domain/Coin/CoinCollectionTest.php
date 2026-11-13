@@ -6,6 +6,7 @@ namespace App\Tests\Unit\VendingMachine\Domain\Coin;
 
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Coin\CoinNotInCollection;
 use PHPUnit\Framework\TestCase;
 
 final class CoinCollectionTest extends TestCase
@@ -51,6 +52,38 @@ final class CoinCollectionTest extends TestCase
         $original->add(Coin::FiveCents);
 
         self::assertTrue($original->isEmpty());
+    }
+
+    public function testRemovingACoinReturnsACollectionWithOneLessOfIt(): void
+    {
+        $coins = CoinCollection::of(Coin::TenCents, Coin::TenCents, Coin::FiveCents)->remove(Coin::TenCents);
+
+        self::assertSame(1, $coins->countOf(Coin::TenCents));
+        self::assertSame(1, $coins->countOf(Coin::FiveCents));
+    }
+
+    public function testRemovingTheLastCoinLeavesAnEmptyCollection(): void
+    {
+        $coins = CoinCollection::of(Coin::TenCents)->remove(Coin::TenCents);
+
+        self::assertTrue($coins->isEmpty());
+        self::assertTrue($coins->equals(CoinCollection::empty()));
+    }
+
+    public function testRemovingACoinLeavesTheOriginalCollectionUnchanged(): void
+    {
+        $original = CoinCollection::of(Coin::TenCents);
+
+        $original->remove(Coin::TenCents);
+
+        self::assertSame(1, $original->countOf(Coin::TenCents));
+    }
+
+    public function testRejectsRemovingACoinItDoesNotHold(): void
+    {
+        $this->expectException(CoinNotInCollection::class);
+
+        CoinCollection::of(Coin::TenCents)->remove(Coin::TwentyFiveCents);
     }
 
     public function testCollectionsWithTheSameCoinsInAnyOrderAreEqual(): void
