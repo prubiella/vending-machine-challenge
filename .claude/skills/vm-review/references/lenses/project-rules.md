@@ -4,16 +4,19 @@ Compliance with `AGENTS.md`. Cite the section of `AGENTS.md` each finding breaks
 
 Check:
 
-- Layers: `src/Domain` is plain PHP (no Symfony, no Doctrine, no attributes); `src/Application`
-  depends only on Domain. deptrac does not see vendor imports, so grep the changed files under
-  `src/Domain` and `src/Application` for `use Symfony\`, `use Doctrine\` and attributes yourself.
+- Layers: code lives in `src/<Context>/<Layer>/`. `src/*/Domain` is plain PHP (no Symfony, no
+  Doctrine, no attributes); `src/*/Application` depends only on its own Domain and `Shared`;
+  `Shared` uses no context and no context uses another. deptrac does not see vendor imports, so
+  grep the changed files under `src/*/Domain` and `src/*/Application` for `use Symfony\`,
+  `use Doctrine\` and attributes yourself. A new context needs its layers in `deptrac.yaml`, or
+  deptrac skips its classes.
 - Use cases: one folder per use case, `<UseCase>Command` / `<UseCase>CommandHandler`,
   `<UseCase>Query` / `<UseCase>QueryHandler`; handlers registered by suffix in
   `config/services.yaml`, never `#[AsMessageHandler]`; the rule lives in the aggregate or a value
   object, the handler only loads, calls the domain and saves; commands return nothing.
 - HTTP: one invokable controller per endpoint extending `BaseController`, the route in
-  `config/routes.php` (no `#[Route]`), bodies bound with `#[MapRequestPayload]`, each new domain
-  exception mapped in `JsonExceptionListener`.
+  `config/routes/<context>.php` (no `#[Route]`), bodies bound with `#[MapRequestPayload]`, each
+  new domain exception mapped in `JsonExceptionListener`.
 - Code: `declare(strict_types=1)`, `final` and `readonly` by default, constructor promotion, money
   in integer cents, no comments that narrate behaviour, PHPDoc only for types PHP cannot express.
 - Configuration: new variables in `.env.dist` with a safe default, no real secret committed. The

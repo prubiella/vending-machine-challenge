@@ -93,8 +93,9 @@ coverage: ## Run the tests with an HTML coverage report in var/coverage
 phpstan: ## Run the static analysis at the max level
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpstan analyse
 
-deptrac: ## Check the dependencies between layers
-	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac
+deptrac: ## Check the dependencies between layers, and that every class belongs to one
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac --fail-on-uncovered
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/deptrac debug:unassigned
 
 cs-fixer: ## Fix the coding standard
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer fix

@@ -2,27 +2,63 @@ deptrac:
   paths:
     - ./src
   layers:
-    - name: Domain
-      collectors:
-        - type: classLike
-          value: ^App\\Domain\\.*
-    - name: Application
-      collectors:
-        - type: classLike
-          value: ^App\\Application\\.*
-    - name: Infrastructure
-      collectors:
-        - type: classLike
-          value: ^App\\Infrastructure\\.*
     - name: Framework
       collectors:
         - type: classLike
           value: ^(Symfony|Doctrine|Psr)\\.*
+    - name: Kernel
+      collectors:
+        - type: classLike
+          value: ^App\\Kernel$
+
+    - name: SharedDomain
+      collectors:
+        - type: classLike
+          value: ^App\\Shared\\Domain\\.*
+    - name: SharedApplication
+      collectors:
+        - type: classLike
+          value: ^App\\Shared\\Application\\.*
+    - name: SharedInfrastructure
+      collectors:
+        - type: classLike
+          value: ^App\\Shared\\Infrastructure\\.*
+
+    - name: VendingMachineDomain
+      collectors:
+        - type: classLike
+          value: ^App\\VendingMachine\\Domain\\.*
+    - name: VendingMachineApplication
+      collectors:
+        - type: classLike
+          value: ^App\\VendingMachine\\Application\\.*
+    - name: VendingMachineInfrastructure
+      collectors:
+        - type: classLike
+          value: ^App\\VendingMachine\\Infrastructure\\.*
+
   ruleset:
-    Domain:
-    Application:
-      - Domain
-    Infrastructure:
-      - Domain
-      - Application
+    Kernel:
+      - Framework
+
+    SharedDomain:
+    SharedApplication:
+      - SharedDomain
+    SharedInfrastructure:
+      - SharedDomain
+      - SharedApplication
+      - Framework
+
+    VendingMachineDomain:
+      - SharedDomain
+    VendingMachineApplication:
+      - VendingMachineDomain
+      - SharedDomain
+      - SharedApplication
+    VendingMachineInfrastructure:
+      - VendingMachineDomain
+      - VendingMachineApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
       - Framework

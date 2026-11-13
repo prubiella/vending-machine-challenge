@@ -103,7 +103,7 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
 | `make coverage` | The tests with an HTML coverage report in `var/coverage` |
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
-| `make deptrac` | Domain depends on nothing, Application only on Domain, and only Infrastructure uses the framework |
+| `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
 | `make cs-fixer` | Fixes the coding standard |
 | `make code-check` | The tests, PHPStan, deptrac and the coding standard in check mode (no coverage) |
 
@@ -132,21 +132,54 @@ and `start_with_request=yes`, so every PHP process tries to reach the IDE on por
 
 ## Project layout
 
+The code is split by bounded context first and by layer second:
+
 ```
 src/
-  Domain/          Business rules. Plain PHP, depends on nothing else in src/.
-  Application/     Use cases: commands, queries and their handlers. Depends only on Domain.
-  Infrastructure/  Symfony, controllers, console commands, persistence.
-config/            Symfony configuration; routes in config/routes.php.
-tests/Unit/        Unit tests, mirroring src/.
-tests/Integration/ Tests that boot the kernel.
-etc/infrastructure Docker images and the host setup scripts.
-etc/git            Git hooks.
+  Kernel.php
+  Shared/            Shared kernel: small, stable, used by every context, uses none.
+    Application/     The Command and Query interfaces, and the health check query.
+    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
+  VendingMachine/    The machine of the statement (arrives with its first code).
+    Domain/          Business rules. Plain PHP.
+    Application/     Use cases: commands, queries and their handlers.
+    Infrastructure/  Symfony, controllers, console commands, persistence.
+config/              Symfony configuration; routes in config/routes/<context>.php.
+tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
+tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).
+etc/infrastructure   Docker images and the host setup scripts.
+etc/git              Git hooks.
 ```
 
-Commands and queries go through two synchronous Messenger buses. Query handlers are registered on
-`query.bus` by their `QueryHandler` suffix in `config/services.yaml`, so the Application layer needs
-no framework attributes.
+A second context, `Maintenance` (technicians and their login), will arrive with technician
+authentication. Folders exist only once they hold code.
+
+deptrac checks the rules between layers and contexts:
+
+- Domain depends only on `Shared/Domain`.
+- Application depends only on its own Domain, `Shared/Domain` and `Shared/Application`.
+- Only Infrastructure uses the framework (Symfony, Doctrine, PSR).
+- Every context may use `Shared`; `Shared` uses no context; a context never uses another
+  context's Domain.
+- Every class in `src/` belongs to a layer, and every dependency points to a layer: a class of an
+  undeclared context, or a library outside the `Framework` layer, fails the check.
+
+Commands and queries go through two synchronous Messenger buses. Query handlers of every context
+are registered on `query.bus` by their `QueryHandler` suffix in `config/services.yaml`, so the
+Application layer needs no framework attributes.
+
+### Adding a bounded context
+
+1. Create `src/<Context>/` with the layers that have code, and its tests under
+   `tests/Unit/<Context>/` and `tests/Integration/<Context>/`.
+2. Add `<Context>Domain`, `<Context>Application` and `<Context>Infrastructure` layers and their
+   rules to `deptrac.yaml`, following the `VendingMachine` entries. Until then `make deptrac`
+   fails and lists the context's classes as unassigned.
+3. Put its routes in `config/routes/<context>.php`; the kernel imports every file in that folder.
+4. `config/services.yaml` needs nothing: its globs (`src/*/Application/Query/**/*QueryHandler.php`
+   and the matching exclusions) already cover any context.
+
+### Conventions
 
 `AGENTS.md` holds the conventions for anyone working on the code, human or agent; `CLAUDE.md`
 imports it.

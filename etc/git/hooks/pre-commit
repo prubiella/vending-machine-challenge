@@ -91,7 +91,8 @@ if ([] !== array_intersect(['composer.lock', '.php-cs-fixer.dist.php'], $staged)
 }
 runCheck('Container', ['bin/console', 'lint:container']);
 runCheck('PHPStan', ['vendor/bin/phpstan', 'analyse', '--no-progress']);
-runCheck('Layer dependencies', ['vendor/bin/deptrac', '--no-progress']);
+runCheck('Layer dependencies', ['vendor/bin/deptrac', '--no-progress', '--fail-on-uncovered']);
+runCheck('Classes outside every layer', ['vendor/bin/deptrac', 'debug:unassigned']);
 runCheck('Tests', ['vendor/bin/phpunit']);
 
 echo "\033[32mAll checks passed.\033[0m\n";

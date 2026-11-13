@@ -85,7 +85,7 @@ Use it only if the file exists.
 | `project-rules` | sonnet | always |
 | `tests` | sonnet | a changed path is under `src/` or `tests/` |
 | `docs` | sonnet | a changed path ends in `.md`, the target is a pull request with a body, or the diff adds comments |
-| `spec` | sonnet | a changed path is under `src/Domain/` or `src/Application/` and a spec exists |
+| `spec` | sonnet | a changed path is under `src/*/Domain/` or `src/*/Application/` and a spec exists |
 
 Correctness and silent failures get the stronger model because those are the findings that cost
 the most when missed: in this project's first review, the only critical bug (errors never logged)
