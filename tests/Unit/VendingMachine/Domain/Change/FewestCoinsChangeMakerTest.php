@@ -15,7 +15,7 @@ final class FewestCoinsChangeMakerTest extends TestCase
 {
     public function testGivesNoCoinsForAZeroAmount(): void
     {
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(0), CoinCollection::empty());
+        $change = self::changeMaker()->makeChange(Money::fromCents(0), CoinCollection::empty());
 
         self::assertTrue($change->isEmpty());
     }
@@ -24,7 +24,7 @@ final class FewestCoinsChangeMakerTest extends TestCase
     {
         $available = CoinCollection::of(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(10), $available);
+        $change = self::changeMaker()->makeChange(Money::fromCents(10), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::TenCents)));
     }
@@ -33,7 +33,7 @@ final class FewestCoinsChangeMakerTest extends TestCase
     {
         $available = CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents, Coin::TenCents, Coin::TenCents, Coin::FiveCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(30), $available);
+        $change = self::changeMaker()->makeChange(Money::fromCents(30), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::FiveCents)));
     }
@@ -42,7 +42,7 @@ final class FewestCoinsChangeMakerTest extends TestCase
     {
         $available = CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::FiveCents, Coin::FiveCents, Coin::FiveCents, Coin::FiveCents, Coin::FiveCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(50), $available);
+        $change = self::changeMaker()->makeChange(Money::fromCents(50), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents)));
     }
@@ -51,7 +51,7 @@ final class FewestCoinsChangeMakerTest extends TestCase
     {
         $available = CoinCollection::of(Coin::TenCents, Coin::FiveCents, Coin::FiveCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(20), $available);
+        $change = self::changeMaker()->makeChange(Money::fromCents(20), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::TenCents, Coin::FiveCents, Coin::FiveCents)));
     }
@@ -60,31 +60,59 @@ final class FewestCoinsChangeMakerTest extends TestCase
     {
         $available = CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents, Coin::TenCents, Coin::TenCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(30), $available);
+        $change = self::changeMaker()->makeChange(Money::fromCents(30), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::TenCents, Coin::TenCents, Coin::TenCents)));
     }
 
-    public function testUsesWhicheverCoinsItIsGiven(): void
+    public function testGivesOnlyTheCoinsItIsConfiguredToGive(): void
     {
         $available = CoinCollection::of(Coin::OneHundredCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents);
 
-        $change = new FewestCoinsChangeMaker()->makeChange(Money::fromCents(100), $available);
+        $change = new FewestCoinsChangeMaker(Coin::TwentyFiveCents)->makeChange(Money::fromCents(100), $available);
+
+        self::assertTrue($change->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents)));
+    }
+
+    public function testGivesACoinOnceItIsConfiguredToGiveIt(): void
+    {
+        $available = CoinCollection::of(Coin::OneHundredCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents);
+
+        $change = new FewestCoinsChangeMaker(Coin::OneHundredCents, Coin::TwentyFiveCents)->makeChange(Money::fromCents(100), $available);
 
         self::assertTrue($change->equals(CoinCollection::of(Coin::OneHundredCents)));
+    }
+
+    public function testCountsACoinOnceEvenWhenItIsConfiguredTwice(): void
+    {
+        $this->expectException(NoExactChangeException::class);
+
+        new FewestCoinsChangeMaker(Coin::TenCents, Coin::TenCents)->makeChange(Money::fromCents(20), CoinCollection::of(Coin::TenCents));
+    }
+
+    public function testRejectsAnAmountThatOnlyCoinsItDoesNotGiveWouldAddUpTo(): void
+    {
+        $this->expectException(NoExactChangeException::class);
+
+        self::changeMaker()->makeChange(Money::fromCents(100), CoinCollection::of(Coin::OneHundredCents));
     }
 
     public function testRejectsAnAmountThatNoCombinationOfTheCoinsAddsUpTo(): void
     {
         $this->expectException(NoExactChangeException::class);
 
-        new FewestCoinsChangeMaker()->makeChange(Money::fromCents(15), CoinCollection::of(Coin::TenCents, Coin::TenCents));
+        self::changeMaker()->makeChange(Money::fromCents(15), CoinCollection::of(Coin::TenCents, Coin::TenCents));
     }
 
     public function testRejectsAnAmountAboveTheTotalOfTheCoins(): void
     {
         $this->expectException(NoExactChangeException::class);
 
-        new FewestCoinsChangeMaker()->makeChange(Money::fromCents(40), CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents));
+        self::changeMaker()->makeChange(Money::fromCents(40), CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents));
+    }
+
+    private static function changeMaker(): FewestCoinsChangeMaker
+    {
+        return new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
     }
 }

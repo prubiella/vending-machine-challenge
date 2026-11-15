@@ -10,10 +10,18 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 
 final readonly class FewestCoinsChangeMaker implements ChangeMaker
 {
+    /** @var list<Coin> */
+    private array $given;
+
+    public function __construct(Coin ...$given)
+    {
+        $this->given = array_values(array_unique($given, \SORT_REGULAR));
+    }
+
     public function makeChange(Money $amount, CoinCollection $available): CoinCollection
     {
         $fewestCoinsByCents = [0 => []];
-        foreach (Coin::cases() as $coin) {
+        foreach ($this->given as $coin) {
             $fewestCoinsByCents = $this->addingCoin($coin, $available->countOf($coin), $fewestCoinsByCents, $amount->cents());
         }
 
