@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Application\Query\GetMachineStatus;
 
-use App\VendingMachine\Application\Query\GetMachine\MachineResponseFactory;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -14,7 +13,6 @@ final readonly class GetMachineStatusQueryHandler
 {
     public function __construct(
         private VendingMachineRepository $repository,
-        private MachineResponseFactory $machineResponseFactory,
     ) {
     }
 
@@ -23,7 +21,6 @@ final readonly class GetMachineStatusQueryHandler
         $machine = $this->repository->get();
 
         return new MachineStatusResponse(
-            $this->machineResponseFactory->fromMachine($machine),
             self::unitsBySelector($machine->inventory()),
             self::coinStockByCents($machine->wallet()->stock()),
         );

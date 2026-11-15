@@ -7,7 +7,6 @@ namespace App\Tests\Unit\VendingMachine\Application\Query\GetMachine;
 use App\Tests\Unit\VendingMachine\Application\VendingMachineRepositoryMother;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQueryHandler;
-use App\VendingMachine\Application\Query\GetMachine\MachineResponseFactory;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
 use App\VendingMachine\Domain\Coin\Coin;
 use PHPUnit\Framework\TestCase;
@@ -16,7 +15,7 @@ final class GetMachineQueryHandlerTest extends TestCase
 {
     public function testListsEachProductWithItsPriceAndWhetherItIsAvailable(): void
     {
-        $response = (new GetMachineQueryHandler(VendingMachineRepositoryMother::withTheStatementProducts(), new MachineResponseFactory()))(new GetMachineQuery());
+        $response = (new GetMachineQueryHandler(VendingMachineRepositoryMother::withTheStatementProducts()))(new GetMachineQuery());
 
         self::assertEquals(
             [
@@ -36,7 +35,7 @@ final class GetMachineQueryHandlerTest extends TestCase
         $machine->insertCoin(Coin::TenCents);
         $repository->save($machine);
 
-        $response = (new GetMachineQueryHandler($repository, new MachineResponseFactory()))(new GetMachineQuery());
+        $response = (new GetMachineQueryHandler($repository))(new GetMachineQuery());
 
         self::assertSame(110, $response->creditCents);
     }
