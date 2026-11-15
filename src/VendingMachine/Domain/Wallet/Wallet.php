@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Domain\Wallet;
 
+use App\Shared\Domain\Money\Money;
+use App\VendingMachine\Domain\Change\ChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 
@@ -28,6 +30,19 @@ final readonly class Wallet
         return Payout::of($this->credit, new self(CoinCollection::empty(), $this->stock));
     }
 
+    public function charge(Money $price, ChangeMaker $changeMaker): Payout
+    {
+        $credit = $this->credit->total();
+        if ($credit->isLessThan($price)) {
+            throw InsufficientCreditException::forPrice($price, $credit);
+        }
+
+        $stock = $this->stock->merge($this->credit);
+        $change = $changeMaker->makeChange($credit->subtract($price), $this->coinsGivenAsChange($stock));
+
+        return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change)));
+    }
+
     public function restock(CoinCollection $stock): self
     {
         return new self($this->credit, $stock);
@@ -41,5 +56,12 @@ final readonly class Wallet
     public function stock(): CoinCollection
     {
         return $this->stock;
+    }
+
+    private function coinsGivenAsChange(CoinCollection $coins): CoinCollection
+    {
+        $ones = array_fill(0, $coins->countOf(Coin::OneHundredCents), Coin::OneHundredCents);
+
+        return $coins->subtract(CoinCollection::of(...$ones));
     }
 }
