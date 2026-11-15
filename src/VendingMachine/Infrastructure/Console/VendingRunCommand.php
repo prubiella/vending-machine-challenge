@@ -38,15 +38,19 @@ final readonly class VendingRunCommand
     ) {
     }
 
+    /**
+     * @param list<string> $sequence
+     */
     public function __invoke(
         SymfonyStyle $io,
         #[Argument('Actions separated by commas, such as "1, 0.25, 0.25, GET-SODA"')]
-        ?string $sequence = null,
+        array $sequence = [],
     ): int {
-        if (null === $sequence) {
+        if ([] === $sequence) {
             $this->runSession($io);
         } else {
-            $this->runSequence($sequence, $io);
+            // make run splits a quoted sequence into words, so they are joined back before splitting at the commas.
+            $this->runSequence(implode(' ', $sequence), $io);
         }
 
         return Command::SUCCESS;
