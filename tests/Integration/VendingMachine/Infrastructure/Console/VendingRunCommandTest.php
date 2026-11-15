@@ -191,11 +191,15 @@ final class VendingRunCommandTest extends KernelTestCase
     }
 
     /**
+     * The tray lines are selectors and coins separated by commas, alone on their line: the product
+     * table, the help line and the prompts all have other words or spacing, so they never match.
+     *
      * @return list<string>
      */
     private static function trayLines(string $display): array
     {
-        preg_match_all('/^(?:[A-Z_0-9]+|\d+(?:\.\d+)?)(?:, (?:[A-Z_0-9]+|\d+(?:\.\d+)?))*$/m', $display, $matches);
+        $selectorOrCoin = '(?:[A-Z_0-9]+|\d+(?:\.\d+)?)';
+        preg_match_all(\sprintf('/^%1$s(?:, %1$s)*$/m', $selectorOrCoin), $display, $matches);
 
         return $matches[0];
     }
