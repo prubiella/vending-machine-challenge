@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
+use App\Shared\Application\Bus\QueryBus;
+use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
+use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -107,6 +110,23 @@ final class VendingRunCommandTest extends KernelTestCase
 
         self::assertSame("The machine does not accept a coin of 0.50: it takes 0.05, 0.10, 0.25 and 1.\n", $tester->getErrorOutput(true));
         self::assertSame(['0.25'], self::trayLines($tester->getDisplay(true)));
+    }
+
+    public function testServiceAsksTheUnitsOfEachProductAndTheCountOfEachCoin(): void
+    {
+        $tester = self::tester();
+        $units = ['-1', '0', '2', ''];
+        $coins = ['4', '5', '6', '7'];
+        $tester->setInputs(['1', 'SERVICE', ...$units, ...$coins, 'GET-WATER', 'QUIT']);
+
+        $tester->execute([], ['capture_stderr_separately' => true]);
+
+        $status = self::getContainer()->get(QueryBus::class)->query(new GetMachineStatusQuery());
+        self::assertInstanceOf(MachineStatusResponse::class, $status);
+        self::assertSame(['WATER' => 0, 'JUICE' => 2, 'SODA' => 10], $status->unitsBySelector);
+        self::assertSame([5 => 4, 10 => 5, 25 => 6, 100 => 7], $status->coinStockByCents);
+        self::assertSame(['1'], self::trayLines($tester->getDisplay(true)));
+        self::assertSame("The product of selector WATER is sold out.\n", $tester->getErrorOutput(true));
     }
 
     public function testTheSessionEndsWithTheInput(): void

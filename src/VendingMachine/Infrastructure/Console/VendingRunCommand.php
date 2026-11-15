@@ -8,9 +8,12 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
+use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
+use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
+use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use Symfony\Component\Console\Attribute\Argument;
@@ -26,6 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final readonly class VendingRunCommand
 {
     private const string QUIT = 'QUIT';
+    private const string SERVICE = 'SERVICE';
 
     public function __construct(
         private CommandBus $commandBus,
@@ -59,14 +63,78 @@ final readonly class VendingRunCommand
     private function runSession(SymfonyStyle $io): void
     {
         $this->showProducts($io);
-        $io->writeln('Insert 0.05, 0.10, 0.25 or 1, choose GET-<SELECTOR> or RETURN-COIN, one per line. QUIT leaves.');
+        $io->writeln('Insert 0.05, 0.10, 0.25 or 1, choose GET-<SELECTOR>, RETURN-COIN or SERVICE, one per line. QUIT leaves.');
 
         while (null !== $action = $this->nextAction($io)) {
             if ('' !== $action) {
-                $this->perform($action, $io);
+                $this->act($action, $io);
                 $this->deliverTray($io);
             }
         }
+    }
+
+    private function act(string $action, SymfonyStyle $io): void
+    {
+        if (self::SERVICE === $action) {
+            $this->service($io);
+
+            return;
+        }
+
+        $this->perform($action, $io);
+    }
+
+    private function service(SymfonyStyle $io): void
+    {
+        $status = $this->machineStatus();
+
+        $this->commandBus->dispatch(new ServiceMachineCommand(
+            self::askUnitsBySelector($io, $status),
+            self::askCoinCountsByCents($io, $status),
+        ));
+    }
+
+    /**
+     * @return array<int|string, int>
+     */
+    private static function askUnitsBySelector(SymfonyStyle $io, MachineStatusResponse $status): array
+    {
+        $units = [];
+        foreach ($status->unitsBySelector as $selector => $current) {
+            $units[$selector] = self::askCount($io, \sprintf('Units of %s', $selector), $current);
+        }
+
+        return $units;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function askCoinCountsByCents(SymfonyStyle $io, MachineStatusResponse $status): array
+    {
+        $counts = [];
+        foreach ($status->coinStockByCents as $cents => $current) {
+            $counts[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coin($cents)), $current);
+        }
+
+        return $counts;
+    }
+
+    private static function askCount(SymfonyStyle $io, string $question, int $current): int
+    {
+        $count = $io->ask($question, (string) $current, self::validCount(...));
+        \assert(\is_int($count));
+
+        return $count;
+    }
+
+    private static function validCount(mixed $answer): int
+    {
+        if (!\is_string($answer) || !ctype_digit($answer)) {
+            throw new \InvalidArgumentException('Enter a whole number, zero or more.');
+        }
+
+        return (int) $answer;
     }
 
     private function showProducts(SymfonyStyle $io): void
@@ -123,6 +191,14 @@ final readonly class VendingRunCommand
         \assert($machine instanceof MachineResponse);
 
         return $machine;
+    }
+
+    private function machineStatus(): MachineStatusResponse
+    {
+        $status = $this->queryBus->query(new GetMachineStatusQuery());
+        \assert($status instanceof MachineStatusResponse);
+
+        return $status;
     }
 
     private function trayContents(): TrayContentsResponse
