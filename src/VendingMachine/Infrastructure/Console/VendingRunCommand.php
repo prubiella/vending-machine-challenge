@@ -77,6 +77,10 @@ final readonly class VendingRunCommand
         $io->writeln(TokenParser::sessionUsage());
 
         while (null !== $action = $this->nextAction($input, $io)) {
+            if (TokenParser::QUIT === $action) {
+                return;
+            }
+
             $this->dispatchSessionAction($action, $input, $io);
             $this->printAndCollectTray($io);
         }
@@ -168,22 +172,29 @@ final readonly class VendingRunCommand
         $io->createTable()->setStyle('compact')->setRows($rows)->render();
     }
 
+    // Null once the input has ended, by Ctrl+D or in the middle of SERVICE, which ends the session.
     private function nextAction(InputInterface $input, SymfonyStyle $io): ?string
     {
-        while ($input->isInteractive()) {
-            try {
-                $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::twoDecimals($this->machine()->creditCents)));
-            } catch (MissingInputException) {
-                return null;
-            }
+        do {
+            $action = $this->askAction($input, $io);
+        } while ('' === $action);
 
-            $action = \is_string($answer) ? trim($answer) : '';
-            if ('' !== $action) {
-                return TokenParser::QUIT === $action ? null : $action;
-            }
+        return $action;
+    }
+
+    private function askAction(InputInterface $input, SymfonyStyle $io): ?string
+    {
+        if (!$input->isInteractive()) {
+            return null;
         }
 
-        return null;
+        try {
+            $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::twoDecimals($this->machine()->creditCents)));
+        } catch (MissingInputException) {
+            return null;
+        }
+
+        return \is_string($answer) ? trim($answer) : '';
     }
 
     private function dispatchToken(string $token, SymfonyStyle $io): void
