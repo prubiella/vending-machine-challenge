@@ -58,8 +58,11 @@ final class VendingMachine
      */
     public function service(array $unitsBySelector, CoinCollection $coins): void
     {
-        $this->inventory = $this->restocked($unitsBySelector);
-        $this->wallet = $this->wallet->restock($coins);
+        $inventory = $this->restocked($unitsBySelector);
+        $refund = $this->wallet->returnCredit();
+        $tray = $this->tray->addCoins($refund->coins());
+
+        $this->replaceParts($inventory, $refund->wallet()->restock($coins), $tray);
     }
 
     public function inventory(): Inventory
