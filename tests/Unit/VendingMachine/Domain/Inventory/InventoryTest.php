@@ -38,6 +38,27 @@ final class InventoryTest extends TestCase
         $inventory->slotFor(Selector::fromString('JUICE'));
     }
 
+    public function testListsItsSlotsInTheOrderTheyWereGiven(): void
+    {
+        $soda = Slot::of(self::product('SODA', 150), 2);
+        $water = Slot::of(self::product('WATER', 65), 5);
+
+        $inventory = Inventory::of($soda, $water);
+
+        self::assertSame([$soda, $water], $inventory->slots());
+    }
+
+    public function testKeepsTheOrderOfItsSlotsWhenOneIsRestocked(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('SODA', 150), 2), Slot::of(self::product('WATER', 65), 5));
+
+        $restocked = $inventory->restock(Selector::fromString('SODA'), 7);
+
+        $selectors = array_map(static fn (Slot $slot): string => $slot->product()->selector()->value(), $restocked->slots());
+        self::assertSame(['SODA', 'WATER'], $selectors);
+        self::assertSame(7, $restocked->slots()[0]->units());
+    }
+
     public function testRejectsTwoSlotsWithTheSameSelector(): void
     {
         $this->expectException(DuplicateSelectorException::class);
