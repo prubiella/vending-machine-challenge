@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Domain\Coin;
 
 use App\VendingMachine\Domain\Coin\Coin;
+use App\VendingMachine\Domain\Coin\UnknownCoinException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -27,6 +28,12 @@ final class CoinTest extends TestCase
         self::assertSame($cents, $coin->amount()->cents());
     }
 
+    #[DataProvider('amounts')]
+    public function testIsFoundByItsAmountInCents(Coin $coin, int $cents): void
+    {
+        self::assertSame($coin, Coin::fromCents($cents));
+    }
+
     /**
      * @return iterable<string, array{int}>
      */
@@ -42,6 +49,9 @@ final class CoinTest extends TestCase
     #[DataProvider('rejectedAmounts')]
     public function testIsNotAnyOtherAmount(int $cents): void
     {
-        self::assertNull(Coin::tryFrom($cents));
+        $this->expectException(UnknownCoinException::class);
+        $this->expectExceptionMessageIs(\sprintf('There is no coin of %d cents.', $cents));
+
+        Coin::fromCents($cents);
     }
 }
