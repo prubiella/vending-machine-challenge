@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Domain;
 
 use App\Shared\Domain\Money\Money;
+use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
@@ -38,6 +39,21 @@ final class VendingMachineTest extends TestCase
 
         self::assertTrue($machine->wallet()->credit()->equals(CoinCollection::of(Coin::OneHundredCents, Coin::TwentyFiveCents)));
         self::assertTrue($machine->wallet()->stock()->isEmpty());
+    }
+
+    public function testPayingTheExactPriceOfASodaGivesASoda(): void
+    {
+        $machine = self::serviced();
+
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->insertCoin(Coin::TwentyFiveCents);
+        $machine->insertCoin(Coin::TwentyFiveCents);
+        $machine->select(Selector::fromString('SODA'), self::changeMaker());
+
+        self::assertSame(['Soda'], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->isEmpty());
+        self::assertSame(4, self::unitsOf($machine, 'SODA'));
+        self::assertTrue($machine->wallet()->credit()->isEmpty());
     }
 
     public function testServiceSetsTheUnitsOfEachSelectorAndTheCoinStock(): void
@@ -120,9 +136,17 @@ final class VendingMachineTest extends TestCase
             'units' => [self::unitsOf($machine, 'WATER'), self::unitsOf($machine, 'JUICE'), self::unitsOf($machine, 'SODA')],
             'credit' => self::countsOf($machine->wallet()->credit()),
             'stock' => self::countsOf($machine->wallet()->stock()),
-            'trayProducts' => array_map(static fn (Product $product): string => $product->name()->value(), $machine->tray()->products()),
+            'trayProducts' => self::productsInTray($machine),
             'trayCoins' => self::countsOf($machine->tray()->coins()),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function productsInTray(VendingMachine $machine): array
+    {
+        return array_map(static fn (Product $product): string => $product->name()->value(), $machine->tray()->products());
     }
 
     /**
@@ -131,6 +155,11 @@ final class VendingMachineTest extends TestCase
     private static function countsOf(CoinCollection $coins): array
     {
         return array_map(static fn (Coin $coin): int => $coins->countOf($coin), Coin::cases());
+    }
+
+    private static function changeMaker(): FewestCoinsChangeMaker
+    {
+        return new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
     }
 
     private static function product(string $selector, string $name, int $priceInCents): Product

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Domain;
 
+use App\VendingMachine\Domain\Change\ChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -32,6 +33,15 @@ final class VendingMachine
     public function insertCoin(Coin $coin): void
     {
         $this->wallet = $this->wallet->insert($coin);
+    }
+
+    public function select(Selector $selector, ChangeMaker $changeMaker): void
+    {
+        $product = $this->inventory->slotFor($selector)->product();
+
+        $this->inventory = $this->inventory->dispense($selector);
+        $this->wallet = $this->wallet->charge($product->price(), $changeMaker)->wallet();
+        $this->tray = $this->tray->addProduct($product);
     }
 
     /**
