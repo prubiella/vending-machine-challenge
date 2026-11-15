@@ -33,6 +33,19 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
         self::assertSame([['WATER', 'Water', 65, 3], ['SODA', 'Soda', 150, 0]], $slots);
     }
 
+    public function testRefusesADefaultProductWithoutUnits(): void
+    {
+        $repository = new InMemoryVendingMachineRepository(
+            [['selector' => 'CHIPS', 'name' => 'Chips', 'price_cents' => 120]],
+            [],
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The default product "CHIPS" has no units.');
+
+        $repository->get();
+    }
+
     public function testStocksTheConfiguredCoinsWithNoCreditAndAnEmptyTray(): void
     {
         $machine = self::repository()->get();

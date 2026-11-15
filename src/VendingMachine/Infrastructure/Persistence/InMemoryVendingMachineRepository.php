@@ -17,8 +17,8 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
     private ?VendingMachine $machine = null;
 
     /**
-     * @param list<array{selector: string, name: string, price_cents: int, units: int}> $products
-     * @param array<int, int>                                                           $coinStockByCents
+     * @param list<array{selector: string, name: string, price_cents: int, units?: int}> $products
+     * @param array<int, int>                                                            $coinStockByCents
      */
     public function __construct(
         private readonly array $products,
@@ -68,6 +68,12 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
      */
     private function defaultUnitsBySelector(): array
     {
-        return array_column($this->products, 'units', 'selector');
+        $unitsBySelector = [];
+        foreach ($this->products as $product) {
+            $unitsBySelector[$product['selector']] = $product['units']
+                ?? throw new \InvalidArgumentException(\sprintf('The default product "%s" has no units.', $product['selector']));
+        }
+
+        return $unitsBySelector;
     }
 }
