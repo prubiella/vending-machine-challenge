@@ -94,6 +94,12 @@ exits with 1, the only case besides an unexpected error where it does not exit w
 
 The machine lives in memory: each run starts from the default machine in `config/services.yaml`
 (the statement's products, ten units of each and ten coins of 0.05, 0.10 and 0.25 for change).
+Credit left at the end of a sequence stays in the machine until `RETURN-COIN` gives it back, as on
+a real one; since the machine is not persisted yet, that credit is lost when the process ends.
+
+Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
+stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
+as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
 ## What the setup changes on your machine
 
