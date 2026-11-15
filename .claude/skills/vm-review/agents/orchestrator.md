@@ -90,6 +90,7 @@ are no untracked files either.
 | `project-rules` | sonnet | always |
 | `tests` | sonnet | a changed path is under `src/` or `tests/` |
 | `design` | sonnet | a changed path is under `src/` |
+| `readability` | sonnet | a changed path is under `src/` or `tests/` |
 | `docs` | sonnet | a changed path ends in `.md`, the target is a pull request with a body, or the diff adds comments |
 
 Correctness and silent failures get the stronger model where those findings cost the most when
