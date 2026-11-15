@@ -20,6 +20,7 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\MissingInputException;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
@@ -42,16 +43,25 @@ final readonly class VendingRunCommand
      * @param list<string> $sequence
      */
     public function __invoke(
+        InputInterface $input,
         SymfonyStyle $io,
         #[Argument('Actions separated by commas, such as "1, 0.25, 0.25, GET-SODA"')]
         array $sequence = [],
     ): int {
-        if ([] === $sequence) {
-            $this->runSession($io);
-        } else {
+        if ([] !== $sequence) {
             // make run splits a quoted sequence into words, so they are joined back before splitting at the commas.
             $this->runSequence(implode(' ', $sequence), $io);
+
+            return Command::SUCCESS;
         }
+
+        if (!$input->isInteractive()) {
+            $io->getErrorStyle()->writeln('Give a sequence of actions, such as "1, GET-WATER": the interactive session needs input, which -n and -q turn off.');
+
+            return Command::FAILURE;
+        }
+
+        $this->runSession($io);
 
         return Command::SUCCESS;
     }

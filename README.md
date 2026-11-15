@@ -86,7 +86,9 @@ on.
 Without a sequence, `make run -- vending:run` opens an interactive session: it lists the products,
 takes one action per line, prints what drops into the tray after each one and shows the credit
 in the prompt. `SERVICE` asks the units of each product and the count of each coin (Enter keeps
-the current value) and services the machine. `QUIT` or Ctrl+D ends the session.
+the current value) and services the machine. `QUIT` or Ctrl+D ends the session. The session
+needs interactive input: with `-n` or `-q` and no sequence the command reports it and exits with
+1, the only case besides an unexpected error where it does not exit with 0.
 
 The machine lives in memory: each run starts from the default machine in `config/services.yaml`
 (the statement's products, ten units of each and ten coins of 0.05, 0.10 and 0.25 for change).

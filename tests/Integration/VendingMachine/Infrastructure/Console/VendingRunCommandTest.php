@@ -146,6 +146,17 @@ final class VendingRunCommandTest extends KernelTestCase
         self::assertSame(Command::SUCCESS, $tester->execute([]));
     }
 
+    public function testWithoutASequenceOrInteractiveInputItReportsTheMisuseAndFails(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute([], ['interactive' => false, 'capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame('', $tester->getDisplay(true));
+        self::assertSame("Give a sequence of actions, such as \"1, GET-WATER\": the interactive session needs input, which -n and -q turn off.\n", $tester->getErrorOutput(true));
+    }
+
     /**
      * @return list<string>
      */
