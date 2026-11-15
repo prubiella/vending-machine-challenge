@@ -8,16 +8,25 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
+use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
+use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
+use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Exception\MissingInputException;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'vending:run', description: 'Run a sequence of actions on the vending machine and print what drops into the tray')]
+#[AsCommand(
+    name: 'vending:run',
+    description: 'Run a sequence of actions on the vending machine and print what drops into the tray, or an interactive session without one',
+)]
 final readonly class VendingRunCommand
 {
+    private const string QUIT = 'QUIT';
+
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
@@ -28,14 +37,64 @@ final readonly class VendingRunCommand
     public function __invoke(
         SymfonyStyle $io,
         #[Argument('Actions separated by commas, such as "1, 0.25, 0.25, GET-SODA"')]
-        string $sequence,
+        ?string $sequence = null,
     ): int {
+        if (null === $sequence) {
+            $this->runSession($io);
+        } else {
+            $this->runSequence($sequence, $io);
+        }
+
+        return Command::SUCCESS;
+    }
+
+    private function runSequence(string $sequence, SymfonyStyle $io): void
+    {
         foreach (explode(',', $sequence) as $token) {
             $this->perform(trim($token), $io);
         }
         $this->deliverTray($io);
+    }
 
-        return Command::SUCCESS;
+    private function runSession(SymfonyStyle $io): void
+    {
+        $this->showProducts($io);
+        $io->writeln('Insert 0.05, 0.10, 0.25 or 1, choose GET-<SELECTOR> or RETURN-COIN, one per line. QUIT leaves.');
+
+        while (null !== $action = $this->nextAction($io)) {
+            if ('' !== $action) {
+                $this->perform($action, $io);
+                $this->deliverTray($io);
+            }
+        }
+    }
+
+    private function showProducts(SymfonyStyle $io): void
+    {
+        $rows = array_map(
+            static fn (ProductResponse $product): array => [
+                $product->selector,
+                $product->name,
+                MoneyNotation::amount($product->priceCents),
+                $product->available ? '' : 'sold out',
+            ],
+            $this->machine()->products,
+        );
+
+        $io->createTable()->setStyle('compact')->setRows($rows)->render();
+    }
+
+    private function nextAction(SymfonyStyle $io): ?string
+    {
+        try {
+            $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::amount($this->machine()->creditCents)));
+        } catch (MissingInputException) {
+            return null;
+        }
+
+        $action = \is_string($answer) ? trim($answer) : '';
+
+        return self::QUIT === $action ? null : $action;
     }
 
     private function perform(string $token, SymfonyStyle $io): void
@@ -56,6 +115,14 @@ final readonly class VendingRunCommand
         }
 
         $this->commandBus->dispatch(new CollectTrayCommand());
+    }
+
+    private function machine(): MachineResponse
+    {
+        $machine = $this->queryBus->query(new GetMachineQuery());
+        \assert($machine instanceof MachineResponse);
+
+        return $machine;
     }
 
     private function trayContents(): TrayContentsResponse

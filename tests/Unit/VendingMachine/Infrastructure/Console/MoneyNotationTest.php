@@ -26,4 +26,22 @@ final class MoneyNotationTest extends TestCase
     {
         self::assertSame($notation, MoneyNotation::coin($cents));
     }
+
+    /**
+     * @return iterable<string, array{int, string}>
+     */
+    public static function amounts(): iterable
+    {
+        yield 'nothing' => [0, '0.00'];
+        yield 'cents only' => [65, '0.65'];
+        yield 'a whole unit' => [100, '1.00'];
+        yield 'units and cents' => [150, '1.50'];
+        yield 'several units' => [1205, '12.05'];
+    }
+
+    #[DataProvider('amounts')]
+    public function testWritesAnAmountWithTwoDecimals(int $cents, string $notation): void
+    {
+        self::assertSame($notation, MoneyNotation::amount($cents));
+    }
 }

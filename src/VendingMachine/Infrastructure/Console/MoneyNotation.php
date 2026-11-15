@@ -12,6 +12,11 @@ final class MoneyNotation
             return (string) intdiv($cents, 100);
         }
 
+        return self::amount($cents);
+    }
+
+    public static function amount(int $cents): string
+    {
         return \sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);
     }
 }
