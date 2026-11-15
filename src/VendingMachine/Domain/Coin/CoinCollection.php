@@ -53,6 +53,35 @@ final readonly class CoinCollection
         return new self($countsByCents);
     }
 
+    public function merge(self $other): self
+    {
+        $countsByCents = $this->countsByCents;
+        foreach ($other->countsByCents as $coinCents => $count) {
+            $countsByCents[$coinCents] = ($countsByCents[$coinCents] ?? 0) + $count;
+        }
+        ksort($countsByCents);
+
+        return new self($countsByCents);
+    }
+
+    public function subtract(self $other): self
+    {
+        $countsByCents = $this->countsByCents;
+        foreach ($other->countsByCents as $coinCents => $count) {
+            $remaining = ($countsByCents[$coinCents] ?? 0) - $count;
+            if ($remaining < 0) {
+                throw CoinNotInCollectionException::forCoin(Coin::from($coinCents));
+            }
+            if (0 === $remaining) {
+                unset($countsByCents[$coinCents]);
+            } else {
+                $countsByCents[$coinCents] = $remaining;
+            }
+        }
+
+        return new self($countsByCents);
+    }
+
     public function countOf(Coin $coin): int
     {
         return $this->countsByCents[$coin->value] ?? 0;

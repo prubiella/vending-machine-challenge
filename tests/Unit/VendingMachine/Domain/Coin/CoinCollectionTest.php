@@ -86,6 +86,50 @@ final class CoinCollectionTest extends TestCase
         CoinCollection::of(Coin::TenCents)->remove(Coin::TwentyFiveCents);
     }
 
+    public function testMergingJoinsTheCoinsOfBothCollections(): void
+    {
+        $coins = CoinCollection::of(Coin::FiveCents, Coin::TenCents);
+        $other = CoinCollection::of(Coin::FiveCents, Coin::OneHundredCents);
+
+        $merged = $coins->merge($other);
+
+        self::assertTrue($merged->equals(CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::OneHundredCents)));
+        self::assertSame(15, $coins->total()->cents());
+        self::assertSame(105, $other->total()->cents());
+    }
+
+    public function testSubtractingTakesTheCoinsOfTheOtherCollectionOut(): void
+    {
+        $coins = CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::OneHundredCents);
+        $other = CoinCollection::of(Coin::FiveCents, Coin::OneHundredCents);
+
+        $remaining = $coins->subtract($other);
+
+        self::assertTrue($remaining->equals(CoinCollection::of(Coin::FiveCents, Coin::TenCents)));
+        self::assertSame(120, $coins->total()->cents());
+    }
+
+    public function testSubtractingEveryCoinLeavesAnEmptyCollection(): void
+    {
+        $coins = CoinCollection::of(Coin::FiveCents, Coin::TenCents);
+
+        self::assertTrue($coins->subtract($coins)->isEmpty());
+    }
+
+    public function testRejectsSubtractingMoreCoinsThanItHolds(): void
+    {
+        $this->expectException(CoinNotInCollectionException::class);
+
+        CoinCollection::of(Coin::FiveCents)->subtract(CoinCollection::of(Coin::FiveCents, Coin::FiveCents));
+    }
+
+    public function testRejectsSubtractingACoinItDoesNotHold(): void
+    {
+        $this->expectException(CoinNotInCollectionException::class);
+
+        CoinCollection::of(Coin::FiveCents)->subtract(CoinCollection::of(Coin::TenCents));
+    }
+
     public function testCollectionsWithTheSameCoinsInAnyOrderAreEqual(): void
     {
         $coins = CoinCollection::of(Coin::FiveCents, Coin::OneHundredCents, Coin::FiveCents);
