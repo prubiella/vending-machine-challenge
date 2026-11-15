@@ -38,7 +38,7 @@ final readonly class Wallet
         }
 
         $stock = $this->stock->merge($this->credit);
-        $change = $changeMaker->makeChange($credit->subtract($price), $this->coinsGivenAsChange($stock));
+        $change = $changeMaker->makeChange($credit->subtract($price), $stock);
 
         return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change)));
     }
@@ -56,12 +56,5 @@ final readonly class Wallet
     public function stock(): CoinCollection
     {
         return $this->stock;
-    }
-
-    private function coinsGivenAsChange(CoinCollection $coins): CoinCollection
-    {
-        $ones = array_fill(0, $coins->countOf(Coin::OneHundredCents), Coin::OneHundredCents);
-
-        return $coins->subtract(CoinCollection::of(...$ones));
     }
 }

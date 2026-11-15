@@ -42,7 +42,7 @@ final class WalletTest extends TestCase
     {
         $wallet = Wallet::stocked(CoinCollection::of(Coin::FiveCents))->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents);
 
-        $payout = $wallet->charge(Money::fromCents(50), new FewestCoinsChangeMaker());
+        $payout = $wallet->charge(Money::fromCents(50), self::changeMaker());
 
         self::assertTrue($payout->coins()->isEmpty());
         self::assertTrue($payout->wallet()->credit()->isEmpty());
@@ -53,7 +53,7 @@ final class WalletTest extends TestCase
     {
         $wallet = Wallet::stocked(CoinCollection::of(Coin::TenCents, Coin::TenCents, Coin::FiveCents))->insert(Coin::TwentyFiveCents);
 
-        $payout = $wallet->charge(Money::fromCents(5), new FewestCoinsChangeMaker());
+        $payout = $wallet->charge(Money::fromCents(5), self::changeMaker());
 
         self::assertTrue($payout->coins()->equals(CoinCollection::of(Coin::TenCents, Coin::TenCents)));
         self::assertTrue($payout->wallet()->credit()->isEmpty());
@@ -64,7 +64,7 @@ final class WalletTest extends TestCase
     {
         $wallet = Wallet::stocked(CoinCollection::empty())->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents);
 
-        $payout = $wallet->charge(Money::fromCents(50), new FewestCoinsChangeMaker());
+        $payout = $wallet->charge(Money::fromCents(50), self::changeMaker());
 
         self::assertTrue($payout->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents)));
         self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents)));
@@ -74,19 +74,10 @@ final class WalletTest extends TestCase
     {
         $wallet = Wallet::stocked(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents))->insert(Coin::OneHundredCents);
 
-        $payout = $wallet->charge(Money::fromCents(65), new FewestCoinsChangeMaker());
+        $payout = $wallet->charge(Money::fromCents(65), self::changeMaker());
 
         self::assertTrue($payout->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
         self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::OneHundredCents)));
-    }
-
-    public function testNeverGivesAOneAsChangeEvenWhenTheStockHoldsOnes(): void
-    {
-        $wallet = Wallet::stocked(CoinCollection::of(Coin::OneHundredCents))->insert(Coin::OneHundredCents)->insert(Coin::OneHundredCents);
-
-        $this->expectException(NoExactChangeException::class);
-
-        $wallet->charge(Money::fromCents(100), new FewestCoinsChangeMaker());
     }
 
     /**
@@ -101,7 +92,7 @@ final class WalletTest extends TestCase
             $wallet = $wallet->insert($coin);
         }
 
-        $payout = $wallet->charge(Money::fromCents($priceInCents), new FewestCoinsChangeMaker());
+        $payout = $wallet->charge(Money::fromCents($priceInCents), self::changeMaker());
 
         $coinsBefore = $wallet->stock()->merge($wallet->credit());
         $coinsAfter = $payout->wallet()->stock()->merge($payout->coins());
@@ -129,7 +120,7 @@ final class WalletTest extends TestCase
 
         $this->expectException(InsufficientCreditException::class);
 
-        $wallet->charge(Money::fromCents(65), new FewestCoinsChangeMaker());
+        $wallet->charge(Money::fromCents(65), self::changeMaker());
     }
 
     public function testKeepsTheCreditWhenThereIsNoExactChange(): void
@@ -137,7 +128,7 @@ final class WalletTest extends TestCase
         $wallet = Wallet::stocked(CoinCollection::empty())->insert(Coin::TwentyFiveCents);
 
         try {
-            $wallet->charge(Money::fromCents(20), new FewestCoinsChangeMaker());
+            $wallet->charge(Money::fromCents(20), self::changeMaker());
             self::fail('Expected NoExactChangeException.');
         } catch (NoExactChangeException) {
             self::assertTrue($wallet->credit()->equals(CoinCollection::of(Coin::TwentyFiveCents)));
@@ -168,5 +159,10 @@ final class WalletTest extends TestCase
         self::assertTrue($payout->wallet()->credit()->isEmpty());
         self::assertTrue($payout->wallet()->stock()->equals($stock));
         self::assertSame(120, $wallet->credit()->total()->cents());
+    }
+
+    private static function changeMaker(): FewestCoinsChangeMaker
+    {
+        return new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
     }
 }
