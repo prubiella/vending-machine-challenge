@@ -18,6 +18,7 @@ services:
             - '%kernel.project_dir%/src/*/Domain/'
             - '%kernel.project_dir%/src/*/Application/Command/*/*Command.php'
             - '%kernel.project_dir%/src/*/Application/Query/*/*Query.php'
+            - '%kernel.project_dir%/src/*/Application/Query/*/*Response.php'
 
     command_handlers:
         namespace: App\
