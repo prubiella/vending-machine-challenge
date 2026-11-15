@@ -60,7 +60,7 @@ its real result.
 
 ## Output
 
-Exactly these three sections, nothing before or after, because the orchestrator parses them:
+Exactly these four sections, nothing before or after, because the orchestrator parses them:
 
 ```
 ## Findings
@@ -76,6 +76,9 @@ Exactly these three sections, nothing before or after, because the orchestrator 
 ## Declined
 - <behaviour you considered and set aside>: <why (outside the lens, outside the change, not a defect)>
 
+## Decisions
+- <a choice the change makes>: <the alternative, and why the author may want to confirm it was meant>
+
 ## Checks
 - <check>: <passed | failed: short output | not run: reason>
 ```
@@ -83,6 +86,11 @@ Exactly these three sections, nothing before or after, because the orchestrator 
 - **Critical** breaks security, data, the build or the git hooks for everyone. **Important** is a
   bug, a silent failure or a broken `AGENTS.md` rule. **Minor** is style or clarity.
 - Only findings with confidence 80 or more. `- None` under an empty section.
+- A **decision** is a choice among reasonable options that you do not judge wrong but that the
+  author may have made without noticing: a name, where a rule lives, replacing where adding was
+  possible, an error left unmapped. It has no failure scenario, so it is not a finding, and it is
+  not a declined behaviour either, which you checked and found fine. Name the real alternative;
+  a style preference is not one. At most three, the ones that would cost most to change later.
 - Under 600 words, in English, without em or en dashes.
 - Never write the name of the company that set the challenge, not even in a check's command: what
   you write may be published on a public pull request.

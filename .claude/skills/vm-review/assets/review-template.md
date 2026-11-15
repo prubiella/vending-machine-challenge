@@ -12,6 +12,10 @@ Reviewed `<base>...<head>` (<n> files, +<added> -<deleted>) through the lenses: 
 |---|---|---|---|---|---|---|
 | 1 | Critical | CONFIRMED | silent-failures, correctness | `path:12` | <summary>. <failure scenario> | <fix> |
 
+## Decisions to confirm
+
+- <lens>: <choice the change makes>: <the alternative, and why it may be worth confirming>
+
 ## Declined
 
 - <lens>: <behaviour set aside>: <why>
