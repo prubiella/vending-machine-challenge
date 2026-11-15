@@ -37,3 +37,11 @@ services:
             $coinStock: '%vending_machine.default_coin_stock%'
 
     App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository'
+
+    App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
+        arguments:
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::FiveCents
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::TenCents
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::TwentyFiveCents
+
+    App\VendingMachine\Domain\Change\ChangeMaker: '@App\VendingMachine\Domain\Change\FewestCoinsChangeMaker'
