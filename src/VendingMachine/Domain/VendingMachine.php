@@ -9,6 +9,7 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Product;
+use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\Wallet\Wallet;
 
@@ -33,6 +34,15 @@ final class VendingMachine
         $this->wallet = $this->wallet->insert($coin);
     }
 
+    /**
+     * @param array<int|string, int> $unitsBySelector
+     */
+    public function service(array $unitsBySelector, CoinCollection $coins): void
+    {
+        $this->inventory = $this->restocked($unitsBySelector);
+        $this->wallet = $this->wallet->restock($coins);
+    }
+
     public function inventory(): Inventory
     {
         return $this->inventory;
@@ -46,5 +56,18 @@ final class VendingMachine
     public function tray(): Tray
     {
         return $this->tray;
+    }
+
+    /**
+     * @param array<int|string, int> $unitsBySelector
+     */
+    private function restocked(array $unitsBySelector): Inventory
+    {
+        $inventory = $this->inventory;
+        foreach ($unitsBySelector as $selector => $units) {
+            $inventory = $inventory->restock(Selector::fromString((string) $selector), $units);
+        }
+
+        return $inventory;
     }
 }

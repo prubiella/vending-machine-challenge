@@ -7,6 +7,7 @@ namespace App\Tests\Unit\VendingMachine\Domain;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -19,9 +20,9 @@ final class VendingMachineTest extends TestCase
     {
         $machine = self::installed();
 
-        self::assertSame(0, $machine->inventory()->slotFor(Selector::fromString('WATER'))->units());
-        self::assertSame(0, $machine->inventory()->slotFor(Selector::fromString('JUICE'))->units());
-        self::assertSame(0, $machine->inventory()->slotFor(Selector::fromString('SODA'))->units());
+        self::assertSame(0, self::unitsOf($machine, 'WATER'));
+        self::assertSame(0, self::unitsOf($machine, 'JUICE'));
+        self::assertSame(0, self::unitsOf($machine, 'SODA'));
         self::assertTrue($machine->wallet()->stock()->isEmpty());
         self::assertTrue($machine->wallet()->credit()->isEmpty());
         self::assertSame([], $machine->tray()->products());
@@ -39,6 +40,52 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->stock()->isEmpty());
     }
 
+    public function testServiceSetsTheUnitsOfEachSelectorAndTheCoinStock(): void
+    {
+        $machine = self::installed();
+
+        $machine->service(['WATER' => 3, 'SODA' => 1], CoinCollection::of(Coin::TenCents, Coin::FiveCents));
+
+        self::assertSame(3, self::unitsOf($machine, 'WATER'));
+        self::assertSame(0, self::unitsOf($machine, 'JUICE'));
+        self::assertSame(1, self::unitsOf($machine, 'SODA'));
+        self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::TenCents, Coin::FiveCents)));
+    }
+
+    public function testServiceAcceptsASelectorMadeOnlyOfDigits(): void
+    {
+        $machine = VendingMachine::install(self::product('42', 'Gum', 50));
+
+        $machine->service(['42' => 3], CoinCollection::empty());
+
+        self::assertSame(3, self::unitsOf($machine, '42'));
+    }
+
+    public function testServiceReplacesTheCountsRatherThanAddingToThem(): void
+    {
+        $machine = self::serviced();
+
+        $machine->service(['WATER' => 2, 'JUICE' => 0], CoinCollection::of(Coin::TwentyFiveCents));
+
+        self::assertSame(2, self::unitsOf($machine, 'WATER'));
+        self::assertSame(0, self::unitsOf($machine, 'JUICE'));
+        self::assertSame(5, self::unitsOf($machine, 'SODA'));
+        self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::TwentyFiveCents)));
+    }
+
+    public function testServiceWithAnUnknownSelectorChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $before = self::snapshot($machine);
+
+        try {
+            $machine->service(['WATER' => 1, 'COFFEE' => 4], CoinCollection::empty());
+            self::fail('Expected UnknownSelectorException.');
+        } catch (UnknownSelectorException) {
+            self::assertSame($before, self::snapshot($machine));
+        }
+    }
+
     private static function installed(): VendingMachine
     {
         return VendingMachine::install(
@@ -46,6 +93,44 @@ final class VendingMachineTest extends TestCase
             self::product('JUICE', 'Juice', 100),
             self::product('SODA', 'Soda', 150),
         );
+    }
+
+    private static function serviced(): VendingMachine
+    {
+        $machine = self::installed();
+        $machine->service(
+            ['WATER' => 5, 'JUICE' => 5, 'SODA' => 5],
+            CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::TenCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents),
+        );
+
+        return $machine;
+    }
+
+    private static function unitsOf(VendingMachine $machine, string $selector): int
+    {
+        return $machine->inventory()->slotFor(Selector::fromString($selector))->units();
+    }
+
+    /**
+     * @return array{units: list<int>, credit: list<int>, stock: list<int>, trayProducts: list<string>, trayCoins: list<int>}
+     */
+    private static function snapshot(VendingMachine $machine): array
+    {
+        return [
+            'units' => [self::unitsOf($machine, 'WATER'), self::unitsOf($machine, 'JUICE'), self::unitsOf($machine, 'SODA')],
+            'credit' => self::countsOf($machine->wallet()->credit()),
+            'stock' => self::countsOf($machine->wallet()->stock()),
+            'trayProducts' => array_map(static fn (Product $product): string => $product->name()->value(), $machine->tray()->products()),
+            'trayCoins' => self::countsOf($machine->tray()->coins()),
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function countsOf(CoinCollection $coins): array
+    {
+        return array_map(static fn (Coin $coin): int => $coins->countOf($coin), Coin::cases());
     }
 
     private static function product(string $selector, string $name, int $priceInCents): Product
