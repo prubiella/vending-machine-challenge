@@ -28,6 +28,11 @@ final readonly class Wallet
         return Payout::of($this->credit, new self(CoinCollection::empty(), $this->stock));
     }
 
+    public function restock(CoinCollection $stock): self
+    {
+        return new self($this->credit, $stock);
+    }
+
     public function credit(): CoinCollection
     {
         return $this->credit;

@@ -33,6 +33,18 @@ final class WalletTest extends TestCase
         self::assertTrue($wallet->credit()->isEmpty());
     }
 
+    public function testRestockingKeepsTheCredit(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::of(Coin::FiveCents))->insert(Coin::TenCents);
+        $newStock = CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents);
+
+        $restocked = $wallet->restock($newStock);
+
+        self::assertTrue($restocked->stock()->equals($newStock));
+        self::assertTrue($restocked->credit()->equals(CoinCollection::of(Coin::TenCents)));
+        self::assertTrue($wallet->stock()->equals(CoinCollection::of(Coin::FiveCents)));
+    }
+
     public function testReturningTheCreditGivesBackExactlyTheInsertedCoinsIncludingTheOne(): void
     {
         $stock = CoinCollection::of(Coin::FiveCents);
