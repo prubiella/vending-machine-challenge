@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\QueryBus;
+use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
+use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -166,10 +168,13 @@ final class VendingRunCommandTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertSame("The input ended before the service was complete: the machine was not serviced.\n", $tester->getErrorOutput(true));
-        $status = self::getContainer()->get(QueryBus::class)->query(new GetMachineStatusQuery());
+        $queryBus = self::getContainer()->get(QueryBus::class);
+        $status = $queryBus->query(new GetMachineStatusQuery());
         self::assertInstanceOf(MachineStatusResponse::class, $status);
         self::assertSame(['WATER' => 10, 'JUICE' => 10, 'SODA' => 10], $status->unitsBySelector);
-        self::assertSame(100, $status->machine->creditCents);
+        $machine = $queryBus->query(new GetMachineQuery());
+        self::assertInstanceOf(MachineResponse::class, $machine);
+        self::assertSame(100, $machine->creditCents);
     }
 
     public function testWithoutASequenceOrInteractiveInputItReportsTheMisuseAndFails(): void
