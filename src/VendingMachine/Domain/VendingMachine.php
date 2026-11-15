@@ -53,6 +53,11 @@ final class VendingMachine
         $this->tray = $this->tray->addCoins($refund->coins());
     }
 
+    public function collectTray(): void
+    {
+        $this->tray = Tray::empty();
+    }
+
     /**
      * @param array<int|string, int> $unitsBySelector
      */

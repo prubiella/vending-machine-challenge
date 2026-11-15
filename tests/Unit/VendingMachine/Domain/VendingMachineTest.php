@@ -88,6 +88,47 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->stock()->equals($stock));
     }
 
+    public function testTheTrayPilesUpSalesAndReturnsUntilCollected(): void
+    {
+        $machine = self::serviced();
+
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $machine->insertCoin(Coin::FiveCents);
+        $machine->returnCoins();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('JUICE'), self::changeMaker());
+
+        self::assertSame(['Water', 'Juice'], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents, Coin::FiveCents)));
+    }
+
+    public function testCollectingTheTrayEmptiesIt(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        $machine->collectTray();
+
+        self::assertSame([], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->isEmpty());
+    }
+
+    public function testWhatDropsInAfterCollectingStartsAFreshPile(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $machine->collectTray();
+
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+
+        self::assertSame([], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TenCents)));
+    }
+
     public function testAnUnknownSelectorKeepsTheCreditAndChangesNothing(): void
     {
         $machine = self::serviced();
