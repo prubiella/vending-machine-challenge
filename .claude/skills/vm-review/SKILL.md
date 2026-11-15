@@ -60,7 +60,9 @@ Otherwise:
 1. Relay the summary in the user's language, in at most 250 words: the verdict, the counts, the
    `FAILED` line unless it says `none` (a lens or check that failed means part of the change went
    unreviewed, which the user must not miss), the top findings (at most five, one line each with its `file:line`; name no others, the counts
-   already say how many there are) and the path of `review.md`.
+   already say how many there are), the decisions to confirm (at most three, one line each: they
+   are questions for the user, not findings, and they leave the verdict alone) and the path of
+   `review.md`.
    Add the cost as `Cost: $<total_cost_usd>`, rounded to cents. Keep the rest of the review out
    of this session unless the user asks for it, for the same reason as above; the path is how
    they get to it.

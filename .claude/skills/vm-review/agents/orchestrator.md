@@ -148,6 +148,8 @@ once, then listed under Checks as `lens <name>: failed (<reason>)`.
 Give each finding an id (`F1`, `F2`, ...). Findings that share a root cause are one finding, even
 when they come from different lenses or lines: keep the clearest wording, the highest severity and
 every lens tag. Several lenses agreeing is a signal worth showing in the report, not noise.
+Decisions merge the same way, one entry per choice with every lens tag; they get no id, no
+verifier and no severity, and they never change the verdict.
 
 Then check each finding's line against the length of its file at the head under review
 (`wc -l` on the working tree when `Local head matches: yes`, otherwise
@@ -192,7 +194,8 @@ make awkward folder names):
   APPROVED_WITH_FINDINGS when any other finding remains; APPROVED when none does.
   Sort findings by severity, then file. Every row, Minor ones too, gives the failure scenario
   after the summary: it is what tells the reader why the finding matters, and a summary alone can
-  read as a style remark. Merge every lens's Declined and Checks lists. Strengths: at most four,
+  read as a style remark. Merge every lens's Declined and Checks lists, and put the Decisions in their own section, since
+  they are questions for the developer and must not sit among the behaviour that was set aside. Strengths: at most four,
   only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
@@ -213,12 +216,15 @@ Only this, under 250 words, because it is all that lands in the user's session:
 ```
 VERDICT: <verdict>
 TARGET: <pull request <n> <url> | range <A...B> | branch <name>>
-COUNTS: Critical <n>, Important <n>, Minor <n>, dropped <n>
+COUNTS: Critical <n>, Important <n>, Minor <n>, dropped <n>, decisions <n>
 LENSES: <lenses run>
 FAILED: <each failed lens and each failed check no finding explains, or none>
 TOP:
 - <severity> <file:line>: <summary> (<lenses>)
 <at most five, most severe first>
+DECISIONS:
+- <choice>: <alternative> (<lenses>)
+<at most three, the costliest to change later first; `- none` when there are none>
 REVIEW: <absolute path of review.md>
 HANDOFF: <absolute path of handoff.md>
 ```

@@ -49,6 +49,7 @@ flowchart TD
 | Lens models | `opus` for correctness when `src/` changes and for silent failures when `config/` or an `Infrastructure/` folder under `src/` does (always with `--full`); `sonnet` at `effort: medium` for the rest | Those two find the bugs that cost most when missed, and mostly where that code lives |
 | Verifiers | At most five findings each, try to refute them | Reviewers still produce confident false positives |
 | Line check | Lines past the end of the file are flagged | Reviewers sometimes cite a position in the diff output |
+| Decisions | Kept apart from findings and from Declined, never verified, never change the verdict | A defensible choice the author may not have noticed is a question for them: as a finding it would block, as a Declined entry nobody would read it |
 | Handoff | Names only tools and paths that exist at the head | The fixer starts from the head, not from this working tree |
 
 ## Files
