@@ -146,6 +146,21 @@ final class VendingRunCommandTest extends KernelTestCase
         self::assertSame(Command::SUCCESS, $tester->execute([]));
     }
 
+    public function testTheInputEndingDuringServiceLeavesTheMachineUnservicedAndEndsTheSession(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['1', 'SERVICE', '3']);
+
+        $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("The input ended before the service was complete: the machine was not serviced.\n", $tester->getErrorOutput(true));
+        $status = self::getContainer()->get(QueryBus::class)->query(new GetMachineStatusQuery());
+        self::assertInstanceOf(MachineStatusResponse::class, $status);
+        self::assertSame(['WATER' => 10, 'JUICE' => 10, 'SODA' => 10], $status->unitsBySelector);
+        self::assertSame(100, $status->machine->creditCents);
+    }
+
     public function testWithoutASequenceOrInteractiveInputItReportsTheMisuseAndFails(): void
     {
         $tester = self::tester();

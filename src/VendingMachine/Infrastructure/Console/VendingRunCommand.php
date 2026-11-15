@@ -61,7 +61,7 @@ final readonly class VendingRunCommand
             return Command::FAILURE;
         }
 
-        $this->runSession($io);
+        $this->runSession($input, $io);
 
         return Command::SUCCESS;
     }
@@ -74,23 +74,23 @@ final readonly class VendingRunCommand
         $this->deliverTray($io);
     }
 
-    private function runSession(SymfonyStyle $io): void
+    private function runSession(InputInterface $input, SymfonyStyle $io): void
     {
         $this->showProducts($io);
         $io->writeln('Insert 0.05, 0.10, 0.25 or 1, choose GET-<SELECTOR>, RETURN-COIN or SERVICE, one per line. QUIT leaves.');
 
-        while (null !== $action = $this->nextAction($io)) {
+        while (null !== $action = $this->nextAction($input, $io)) {
             if ('' !== $action) {
-                $this->act($action, $io);
+                $this->act($action, $input, $io);
                 $this->deliverTray($io);
             }
         }
     }
 
-    private function act(string $action, SymfonyStyle $io): void
+    private function act(string $action, InputInterface $input, SymfonyStyle $io): void
     {
         if (self::SERVICE === $action) {
-            $this->service($io);
+            $this->service($input, $io);
 
             return;
         }
@@ -98,14 +98,21 @@ final readonly class VendingRunCommand
         $this->perform($action, $io);
     }
 
-    private function service(SymfonyStyle $io): void
+    private function service(InputInterface $input, SymfonyStyle $io): void
     {
         $status = $this->machineStatus();
+        $unitsBySelector = self::askUnitsBySelector($io, $status);
+        $coinStockByCents = self::askCoinCountsByCents($io, $status);
 
-        $this->commandBus->dispatch(new ServiceMachineCommand(
-            self::askUnitsBySelector($io, $status),
-            self::askCoinCountsByCents($io, $status),
-        ));
+        // When the input runs out, the question helper turns it non-interactive and answers every
+        // question left with its default, so those answers are not the technician's.
+        if (!$input->isInteractive()) {
+            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
+
+            return;
+        }
+
+        $this->commandBus->dispatch(new ServiceMachineCommand($unitsBySelector, $coinStockByCents));
     }
 
     /**
@@ -166,8 +173,12 @@ final readonly class VendingRunCommand
         $io->createTable()->setStyle('compact')->setRows($rows)->render();
     }
 
-    private function nextAction(SymfonyStyle $io): ?string
+    private function nextAction(InputInterface $input, SymfonyStyle $io): ?string
     {
+        if (!$input->isInteractive()) {
+            return null;
+        }
+
         try {
             $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::amount($this->machine()->creditCents)));
         } catch (MissingInputException) {
