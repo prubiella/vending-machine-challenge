@@ -51,10 +51,9 @@ Every context has the same three layers:
   `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on its
   own Domain, `Shared/Domain` and `Shared/Application`. Handlers are registered on their bus by
   name suffix in `config/services.yaml`, for every context at once
-  (`src/*/Application/Query/**/*QueryHandler.php`), so keep the suffixes and do not use
-  `#[AsMessageHandler]`. Only `query_handlers` exists so far; add the matching `command_handlers`
-  block (`src/*/Application/Command/**/*CommandHandler.php`, `bus: command.bus`) with the first
-  command.
+  (`src/*/Application/Command/**/*CommandHandler.php` on `command.bus`,
+  `src/*/Application/Query/**/*QueryHandler.php` on `query.bus`), so keep the suffixes and do not
+  use `#[AsMessageHandler]`.
 - `Infrastructure`: Symfony glue, controllers, console commands, persistence adapters. The only
   layer that may use the framework (Symfony, Doctrine, PSR). Depends on its own Domain and
   Application and on all of `Shared`.
@@ -90,7 +89,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 
 1. Domain: the rule lives in the aggregate or a value object, never in a handler.
 2. Application: the command or query and its handler, which only loads, calls the domain and saves.
-3. Infrastructure: the adapter (controller, console command, repository).
+3. Infrastructure: the adapter (controller, console command, repository). `config/services.yaml`
+   leaves `Domain` out of autowiring, so alias a domain port to its adapter there
+   (`VendingMachineRepository` to `InMemoryVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
    `#[MapRequestPayload]`. Map each domain exception to an HTTP status in `JsonExceptionListener`
