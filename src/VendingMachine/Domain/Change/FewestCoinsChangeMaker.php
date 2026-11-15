@@ -15,7 +15,7 @@ final readonly class FewestCoinsChangeMaker implements ChangeMaker
 
     public function __construct(Coin ...$given)
     {
-        $this->given = array_values($given);
+        $this->given = array_values(array_unique($given, \SORT_REGULAR));
     }
 
     public function makeChange(Money $amount, CoinCollection $available): CoinCollection

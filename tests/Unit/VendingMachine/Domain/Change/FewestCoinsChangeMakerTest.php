@@ -83,6 +83,13 @@ final class FewestCoinsChangeMakerTest extends TestCase
         self::assertTrue($change->equals(CoinCollection::of(Coin::OneHundredCents)));
     }
 
+    public function testCountsACoinOnceEvenWhenItIsConfiguredTwice(): void
+    {
+        $this->expectException(NoExactChangeException::class);
+
+        new FewestCoinsChangeMaker(Coin::TenCents, Coin::TenCents)->makeChange(Money::fromCents(20), CoinCollection::of(Coin::TenCents));
+    }
+
     public function testRejectsAnAmountThatOnlyCoinsItDoesNotGiveWouldAddUpTo(): void
     {
         $this->expectException(NoExactChangeException::class);
