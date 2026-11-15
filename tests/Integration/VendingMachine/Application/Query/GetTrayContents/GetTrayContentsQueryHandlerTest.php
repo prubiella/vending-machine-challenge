@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class GetTrayContentsQueryHandlerTest extends KernelTestCase
 {
-    public function testTheQueryBusRoutesTheQueryToItsHandler(): void
+    public function testTheBusAnswersWithWhatTheTrayHolds(): void
     {
         $container = self::getContainer();
         $commandBus = $container->get(CommandBus::class);

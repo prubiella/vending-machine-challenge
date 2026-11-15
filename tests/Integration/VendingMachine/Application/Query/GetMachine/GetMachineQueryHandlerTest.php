@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class GetMachineQueryHandlerTest extends KernelTestCase
 {
-    public function testTheQueryBusRoutesTheQueryToItsHandler(): void
+    public function testTheBusAnswersWithTheProductsAndTheCredit(): void
     {
         $container = self::getContainer();
         $container->get(CommandBus::class)->dispatch(new InsertCoinCommand(25));

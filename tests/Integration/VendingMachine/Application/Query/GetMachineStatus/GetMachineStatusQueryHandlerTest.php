@@ -13,7 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class GetMachineStatusQueryHandlerTest extends KernelTestCase
 {
-    public function testTheQueryBusRoutesTheQueryToItsHandler(): void
+    public function testTheBusAnswersWithTheUnitsAndTheCoinStock(): void
     {
         $container = self::getContainer();
         $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand(

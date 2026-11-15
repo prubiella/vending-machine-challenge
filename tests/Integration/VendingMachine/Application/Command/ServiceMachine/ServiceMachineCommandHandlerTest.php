@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class ServiceMachineCommandHandlerTest extends KernelTestCase
 {
-    public function testTheCommandBusRoutesTheCommandToItsHandler(): void
+    public function testServicingThroughTheBusRestocksTheProductsAndTheCoins(): void
     {
         $container = self::getContainer();
 

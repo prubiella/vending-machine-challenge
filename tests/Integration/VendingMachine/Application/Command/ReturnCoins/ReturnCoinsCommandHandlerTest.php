@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class ReturnCoinsCommandHandlerTest extends KernelTestCase
 {
-    public function testTheCommandBusRoutesTheCommandToItsHandler(): void
+    public function testReturningTheCoinsThroughTheBusDropsTheCreditInTheTray(): void
     {
         $container = self::getContainer();
         $commandBus = $container->get(CommandBus::class);

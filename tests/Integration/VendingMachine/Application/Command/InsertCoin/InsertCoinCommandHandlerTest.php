@@ -12,7 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class InsertCoinCommandHandlerTest extends KernelTestCase
 {
-    public function testTheCommandBusRoutesTheCommandToItsHandler(): void
+    public function testAnInsertedCoinReachesTheCreditThroughTheBus(): void
     {
         $container = self::getContainer();
 
@@ -21,7 +21,7 @@ final class InsertCoinCommandHandlerTest extends KernelTestCase
         self::assertSame(100, $container->get(VendingMachineRepository::class)->get()->wallet()->credit()->total()->cents());
     }
 
-    public function testTheCallerOfTheCommandBusGetsTheDomainExceptionOfTheHandler(): void
+    public function testAnUnknownCoinReachesTheCallerAsItsDomainException(): void
     {
         $this->expectException(UnknownCoinException::class);
 

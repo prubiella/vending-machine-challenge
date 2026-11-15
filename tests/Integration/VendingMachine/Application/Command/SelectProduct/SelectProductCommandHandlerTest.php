@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class SelectProductCommandHandlerTest extends KernelTestCase
 {
-    public function testTheCommandBusRoutesTheCommandToItsHandlerWithTheChangeCoins(): void
+    public function testASaleThroughTheBusDropsTheProductAndItsChangeInTheTray(): void
     {
         $container = self::getContainer();
         $commandBus = $container->get(CommandBus::class);

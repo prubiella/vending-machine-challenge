@@ -13,7 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class CollectTrayCommandHandlerTest extends KernelTestCase
 {
-    public function testTheCommandBusRoutesTheCommandToItsHandler(): void
+    public function testCollectingTheTrayThroughTheBusEmptiesIt(): void
     {
         $container = self::getContainer();
         $commandBus = $container->get(CommandBus::class);
