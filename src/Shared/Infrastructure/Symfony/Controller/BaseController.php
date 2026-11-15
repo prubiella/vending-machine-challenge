@@ -5,22 +5,22 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Symfony\Controller;
 
 use App\Shared\Application\Bus\Command;
+use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\Query;
-use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryCommandBus;
-use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 abstract class BaseController extends AbstractController
 {
     public function __construct(
-        private readonly InMemoryCommandBus $commandBus,
-        private readonly InMemoryQueryBus $queryBus,
+        private readonly CommandBus $commandBus,
+        private readonly QueryBus $queryBus,
     ) {
     }
 
     protected function command(Command $command): void
     {
-        $this->commandBus->commandHandler($command);
+        $this->commandBus->dispatch($command);
     }
 
     protected function query(Query $query): mixed

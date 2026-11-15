@@ -155,7 +155,7 @@ src/
   Kernel.php
   Shared/            Shared kernel: small, stable, used by every context, uses none.
     Domain/          Money and DomainException, the base of every domain exception.
-    Application/     The Command and Query interfaces, and the health check query.
+    Application/     The Command and Query interfaces, the bus ports, the health check query.
     Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
   VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
@@ -182,9 +182,10 @@ deptrac checks the rules between layers and contexts:
 - Every class in `src/` belongs to a layer, and every dependency points to a layer: a class of an
   undeclared context, or a library outside the `Framework` layer, fails the check.
 
-Commands and queries go through two synchronous Messenger buses. Query handlers of every context
-are registered on `query.bus` by their `QueryHandler` suffix in `config/services.yaml`, so the
-Application layer needs no framework attributes.
+Commands and queries go through two synchronous Messenger buses, behind the `CommandBus` and
+`QueryBus` ports of `Shared/Application/Bus`. Query handlers of every context are registered on
+`query.bus` by their `QueryHandler` suffix in `config/services.yaml`, so the Application layer
+needs no framework attributes.
 
 ### Adding a bounded context
 

@@ -33,9 +33,10 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 - `Shared`: a small, stable shared kernel that every context may use and that uses no context.
   `Shared/Domain` holds `Money` and `DomainException`, the abstract base that every domain
   exception of every context extends; `Shared/Application/Bus` holds the `Command` and `Query`
-  interfaces; `Shared/Infrastructure` holds the Messenger buses, `UnpackExceptionMiddleware`,
-  `BaseController`, `JsonExceptionListener` and the health check. Only what several contexts need
-  belongs here.
+  interfaces and the `CommandBus` and `QueryBus` ports; `Shared/Infrastructure` holds their
+  Messenger implementations (`MessengerCommandBus`, `MessengerQueryBus`),
+  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check.
+  Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
 - `Maintenance` (planned): technicians and their login, with technician authentication.
 
@@ -79,7 +80,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Buses
 
 - `command.bus` and `query.bus` run synchronously. Controllers extending `BaseController` call
-  `$this->command(...)` or `$this->query(...)`.
+  `$this->command(...)` or `$this->query(...)`; other entry points, such as console commands,
+  depend on the `CommandBus` and `QueryBus` ports (`dispatch()`, `query()`), never on the
+  Messenger classes that implement them.
 - Commands return nothing. What a command produces is state that a query reads.
 - `UnpackExceptionMiddleware` rethrows the handler's original exception.
 

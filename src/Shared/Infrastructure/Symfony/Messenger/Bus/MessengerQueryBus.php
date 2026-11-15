@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Shared\Application\Bus\Query;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 
-final readonly class InMemoryQueryBus
+final readonly class MessengerQueryBus implements QueryBus
 {
     public function __construct(
         private MessageBusInterface $queryBus,

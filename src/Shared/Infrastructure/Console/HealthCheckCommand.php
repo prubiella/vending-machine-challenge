@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Console;
 
+use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
-use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final readonly class HealthCheckCommand
 {
     public function __construct(
-        private InMemoryQueryBus $queryBus,
+        private QueryBus $queryBus,
     ) {
     }
 

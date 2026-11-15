@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
-use App\Shared\Infrastructure\Symfony\Messenger\Bus\InMemoryQueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerQueryBus;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Handler\HandlerDescriptor;
 use Symfony\Component\Messenger\Handler\HandlersLocator;
 use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
 
-final class InMemoryQueryBusTest extends TestCase
+final class MessengerQueryBusTest extends TestCase
 {
     public function testReturnsTheResultOfTheOnlyHandler(): void
     {
@@ -34,9 +34,9 @@ final class InMemoryQueryBusTest extends TestCase
         $bus->query(new HealthCheckQuery());
     }
 
-    private function queryBusWithHandlers(HandlerDescriptor ...$handlers): InMemoryQueryBus
+    private function queryBusWithHandlers(HandlerDescriptor ...$handlers): MessengerQueryBus
     {
-        return new InMemoryQueryBus(new MessageBus([
+        return new MessengerQueryBus(new MessageBus([
             new HandleMessageMiddleware(new HandlersLocator([HealthCheckQuery::class => $handlers])),
         ]));
     }
