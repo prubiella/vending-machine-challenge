@@ -45,6 +45,14 @@ final class VendingMachine
         $this->replaceParts($inventory, $payout->wallet(), $tray);
     }
 
+    public function returnCoins(): void
+    {
+        $refund = $this->wallet->returnCredit();
+
+        $this->wallet = $refund->wallet();
+        $this->tray = $this->tray->addCoins($refund->coins());
+    }
+
     /**
      * @param array<int|string, int> $unitsBySelector
      */

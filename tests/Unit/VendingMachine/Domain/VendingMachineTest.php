@@ -73,6 +73,21 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->stock()->equals($stockLeft));
     }
 
+    public function testReturningTheCoinsDropsTheInsertedCoinsInTheTray(): void
+    {
+        $machine = self::serviced();
+        $stock = $machine->wallet()->stock();
+
+        $machine->insertCoin(Coin::TenCents);
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+
+        self::assertSame([], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TenCents, Coin::TenCents)));
+        self::assertTrue($machine->wallet()->credit()->isEmpty());
+        self::assertTrue($machine->wallet()->stock()->equals($stock));
+    }
+
     public function testAnUnknownSelectorKeepsTheCreditAndChangesNothing(): void
     {
         $machine = self::serviced();
