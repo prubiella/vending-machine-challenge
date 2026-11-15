@@ -65,9 +65,10 @@ final class VendingMachine
     {
         $inventory = $this->inventory->restockAll($unitsBySelector);
         $refund = $this->wallet->returnCredit();
+        $wallet = $refund->wallet()->restock($coins);
         $tray = $this->tray->addCoins($refund->coins());
 
-        $this->replaceParts($inventory, $refund->wallet()->restock($coins), $tray);
+        $this->replaceParts($inventory, $wallet, $tray);
     }
 
     public function inventory(): Inventory

@@ -60,7 +60,7 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->credit()->isEmpty());
     }
 
-    public function testPayingAWaterWithAOneGivesTheWaterAndTheChange(): void
+    public function testPayingAWaterWithAOneHundredCentCoinGivesTheWaterAndTheChange(): void
     {
         $machine = self::serviced();
 
