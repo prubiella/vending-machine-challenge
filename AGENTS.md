@@ -124,8 +124,11 @@ all of them. They must pass before committing. `make hooks` (part of `make first
 git hooks: pre-commit runs the checks when code, configuration or tooling is staged, and refuses
 the commit when those staged files also have unstaged changes, since the checks read the disk.
 
-`/vm-review [<pr-number>|<range>]` reviews a change in background subagents and writes the report
-to `.audit/vm-review/`; the lenses live in `.claude/skills/vm-review/references/lenses/`.
+`/vm-review [<pr-number>|<range>]` reviews a change in a headless `claude -p` session in the
+background and writes the report to `.audit/vm-review/`; the lenses live in
+`.claude/skills/vm-review/references/lenses/`. The skill only runs when the developer types it
+(it costs tokens and ends by offering to post on a public pull request). When asked in prose for a
+review, follow the steps of its `SKILL.md` instead of improvising another way to launch it.
 
 Every Claude session launched from this repository (`claude --bg` or `claude -p`) gets
 `--name vm-<type>-<target>[-<topic>]`: `vm-fix-pr7` for a fix, `vm-fix-pr7-rules` when one pull

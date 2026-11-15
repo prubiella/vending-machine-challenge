@@ -1,9 +1,9 @@
 ---
 name: vm-review
-description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in background subagents, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
+description: Use when the user wants a code review of a pull request, a git range or the current branch of this repository. The review runs in a headless session in the background, so this session only receives a short summary; afterwards it offers to post the review on the pull request or hand the fix off to a new session.
 argument-hint: "[<pr-number>|<range>] [--lenses a,b] [--full]"
 disable-model-invocation: true
-allowed-tools: Agent, AskUserQuestion, Bash(gh pr view:*), Bash(gh pr comment:*), Bash(claude --bg:*)
+allowed-tools: AskUserQuestion, Bash(git rev-parse:*), Bash(mkdir -p .audit/vm-review/runs), Bash(claude -p:*), Bash(jq:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(claude --bg:*)
 ---
 
 # vm-review
@@ -12,29 +12,45 @@ A useful review reads the whole diff, the code around it and the project rules, 
 change from several angles: does it work, does it fail loudly, does it follow `AGENTS.md`, is it
 tested, are the docs true. Doing that in this session would fill it with diffs and file dumps
 that the user then has to work around. So this session only starts one orchestrator in the
-background and deals with what it returns; the reading happens in subagents.
+background and deals with what it returns; the reading happens in its subagents.
 
 ## Launch
 
-Start one subagent and nothing else:
+Start one headless session and nothing else. It is `claude -p`, not a subagent of this session,
+because a review is unattended and read-only, its result must come back here, and the JSON it
+prints carries the exact cost. The flags isolate it from the user's own plugins, hooks, MCP servers
+and effort settings, which would change the result and the cost; only the project's
+`.claude/settings.json` applies. Run it with the Bash tool and `run_in_background: true`, so the
+user can keep working and a notice arrives when it ends:
 
-- `subagent_type`: `general-purpose`
-- `model`: `sonnet` and `effort`: `medium` (it coordinates by written steps; the reviewers it
-  starts pick their own models)
-- `run_in_background`: `true`, so the user can keep working
-- `description`: `vm-review $ARGUMENTS`
-- `prompt`, exactly:
+```
+cd "$(git rev-parse --show-toplevel)" && mkdir -p .audit/vm-review/runs && claude -p \
+  --name <name> --no-session-persistence --model sonnet --effort medium \
+  --setting-sources project --strict-mcp-config --output-format json \
+  "Read ${CLAUDE_SKILL_DIR}/agents/orchestrator.md and follow it.
+Arguments: $ARGUMENTS
+Skill dir: ${CLAUDE_SKILL_DIR}" > .audit/vm-review/runs/<name>-<YYYYmmdd-HHMM>.json
+```
 
-  ```
-  Read ${CLAUDE_SKILL_DIR}/agents/orchestrator.md and follow it.
-  Arguments: $ARGUMENTS
-  Skill dir: ${CLAUDE_SKILL_DIR}
-  ```
+- `<name>` is `vm-review-pr<n>` for a pull request and `vm-review-<arguments with every character
+  outside letters, digits and dashes replaced by a dash>` otherwise, or `vm-review-branch` with no
+  arguments (the naming rule is in `AGENTS.md`).
+- `sonnet` at `medium` is for the orchestrator, which coordinates by written steps; the reviewers
+  and verifiers it starts pick their own models. Do not add `--effort` of your own: the verifiers
+  take the session's.
+- The session needs no tools beyond the project's allowlist. A command it asks for that the
+  allowlist lacks is denied rather than asked, since nobody can answer.
 
 Then tell the user, in one line and in their language, that the review is running and the summary
-will arrive here. Leave the diff alone: reading it here is exactly what the subagents are for.
+will arrive here. Leave the diff alone: reading it here is exactly what the reviewer sessions are
+for.
 
 ## When the result arrives
+
+The run ends with a notice. Read its output file with `jq -r '.result'`, and the cost with
+`jq '{is_error, total_cost_usd}'`. When `is_error` is true or the result is empty, the session
+crashed or was stopped: say so, give the path of the JSON and stop, without starting it again on
+your own. Otherwise the result is the orchestrator's summary.
 
 A single line starting with `vm-review:` means the review could not run (unknown pull request,
 empty diff, bad argument). Relay it and stop.
@@ -45,8 +61,9 @@ Otherwise:
    `FAILED` line unless it says `none` (a lens or check that failed means part of the change went
    unreviewed, which the user must not miss), the top findings (at most five, one line each with its `file:line`; name no others, the counts
    already say how many there are) and the path of `review.md`.
-   Keep the rest of the review out of this session unless the user asks for it, for the same
-   reason as above; the path is how they get to it.
+   Add the cost as `Cost: $<total_cost_usd>`, rounded to cents. Keep the rest of the review out
+   of this session unless the user asks for it, for the same reason as above; the path is how
+   they get to it.
 2. Ask with `AskUserQuestion` (`multiSelect: true`) what to do with the review:
    - **Post on the pull request**, only when `TARGET` is a pull request. Mention that the
      repository is public, so the comment is visible to anyone.
