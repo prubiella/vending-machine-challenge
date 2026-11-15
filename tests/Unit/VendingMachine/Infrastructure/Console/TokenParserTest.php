@@ -20,14 +20,14 @@ final class TokenParserTest extends TestCase
      */
     public static function actions(): iterable
     {
-        yield '0.05' => ['0.05', new InsertCoinCommand(5)];
-        yield '0.10' => ['0.10', new InsertCoinCommand(10)];
-        yield '0.25' => ['0.25', new InsertCoinCommand(25)];
-        yield '1' => ['1', new InsertCoinCommand(100)];
-        yield 'GET-WATER' => ['GET-WATER', new SelectProductCommand('WATER')];
-        yield 'GET-SODA' => ['GET-SODA', new SelectProductCommand('SODA')];
-        yield 'GET-COFFEE' => ['GET-COFFEE', new SelectProductCommand('COFFEE')];
-        yield 'RETURN-COIN' => ['RETURN-COIN', new ReturnCoinsCommand()];
+        yield 'the 5 cent coin' => ['0.05', new InsertCoinCommand(5)];
+        yield 'the 10 cent coin' => ['0.10', new InsertCoinCommand(10)];
+        yield 'the 25 cent coin' => ['0.25', new InsertCoinCommand(25)];
+        yield 'the 100 cent coin, written as a whole unit' => ['1', new InsertCoinCommand(100)];
+        yield 'a selection' => ['GET-WATER', new SelectProductCommand('WATER')];
+        yield 'another selection' => ['GET-SODA', new SelectProductCommand('SODA')];
+        yield 'a selector the machine checks, not the parser' => ['GET-COFFEE', new SelectProductCommand('COFFEE')];
+        yield 'returning the coins' => ['RETURN-COIN', new ReturnCoinsCommand()];
     }
 
     #[DataProvider('actions')]
@@ -41,10 +41,11 @@ final class TokenParserTest extends TestCase
      */
     public static function foreignCoins(): iterable
     {
-        yield '0.50' => ['0.50'];
-        yield '0.01' => ['0.01'];
-        yield '2' => ['2'];
-        yield '0.1' => ['0.1'];
+        yield 'a coin the machine does not take' => ['0.50'];
+        yield 'a coin smaller than any it takes' => ['0.01'];
+        yield 'a whole amount other than 1' => ['2'];
+        yield 'an accepted coin without its trailing zero' => ['0.1'];
+        yield 'an accepted coin with decimals the statement does not write' => ['1.00'];
     }
 
     #[DataProvider('foreignCoins')]
