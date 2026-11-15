@@ -30,6 +30,23 @@ final readonly class CoinCollection
         return $collection;
     }
 
+    /**
+     * @param array<int, int> $countsByCents
+     */
+    public static function fromCounts(array $countsByCents): self
+    {
+        $coins = [];
+        foreach ($countsByCents as $cents => $count) {
+            $coin = Coin::fromCents($cents);
+            if ($count < 0) {
+                throw NegativeCoinCountException::forCoin($coin, $count);
+            }
+            $coins = [...$coins, ...array_fill(0, $count, $coin)];
+        }
+
+        return self::of(...$coins);
+    }
+
     public function add(Coin $coin): self
     {
         $countsByCents = $this->countsByCents;
