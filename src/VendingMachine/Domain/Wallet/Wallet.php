@@ -48,6 +48,11 @@ final readonly class Wallet
         return new self($this->credit, $stock);
     }
 
+    public function topUp(CoinCollection $coins): self
+    {
+        return new self($this->credit, $this->stock->merge($coins));
+    }
+
     public function credit(): CoinCollection
     {
         return $this->credit;

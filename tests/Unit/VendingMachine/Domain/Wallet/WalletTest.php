@@ -148,6 +148,17 @@ final class WalletTest extends TestCase
         self::assertTrue($wallet->stock()->equals(CoinCollection::of(Coin::FiveCents)));
     }
 
+    public function testToppingUpAddsCoinsToTheStockAndLeavesTheCreditAlone(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::of(Coin::FiveCents))->insert(Coin::TenCents);
+
+        $toppedUp = $wallet->topUp(CoinCollection::of(Coin::FiveCents, Coin::TwentyFiveCents));
+
+        self::assertTrue($toppedUp->stock()->equals(CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TwentyFiveCents)));
+        self::assertTrue($toppedUp->credit()->equals(CoinCollection::of(Coin::TenCents)));
+        self::assertTrue($wallet->stock()->equals(CoinCollection::of(Coin::FiveCents)));
+    }
+
     public function testReturningTheCreditGivesBackExactlyTheInsertedCoinsIncludingTheOne(): void
     {
         $stock = CoinCollection::of(Coin::FiveCents);
