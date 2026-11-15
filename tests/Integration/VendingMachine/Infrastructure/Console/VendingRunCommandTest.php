@@ -137,9 +137,11 @@ final class VendingRunCommandTest extends KernelTestCase
     public function testServiceAsksTheUnitsOfEachProductAndTheCountOfEachCoin(): void
     {
         $tester = self::tester();
-        $units = ['-1', '0', '2', ''];
-        $coins = ['4', '5', '6', '7'];
-        $tester->setInputs(['1', 'SERVICE', ...$units, ...$coins, 'GET-WATER', 'QUIT']);
+        $waterAfterARejectedCount = ['-1', '0'];
+        $juice = ['2'];
+        $sodaKeptAtItsCurrentUnits = [''];
+        $coinsFromTheSmallest = ['4', '5', '6', '7'];
+        $tester->setInputs(['1', 'SERVICE', ...$waterAfterARejectedCount, ...$juice, ...$sodaKeptAtItsCurrentUnits, ...$coinsFromTheSmallest, 'GET-WATER', 'QUIT']);
 
         $tester->execute([], ['capture_stderr_separately' => true]);
 
