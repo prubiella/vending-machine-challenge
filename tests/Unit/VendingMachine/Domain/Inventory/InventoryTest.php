@@ -110,6 +110,39 @@ final class InventoryTest extends TestCase
         $inventory->restock(Selector::fromString('WATER'), -1);
     }
 
+    public function testRestockingSeveralSelectorsSetsEachAndLeavesTheOthers(): void
+    {
+        $inventory = Inventory::of(
+            Slot::of(self::product('WATER', 65), 1),
+            Slot::of(self::product('JUICE', 100), 2),
+            Slot::of(self::product('SODA', 150), 3),
+        );
+
+        $restocked = $inventory->restockAll(['WATER' => 10, 'SODA' => 0]);
+
+        self::assertSame(10, $restocked->slotFor(Selector::fromString('WATER'))->units());
+        self::assertSame(2, $restocked->slotFor(Selector::fromString('JUICE'))->units());
+        self::assertSame(0, $restocked->slotFor(Selector::fromString('SODA'))->units());
+    }
+
+    public function testRestockingSeveralSelectorsAcceptsOnesMadeOnlyOfDigits(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('42', 50), 0));
+
+        $restocked = $inventory->restockAll(['42' => 3]);
+
+        self::assertSame(3, $restocked->slotFor(Selector::fromString('42'))->units());
+    }
+
+    public function testCannotRestockSeveralSelectorsWhenOneIsUnknown(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $this->expectException(UnknownSelectorException::class);
+
+        $inventory->restockAll(['WATER' => 1, 'COFFEE' => 4]);
+    }
+
     private static function product(string $selector, int $cents): Product
     {
         return Product::of(Selector::fromString($selector), ProductName::fromString(ucfirst(strtolower($selector))), Money::fromCents($cents));

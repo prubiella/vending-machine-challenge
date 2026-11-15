@@ -44,6 +44,19 @@ final readonly class Inventory
         return $this->replacing($this->slotFor($selector)->withUnits($units));
     }
 
+    /**
+     * @param array<int|string, int> $unitsBySelector
+     */
+    public function restockAll(array $unitsBySelector): self
+    {
+        $inventory = $this;
+        foreach ($unitsBySelector as $selector => $units) {
+            $inventory = $inventory->restock(Selector::fromString((string) $selector), $units);
+        }
+
+        return $inventory;
+    }
+
     private function replacing(Slot $slot): self
     {
         $slotsBySelector = $this->slotsBySelector;

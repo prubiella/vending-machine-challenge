@@ -184,15 +184,6 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::TenCents, Coin::FiveCents)));
     }
 
-    public function testServiceAcceptsASelectorMadeOnlyOfDigits(): void
-    {
-        $machine = VendingMachine::install(self::product('42', 'Gum', 50));
-
-        $machine->service(['42' => 3], CoinCollection::empty());
-
-        self::assertSame(3, self::unitsOf($machine, '42'));
-    }
-
     public function testServiceReplacesTheCountsRatherThanAddingToThem(): void
     {
         $machine = self::serviced();

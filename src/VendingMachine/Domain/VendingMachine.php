@@ -63,7 +63,7 @@ final class VendingMachine
      */
     public function service(array $unitsBySelector, CoinCollection $coins): void
     {
-        $inventory = $this->restocked($unitsBySelector);
+        $inventory = $this->inventory->restockAll($unitsBySelector);
         $refund = $this->wallet->returnCredit();
         $tray = $this->tray->addCoins($refund->coins());
 
@@ -83,19 +83,6 @@ final class VendingMachine
     public function tray(): Tray
     {
         return $this->tray;
-    }
-
-    /**
-     * @param array<int|string, int> $unitsBySelector
-     */
-    private function restocked(array $unitsBySelector): Inventory
-    {
-        $inventory = $this->inventory;
-        foreach ($unitsBySelector as $selector => $units) {
-            $inventory = $inventory->restock(Selector::fromString((string) $selector), $units);
-        }
-
-        return $inventory;
     }
 
     private function replaceParts(Inventory $inventory, Wallet $wallet, Tray $tray): void
