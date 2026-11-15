@@ -18,11 +18,11 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
 
     /**
      * @param list<array{selector: string, name: string, price_cents: int, units: int}> $products
-     * @param array<int, int>                                                           $coinStock count of each coin by its cents
+     * @param array<int, int>                                                           $coinStockByCents
      */
     public function __construct(
         private readonly array $products,
-        private readonly array $coinStock,
+        private readonly array $coinStockByCents,
     ) {
     }
 
@@ -43,7 +43,7 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
     private function installDefaultMachine(): VendingMachine
     {
         $machine = VendingMachine::install(...$this->defaultProducts());
-        $machine->service($this->defaultUnitsBySelector(), CoinCollection::fromCounts($this->coinStock));
+        $machine->service($this->defaultUnitsBySelector(), CoinCollection::fromCounts($this->coinStockByCents));
 
         return $machine;
     }

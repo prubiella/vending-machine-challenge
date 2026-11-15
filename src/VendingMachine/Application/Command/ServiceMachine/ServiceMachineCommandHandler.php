@@ -17,7 +17,7 @@ final readonly class ServiceMachineCommandHandler
     public function __invoke(ServiceMachineCommand $command): void
     {
         $machine = $this->repository->get();
-        $machine->service($command->unitsBySelector, CoinCollection::fromCounts($command->coinCountsByCents));
+        $machine->service($command->unitsBySelector, CoinCollection::fromCounts($command->coinStockByCents));
         $this->repository->save($machine);
     }
 }

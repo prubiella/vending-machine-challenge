@@ -25,7 +25,7 @@ final readonly class GetMachineStatusQueryHandler
         return new MachineStatusResponse(
             $this->responses->fromMachine($machine),
             self::unitsBySelector($machine->inventory()),
-            self::countsByCents($machine->wallet()->stock()),
+            self::coinStockByCents($machine->wallet()->stock()),
         );
     }
 
@@ -45,11 +45,11 @@ final readonly class GetMachineStatusQueryHandler
     /**
      * @return array<int, int>
      */
-    private static function countsByCents(CoinCollection $coins): array
+    private static function coinStockByCents(CoinCollection $stock): array
     {
         $counts = [];
         foreach (Coin::cases() as $coin) {
-            $counts[$coin->value] = $coins->countOf($coin);
+            $counts[$coin->value] = $stock->countOf($coin);
         }
 
         return $counts;

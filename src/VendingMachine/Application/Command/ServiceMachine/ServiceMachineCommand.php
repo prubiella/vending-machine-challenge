@@ -10,11 +10,11 @@ final readonly class ServiceMachineCommand implements Command
 {
     /**
      * @param array<int|string, int> $unitsBySelector
-     * @param array<int, int>        $coinCountsByCents
+     * @param array<int, int>        $coinStockByCents
      */
     public function __construct(
         public array $unitsBySelector,
-        public array $coinCountsByCents,
+        public array $coinStockByCents,
     ) {
     }
 }

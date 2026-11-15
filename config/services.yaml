@@ -35,7 +35,7 @@ services:
     App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository:
         arguments:
             $products: '%vending_machine.default_products%'
-            $coinStock: '%vending_machine.default_coin_stock%'
+            $coinStockByCents: '%vending_machine.default_coin_stock%'
 
     App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository'
 
