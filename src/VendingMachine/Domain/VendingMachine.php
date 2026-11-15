@@ -38,11 +38,11 @@ final class VendingMachine
     public function select(Selector $selector, ChangeMaker $changeMaker): void
     {
         $product = $this->inventory->slotFor($selector)->product();
-
-        $this->inventory = $this->inventory->dispense($selector);
+        $inventory = $this->inventory->dispense($selector);
         $payout = $this->wallet->charge($product->price(), $changeMaker);
-        $this->wallet = $payout->wallet();
-        $this->tray = $this->tray->addProduct($product)->addCoins($payout->coins());
+        $tray = $this->tray->addProduct($product)->addCoins($payout->coins());
+
+        $this->replaceParts($inventory, $payout->wallet(), $tray);
     }
 
     /**
@@ -80,5 +80,12 @@ final class VendingMachine
         }
 
         return $inventory;
+    }
+
+    private function replaceParts(Inventory $inventory, Wallet $wallet, Tray $tray): void
+    {
+        $this->inventory = $inventory;
+        $this->wallet = $wallet;
+        $this->tray = $tray;
     }
 }

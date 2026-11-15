@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Domain;
 
+use App\Shared\Domain\DomainException;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
+use App\VendingMachine\Domain\Change\NoExactChangeException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\VendingMachine;
+use App\VendingMachine\Domain\Wallet\InsufficientCreditException;
 use PHPUnit\Framework\TestCase;
 
 final class VendingMachineTest extends TestCase
@@ -69,6 +73,49 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->stock()->equals($stockLeft));
     }
 
+    public function testAnUnknownSelectorKeepsTheCreditAndChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertSelectionRefused($machine, 'COFFEE', UnknownSelectorException::class);
+    }
+
+    public function testASoldOutProductKeepsTheCreditAndChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->service(['WATER' => 0], $machine->wallet()->stock());
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertSelectionRefused($machine, 'WATER', SoldOutException::class);
+    }
+
+    public function testInsufficientCreditKeepsTheCreditAndChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::TwentyFiveCents);
+        $machine->insertCoin(Coin::TwentyFiveCents);
+
+        self::assertSelectionRefused($machine, 'WATER', InsufficientCreditException::class);
+    }
+
+    public function testNoExactChangeKeepsTheCreditAndChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->service([], CoinCollection::empty());
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertSelectionRefused($machine, 'WATER', NoExactChangeException::class);
+    }
+
+    public function testAFreshlyInstalledMachineSellsNothing(): void
+    {
+        $machine = self::installed();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertSelectionRefused($machine, 'WATER', SoldOutException::class);
+    }
+
     public function testServiceSetsTheUnitsOfEachSelectorAndTheCoinStock(): void
     {
         $machine = self::installed();
@@ -111,6 +158,22 @@ final class VendingMachineTest extends TestCase
             $machine->service(['WATER' => 1, 'COFFEE' => 4], CoinCollection::empty());
             self::fail('Expected UnknownSelectorException.');
         } catch (UnknownSelectorException) {
+            self::assertSame($before, self::snapshot($machine));
+        }
+    }
+
+    /**
+     * @param class-string<DomainException> $exception
+     */
+    private static function assertSelectionRefused(VendingMachine $machine, string $selector, string $exception): void
+    {
+        $before = self::snapshot($machine);
+
+        try {
+            $machine->select(Selector::fromString($selector), self::changeMaker());
+            self::fail(\sprintf('Expected %s.', $exception));
+        } catch (DomainException $refusal) {
+            self::assertInstanceOf($exception, $refusal);
             self::assertSame($before, self::snapshot($machine));
         }
     }
