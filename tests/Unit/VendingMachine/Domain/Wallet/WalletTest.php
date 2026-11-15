@@ -11,6 +11,7 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Wallet\InsufficientCreditException;
 use App\VendingMachine\Domain\Wallet\Wallet;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class WalletTest extends TestCase
@@ -86,6 +87,40 @@ final class WalletTest extends TestCase
         $this->expectException(NoExactChangeException::class);
 
         $wallet->charge(Money::fromCents(100), new FewestCoinsChangeMaker());
+    }
+
+    /**
+     * @param list<Coin> $stock
+     * @param list<Coin> $inserted
+     */
+    #[DataProvider('charges')]
+    public function testChargingConservesTheCoins(array $stock, array $inserted, int $priceInCents): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::of(...$stock));
+        foreach ($inserted as $coin) {
+            $wallet = $wallet->insert($coin);
+        }
+
+        $payout = $wallet->charge(Money::fromCents($priceInCents), new FewestCoinsChangeMaker());
+
+        $coinsBefore = $wallet->stock()->merge($wallet->credit());
+        $coinsAfter = $payout->wallet()->stock()->merge($payout->coins());
+        self::assertTrue($coinsAfter->equals($coinsBefore));
+        self::assertSame($wallet->credit()->total()->cents() - $priceInCents, $payout->coins()->total()->cents());
+    }
+
+    /** @return iterable<string, array{list<Coin>, list<Coin>, int}> */
+    public static function charges(): iterable
+    {
+        yield 'exact price' => [[Coin::FiveCents], [Coin::TwentyFiveCents, Coin::TwentyFiveCents], 50];
+        yield 'change from the coins just inserted' => [[], [Coin::TwentyFiveCents, Coin::TenCents, Coin::TenCents], 35];
+        yield 'an inserted 1' => [[Coin::TwentyFiveCents, Coin::TenCents, Coin::FiveCents], [Coin::OneHundredCents], 65];
+        yield '1 coins already in the stock' => [[Coin::OneHundredCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TenCents], [Coin::OneHundredCents], 50];
+        yield 'a large stock' => [
+            [...array_fill(0, 10, Coin::FiveCents), ...array_fill(0, 10, Coin::TenCents), ...array_fill(0, 10, Coin::TwentyFiveCents)],
+            [Coin::OneHundredCents, Coin::OneHundredCents],
+            65,
+        ];
     }
 
     public function testRefusesToChargeMoreThanTheCredit(): void
