@@ -69,9 +69,9 @@ final readonly class VendingRunCommand
     private function runSequence(string $sequence, SymfonyStyle $io): void
     {
         foreach (explode(',', $sequence) as $token) {
-            $this->perform(trim($token), $io);
+            $this->dispatchToken(trim($token), $io);
         }
-        $this->deliverTray($io);
+        $this->printAndCollectTray($io);
     }
 
     private function runSession(InputInterface $input, SymfonyStyle $io): void
@@ -80,14 +80,12 @@ final readonly class VendingRunCommand
         $io->writeln(\sprintf('One action per line: %s. SERVICE services the machine and QUIT leaves.', TokenParser::usage()));
 
         while (null !== $action = $this->nextAction($input, $io)) {
-            if ('' !== $action) {
-                $this->act($action, $input, $io);
-                $this->deliverTray($io);
-            }
+            $this->dispatchSessionAction($action, $input, $io);
+            $this->printAndCollectTray($io);
         }
     }
 
-    private function act(string $action, InputInterface $input, SymfonyStyle $io): void
+    private function dispatchSessionAction(string $action, InputInterface $input, SymfonyStyle $io): void
     {
         if (self::SERVICE === $action) {
             $this->service($input, $io);
@@ -95,14 +93,14 @@ final readonly class VendingRunCommand
             return;
         }
 
-        $this->perform($action, $io);
+        $this->dispatchToken($action, $io);
     }
 
     private function service(InputInterface $input, SymfonyStyle $io): void
     {
         $status = $this->machineStatus();
         $unitsBySelector = self::askUnitsBySelector($io, $status);
-        $coinStockByCents = self::askCoinCountsByCents($io, $status);
+        $coinStockByCents = self::askCoinStockByCents($io, $status);
 
         // When the input runs out, the question helper turns it non-interactive and answers every
         // question left with its default, so those answers are not the technician's.
@@ -120,30 +118,30 @@ final readonly class VendingRunCommand
      */
     private static function askUnitsBySelector(SymfonyStyle $io, MachineStatusResponse $status): array
     {
-        $units = [];
-        foreach ($status->unitsBySelector as $selector => $current) {
-            $units[$selector] = self::askCount($io, \sprintf('Units of %s', $selector), $current);
+        $unitsBySelector = [];
+        foreach ($status->unitsBySelector as $selector => $currentUnits) {
+            $unitsBySelector[$selector] = self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
         }
 
-        return $units;
+        return $unitsBySelector;
     }
 
     /**
      * @return array<int, int>
      */
-    private static function askCoinCountsByCents(SymfonyStyle $io, MachineStatusResponse $status): array
+    private static function askCoinStockByCents(SymfonyStyle $io, MachineStatusResponse $status): array
     {
-        $counts = [];
-        foreach ($status->coinStockByCents as $cents => $current) {
-            $counts[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $current);
+        $coinStockByCents = [];
+        foreach ($status->coinStockByCents as $cents => $currentCount) {
+            $coinStockByCents[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $currentCount);
         }
 
-        return $counts;
+        return $coinStockByCents;
     }
 
-    private static function askCount(SymfonyStyle $io, string $question, int $current): int
+    private static function askCount(SymfonyStyle $io, string $question, int $currentCount): int
     {
-        $count = $io->ask($question, (string) $current, self::validCount(...));
+        $count = $io->ask($question, (string) $currentCount, self::validCount(...));
         \assert(\is_int($count));
 
         return $count;
@@ -175,22 +173,23 @@ final readonly class VendingRunCommand
 
     private function nextAction(InputInterface $input, SymfonyStyle $io): ?string
     {
-        if (!$input->isInteractive()) {
-            return null;
+        while ($input->isInteractive()) {
+            try {
+                $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::twoDecimals($this->machine()->creditCents)));
+            } catch (MissingInputException) {
+                return null;
+            }
+
+            $action = \is_string($answer) ? trim($answer) : '';
+            if ('' !== $action) {
+                return self::QUIT === $action ? null : $action;
+            }
         }
 
-        try {
-            $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::twoDecimals($this->machine()->creditCents)));
-        } catch (MissingInputException) {
-            return null;
-        }
-
-        $action = \is_string($answer) ? trim($answer) : '';
-
-        return self::QUIT === $action ? null : $action;
+        return null;
     }
 
-    private function perform(string $token, SymfonyStyle $io): void
+    private function dispatchToken(string $token, SymfonyStyle $io): void
     {
         try {
             $this->commandBus->dispatch($this->parser->parse($token));
@@ -199,15 +198,21 @@ final readonly class VendingRunCommand
         }
     }
 
-    private function deliverTray(SymfonyStyle $io): void
+    private function printAndCollectTray(SymfonyStyle $io): void
     {
-        $tray = $this->trayContents();
-        $items = [...$tray->selectors, ...array_map(MoneyNotation::coinToken(...), $tray->coins)];
-        if ([] !== $items) {
-            $io->writeln(implode(', ', $items));
+        $trayLine = self::trayLine($this->trayContents());
+        if ('' !== $trayLine) {
+            $io->writeln($trayLine);
         }
 
         $this->commandBus->dispatch(new CollectTrayCommand());
+    }
+
+    private static function trayLine(TrayContentsResponse $tray): string
+    {
+        $coins = array_map(MoneyNotation::coinToken(...), $tray->coins);
+
+        return implode(', ', [...$tray->selectors, ...$coins]);
     }
 
     private function machine(): MachineResponse

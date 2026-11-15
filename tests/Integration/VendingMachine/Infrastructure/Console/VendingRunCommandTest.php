@@ -99,6 +99,17 @@ final class VendingRunCommandTest extends KernelTestCase
         self::assertSame(['0.10', 'WATER, 0.25, 0.10'], self::trayLines($tester->getDisplay(true)));
     }
 
+    public function testTheSessionAsksAgainAfterABlankLine(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['', '0.10', '  ', 'RETURN-COIN', 'QUIT']);
+
+        $tester->execute([], ['capture_stderr_separately' => true]);
+
+        self::assertSame('', $tester->getErrorOutput(true));
+        self::assertSame(['0.10'], self::trayLines($tester->getDisplay(true)));
+    }
+
     public function testTheSessionReportsARefusalAndKeepsTheCredit(): void
     {
         $tester = self::tester();
