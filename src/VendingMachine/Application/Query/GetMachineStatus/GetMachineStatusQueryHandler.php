@@ -14,7 +14,7 @@ final readonly class GetMachineStatusQueryHandler
 {
     public function __construct(
         private VendingMachineRepository $repository,
-        private MachineResponseFactory $responses,
+        private MachineResponseFactory $machineResponseFactory,
     ) {
     }
 
@@ -23,7 +23,7 @@ final readonly class GetMachineStatusQueryHandler
         $machine = $this->repository->get();
 
         return new MachineStatusResponse(
-            $this->responses->fromMachine($machine),
+            $this->machineResponseFactory->fromMachine($machine),
             self::unitsBySelector($machine->inventory()),
             self::coinStockByCents($machine->wallet()->stock()),
         );

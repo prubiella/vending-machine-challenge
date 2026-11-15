@@ -10,12 +10,12 @@ final readonly class GetMachineQueryHandler
 {
     public function __construct(
         private VendingMachineRepository $repository,
-        private MachineResponseFactory $responses,
+        private MachineResponseFactory $machineResponseFactory,
     ) {
     }
 
     public function __invoke(GetMachineQuery $query): MachineResponse
     {
-        return $this->responses->fromMachine($this->repository->get());
+        return $this->machineResponseFactory->fromMachine($this->repository->get());
     }
 }
