@@ -31,8 +31,10 @@ final class GetMachineQueryHandlerTest extends TestCase
     public function testShowsTheCreditOfTheInsertedCoins(): void
     {
         $repository = VendingMachineRepositoryMother::withTheStatementProducts();
-        $repository->get()->insertCoin(Coin::OneHundredCents);
-        $repository->get()->insertCoin(Coin::TenCents);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->insertCoin(Coin::TenCents);
+        $repository->save($machine);
 
         $response = (new GetMachineQueryHandler($repository, new MachineResponseFactory()))(new GetMachineQuery());
 

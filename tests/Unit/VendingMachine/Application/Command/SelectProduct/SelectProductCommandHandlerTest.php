@@ -43,9 +43,11 @@ final class SelectProductCommandHandlerTest extends TestCase
     private static function repositoryWithCredit(Coin ...$coins): InMemoryVendingMachineRepository
     {
         $repository = VendingMachineRepositoryMother::withTheStatementProducts();
+        $machine = $repository->get();
         foreach ($coins as $coin) {
-            $repository->get()->insertCoin($coin);
+            $machine->insertCoin($coin);
         }
+        $repository->save($machine);
 
         return $repository;
     }

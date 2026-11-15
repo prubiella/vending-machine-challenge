@@ -43,12 +43,28 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
         self::assertTrue($machine->tray()->coins()->isEmpty());
     }
 
-    public function testKeepsTheSameMachineBetweenReads(): void
+    public function testAChangeIsNotStoredUntilTheMachineIsSaved(): void
     {
         $repository = self::repository();
-        $repository->get()->insertCoin(Coin::OneHundredCents);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertTrue($repository->get()->wallet()->credit()->isEmpty());
+
+        $repository->save($machine);
 
         self::assertSame(100, $repository->get()->wallet()->credit()->total()->cents());
+    }
+
+    public function testAChangeAfterSavingIsNotStored(): void
+    {
+        $repository = self::repository();
+        $machine = $repository->get();
+        $repository->save($machine);
+
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        self::assertTrue($repository->get()->wallet()->credit()->isEmpty());
     }
 
     public function testGivesBackTheMachineItSaved(): void
@@ -58,7 +74,7 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
 
         $repository->save($saved);
 
-        self::assertSame($saved, $repository->get());
+        self::assertEquals($saved, $repository->get());
     }
 
     private static function repository(): InMemoryVendingMachineRepository

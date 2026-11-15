@@ -19,11 +19,13 @@ final class GetMachineStatusQueryHandlerTest extends TestCase
     public function testShowsWhatTheCustomerSeesWithTheUnitsOfEachProductAndTheCoinStock(): void
     {
         $repository = VendingMachineRepositoryMother::withTheStatementProducts();
-        $repository->get()->insertCoin(Coin::OneHundredCents);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $repository->save($machine);
 
         $response = (new GetMachineStatusQueryHandler($repository, new MachineResponseFactory()))(new GetMachineStatusQuery());
 
-        $machine = new MachineResponse(
+        $machineResponse = new MachineResponse(
             [
                 new ProductResponse('WATER', 'Water', 65, true),
                 new ProductResponse('JUICE', 'Juice', 100, true),
@@ -32,7 +34,7 @@ final class GetMachineStatusQueryHandlerTest extends TestCase
             100,
         );
         self::assertEquals(
-            new MachineStatusResponse($machine, ['WATER' => 5, 'JUICE' => 5, 'SODA' => 0], [5 => 2, 10 => 2, 25 => 2, 100 => 0]),
+            new MachineStatusResponse($machineResponse, ['WATER' => 5, 'JUICE' => 5, 'SODA' => 0], [5 => 2, 10 => 2, 25 => 2, 100 => 0]),
             $response,
         );
     }

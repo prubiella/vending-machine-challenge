@@ -28,6 +28,7 @@ final class GetTrayContentsQueryHandlerTest extends TestCase
         $machine = $repository->get();
         $machine->insertCoin(Coin::OneHundredCents);
         $machine->select(Selector::fromString('WATER'), new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents));
+        $repository->save($machine);
 
         $response = (new GetTrayContentsQueryHandler($repository))(new GetTrayContentsQuery());
 
@@ -43,6 +44,7 @@ final class GetTrayContentsQueryHandlerTest extends TestCase
             $machine->insertCoin($coin);
         }
         $machine->returnCoins();
+        $repository->save($machine);
 
         $response = (new GetTrayContentsQueryHandler($repository))(new GetTrayContentsQuery());
 
