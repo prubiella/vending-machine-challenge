@@ -56,6 +56,19 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->wallet()->credit()->isEmpty());
     }
 
+    public function testPayingAWaterWithAOneGivesTheWaterAndTheChange(): void
+    {
+        $machine = self::serviced();
+
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        self::assertSame(['Water'], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
+        $stockLeft = CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents, Coin::OneHundredCents);
+        self::assertTrue($machine->wallet()->stock()->equals($stockLeft));
+    }
+
     public function testServiceSetsTheUnitsOfEachSelectorAndTheCoinStock(): void
     {
         $machine = self::installed();

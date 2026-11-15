@@ -40,8 +40,9 @@ final class VendingMachine
         $product = $this->inventory->slotFor($selector)->product();
 
         $this->inventory = $this->inventory->dispense($selector);
-        $this->wallet = $this->wallet->charge($product->price(), $changeMaker)->wallet();
-        $this->tray = $this->tray->addProduct($product);
+        $payout = $this->wallet->charge($product->price(), $changeMaker);
+        $this->wallet = $payout->wallet();
+        $this->tray = $this->tray->addProduct($product)->addCoins($payout->coins());
     }
 
     /**
