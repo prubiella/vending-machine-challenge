@@ -60,11 +60,15 @@ final class TrayTest extends TestCase
         self::assertTrue($tray->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::OneHundredCents)));
     }
 
-    public function testAddingAnEmptyCollectionChangesNothing(): void
+    public function testAddingAnEmptyCollectionKeepsWhatTheTrayHolds(): void
     {
-        $tray = Tray::empty()->addCoins(CoinCollection::empty());
+        $water = self::water();
+        $coins = CoinCollection::of(Coin::FiveCents);
 
-        self::assertTrue($tray->coins()->isEmpty());
+        $tray = Tray::empty()->addProduct($water)->addCoins($coins)->addCoins(CoinCollection::empty());
+
+        self::assertSame([$water], $tray->products());
+        self::assertTrue($tray->coins()->equals($coins));
     }
 
     public function testAddingReturnsANewTrayAndLeavesTheOriginalUntouched(): void
@@ -75,57 +79,6 @@ final class TrayTest extends TestCase
 
         self::assertSame([], $original->products());
         self::assertTrue($original->coins()->isEmpty());
-    }
-
-    public function testCollectingHandsOverEveryProductAndCoin(): void
-    {
-        $water = self::water();
-        $soda = self::soda();
-        $coins = CoinCollection::of(Coin::TwentyFiveCents, Coin::FiveCents);
-        $tray = Tray::empty()->addProduct($water)->addProduct($soda)->addCoins($coins);
-
-        $pickup = $tray->collect();
-
-        self::assertSame([$water, $soda], $pickup->products());
-        self::assertTrue($pickup->coins()->equals($coins));
-    }
-
-    public function testCollectingLeavesAnEmptyTray(): void
-    {
-        $tray = Tray::empty()->addProduct(self::water())->addCoins(CoinCollection::of(Coin::FiveCents));
-
-        $emptied = $tray->collect()->tray();
-
-        self::assertSame([], $emptied->products());
-        self::assertTrue($emptied->coins()->isEmpty());
-    }
-
-    public function testCollectingLeavesTheOriginalTrayUntouched(): void
-    {
-        $water = self::water();
-        $tray = Tray::empty()->addProduct($water);
-
-        $tray->collect();
-
-        self::assertSame([$water], $tray->products());
-    }
-
-    public function testThingsAddedAfterCollectingStartAFreshPile(): void
-    {
-        $soda = self::soda();
-        $emptied = Tray::empty()->addProduct(self::water())->collect()->tray();
-
-        $tray = $emptied->addProduct($soda);
-
-        self::assertSame([$soda], $tray->products());
-    }
-
-    public function testCollectingAnEmptyTrayHandsOverNothing(): void
-    {
-        $pickup = Tray::empty()->collect();
-
-        self::assertSame([], $pickup->products());
-        self::assertTrue($pickup->coins()->isEmpty());
     }
 
     private static function water(): Product

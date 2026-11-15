@@ -31,11 +31,6 @@ final readonly class Tray
         return new self($this->products, $this->coins->merge($coins));
     }
 
-    public function collect(): Pickup
-    {
-        return Pickup::of($this->products, $this->coins, self::empty());
-    }
-
     /**
      * @return list<Product>
      */
