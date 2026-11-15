@@ -135,7 +135,7 @@ final readonly class VendingRunCommand
     {
         $counts = [];
         foreach ($status->coinStockByCents as $cents => $current) {
-            $counts[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coin($cents)), $current);
+            $counts[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $current);
         }
 
         return $counts;
@@ -164,7 +164,7 @@ final readonly class VendingRunCommand
             static fn (ProductResponse $product): array => [
                 $product->selector,
                 $product->name,
-                MoneyNotation::amount($product->priceCents),
+                MoneyNotation::twoDecimals($product->priceCents),
                 $product->available ? '' : 'sold out',
             ],
             $this->machine()->products,
@@ -180,7 +180,7 @@ final readonly class VendingRunCommand
         }
 
         try {
-            $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::amount($this->machine()->creditCents)));
+            $answer = $io->ask(\sprintf('Action (credit %s)', MoneyNotation::twoDecimals($this->machine()->creditCents)));
         } catch (MissingInputException) {
             return null;
         }
@@ -202,7 +202,7 @@ final readonly class VendingRunCommand
     private function deliverTray(SymfonyStyle $io): void
     {
         $tray = $this->trayContents();
-        $items = [...$tray->selectors, ...array_map(MoneyNotation::coin(...), $tray->coins)];
+        $items = [...$tray->selectors, ...array_map(MoneyNotation::coinToken(...), $tray->coins)];
         if ([] !== $items) {
             $io->writeln(implode(', ', $items));
         }

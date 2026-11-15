@@ -37,10 +37,12 @@ final readonly class TokenParser
         return str_starts_with($token, self::SELECT_PREFIX) && \strlen($token) > \strlen(self::SELECT_PREFIX);
     }
 
+    // The token is compared with the notation of each coin rather than read as a number, so no float
+    // is involved and only the statement's notation is accepted: 0.1 and 1.00 are not.
     private static function coinCents(string $token): int
     {
         foreach (Coin::cases() as $coin) {
-            if (MoneyNotation::coin($coin->value) === $token) {
+            if (MoneyNotation::coinToken($coin->value) === $token) {
                 return $coin->value;
             }
         }

@@ -24,7 +24,7 @@ final class MoneyNotationTest extends TestCase
     #[DataProvider('coins')]
     public function testWritesACoinAsTheStatementDoes(int $cents, string $notation): void
     {
-        self::assertSame($notation, MoneyNotation::coin($cents));
+        self::assertSame($notation, MoneyNotation::coinToken($cents));
     }
 
     /**
@@ -42,6 +42,6 @@ final class MoneyNotationTest extends TestCase
     #[DataProvider('amounts')]
     public function testWritesAnAmountWithTwoDecimals(int $cents, string $notation): void
     {
-        self::assertSame($notation, MoneyNotation::amount($cents));
+        self::assertSame($notation, MoneyNotation::twoDecimals($cents));
     }
 }
