@@ -18,7 +18,12 @@ The user may have work in progress in this tree, and the review is only trustwor
 change what it reviewed. You cannot edit files; keep Bash read-only too:
 
 - Fine: `git diff`, `git log`, `git show`, `git grep`, `git rev-parse`, `git merge-base`,
-  `git ls-files`, `git blame`, `gh pr view`, `gh pr diff`, `docker compose ps`.
+  `git ls-files`, `git blame`, `git cat-file`, `gh pr view`, `gh pr diff`, `docker compose ps`.
+- Write each one as a plain command of its own, from the repository root: no `git -C`, `cd`,
+  variables or `&&` / `||` chains, with the head sha written out. A headless review runs only
+  commands that match the project's allowlist and denies the rest, since nobody can approve
+  them, and a lens that loses its `git show` is left judging from the diff. For the same reason
+  do not reach the repository through `gh api`.
 - Only when `Local head matches: yes` and `docker compose ps` shows `php-fpm` running:
   `make test`, `make phpstan`, `make deptrac`, and
   `docker compose exec -T php-fpm vendor/bin/php-cs-fixer check --diff`. Otherwise those checks

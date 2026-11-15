@@ -5,14 +5,15 @@ under `agents/`; this file is only for people.
 
 `/vm-review [<pr-number>|<range>] [--lenses a,b] [--full]` reviews a pull request,
 a git range or the current branch. The session you type it in never reads the diff: it starts an
-orchestrator in the background, and only a short summary comes back.
+orchestrator in a headless `claude -p` session in the background, and only a short summary and
+its cost come back.
 
 ## Flow
 
 ```mermaid
 flowchart TD
     U([User types /vm-review]) --> S[Calling session<br/>SKILL.md]
-    S -->|background subagent| O[Orchestrator<br/>agents/orchestrator.md]
+    S -->|claude -p, in the background| O[Orchestrator<br/>agents/orchestrator.md]
 
     subgraph BG [Background: read-only on the repository]
         O --> T[1-2. Resolve the target<br/>pull request, range or current branch<br/>head kind: branch, tag or commit]
@@ -29,7 +30,7 @@ flowchart TD
         V --> W[7. Write review.md and handoff.md<br/>.audit/vm-review/&lt;slug&gt;-&lt;time&gt;/]
     end
 
-    W -->|8. Return a summary<br/>under 250 words| S
+    W -->|8. Return a summary<br/>under 250 words, plus the cost| S
     S --> Q{Ask the user}
     Q -->|Post| G[gh pr comment<br/>public repository]
     Q -->|Hand off the fix| F[claude --bg --name vm-fix-&lt;target&gt;<br/>works through handoff.md]
@@ -41,6 +42,7 @@ flowchart TD
 | Step | Rule | Why |
 |---|---|---|
 | Calling session | Only launches and relays | Diffs and file dumps would fill the session the user keeps working in |
+| Launch | `claude -p` with `--setting-sources project --strict-mcp-config`, JSON output | The user's plugins, hooks and effort settings would change the result and the cost, and the JSON gives the exact cost |
 | Orchestrator | Writes only under `.audit/vm-review/`, never posts | A review that changes the tree, or publishes on its own, cannot be trusted |
 | Reviewers | `Explore` subagents | That agent type cannot edit files, so read-only holds by construction |
 | Project rules | One copy of `AGENTS.md` at the head, passed to every subagent | The session loads the working tree's rules, which may be newer than the reviewed code |

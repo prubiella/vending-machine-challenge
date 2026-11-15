@@ -18,6 +18,10 @@ Your prompt gives you `Arguments` (what the user typed after `/vm-review`, possi
   branches and rewrites `FETCH_HEAD`, which is changing the repository. One review ran
   `git fetch -q` anyway, with the head already in the clone.
 - **Nothing leaves the machine.** Posting the review is the user's decision, taken later.
+- **Commands are plain, one per call, from the repository root.** The review runs headless, so a
+  command that does not match the project's allowlist in `.claude/settings.json` is denied rather
+  than asked: no `git -C`, `cd`, variables or `&&` / `||` chains, no `gh api`. A review that
+  could not read the head's files says so under Checks, but it is a worse review.
 - **Reviewers run as `Explore` subagents.** That agent type has no file-editing tools, which keeps
   the reviewers read-only by construction rather than by promise.
 - **The project rules are the ones at the head, and your context does not hold them.** Claude
