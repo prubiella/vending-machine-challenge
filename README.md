@@ -62,6 +62,35 @@ message until the certificate files exist in `etc/infrastructure/certs/`.
 All ports bind to localhost only. The PHP container runs as your user, so files it writes through
 the bind mount stay yours.
 
+## Using the machine from the console
+
+`vending:run` takes a sequence of actions separated by commas, runs them on the machine and prints
+what drops into the tray: the products first, then the coins from the largest. The statement's
+examples:
+
+```bash
+make run -- vending:run "1, 0.25, 0.25, GET-SODA"
+# SODA
+make run -- vending:run "0.10, 0.10, RETURN-COIN"
+# 0.10, 0.10
+make run -- vending:run "1, GET-WATER"
+# WATER, 0.25, 0.10
+```
+
+The actions are a coin (`0.05`, `0.10`, `0.25` or `1`), `GET-<SELECTOR>` (`GET-WATER`,
+`GET-JUICE`, `GET-SODA`) and `RETURN-COIN`. The machine rejects any other coin, as a real one
+spits out a foreign coin, and a refused action (sold out, not enough credit, no exact change, an
+unknown selector) keeps the credit: both are reported on the error output and the sequence goes
+on.
+
+Without a sequence, `make run -- vending:run` opens an interactive session: it lists the products,
+takes one action per line, prints what drops into the tray after each one and shows the credit
+in the prompt. `SERVICE` asks the units of each product and the count of each coin (Enter keeps
+the current value) and services the machine. `QUIT` or Ctrl+D ends the session.
+
+The machine lives in memory: each run starts from the default machine in `config/services.yaml`
+(the statement's products, ten units of each and ten coins of 0.05, 0.10 and 0.25 for change).
+
 ## What the setup changes on your machine
 
 `make setup-host` (part of `make first-run`) does two things, both idempotent:
