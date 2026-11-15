@@ -57,9 +57,12 @@ final class TokenParserTest extends TestCase
         new TokenParser()->parse($token);
     }
 
-    public function testDescribesTheActionsWithTheCoinsTheMachineAccepts(): void
+    public function testDescribesTheActionsOfTheSessionWithTheCoinsTheMachineAccepts(): void
     {
-        self::assertSame('insert 0.05, 0.10, 0.25 or 1, GET-<SELECTOR> or RETURN-COIN', TokenParser::usage());
+        self::assertSame(
+            'One action per line: insert 0.05, 0.10, 0.25 or 1, GET-<SELECTOR> or RETURN-COIN. SERVICE services the machine and QUIT leaves.',
+            TokenParser::sessionUsage(),
+        );
     }
 
     /**

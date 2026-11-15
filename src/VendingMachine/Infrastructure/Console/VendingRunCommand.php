@@ -29,9 +29,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class VendingRunCommand
 {
-    private const string QUIT = 'QUIT';
-    private const string SERVICE = 'SERVICE';
-
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
@@ -77,7 +74,7 @@ final readonly class VendingRunCommand
     private function runSession(InputInterface $input, SymfonyStyle $io): void
     {
         $this->showProducts($io);
-        $io->writeln(\sprintf('One action per line: %s. SERVICE services the machine and QUIT leaves.', TokenParser::usage()));
+        $io->writeln(TokenParser::sessionUsage());
 
         while (null !== $action = $this->nextAction($input, $io)) {
             $this->dispatchSessionAction($action, $input, $io);
@@ -87,7 +84,7 @@ final readonly class VendingRunCommand
 
     private function dispatchSessionAction(string $action, InputInterface $input, SymfonyStyle $io): void
     {
-        if (self::SERVICE === $action) {
+        if (TokenParser::SERVICE === $action) {
             $this->service($input, $io);
 
             return;
@@ -182,7 +179,7 @@ final readonly class VendingRunCommand
 
             $action = \is_string($answer) ? trim($answer) : '';
             if ('' !== $action) {
-                return self::QUIT === $action ? null : $action;
+                return TokenParser::QUIT === $action ? null : $action;
             }
         }
 
