@@ -23,6 +23,11 @@ final readonly class Wallet
         return new self($this->credit->add($coin), $this->stock);
     }
 
+    public function returnCredit(): Payout
+    {
+        return Payout::of($this->credit, new self(CoinCollection::empty(), $this->stock));
+    }
+
     public function credit(): CoinCollection
     {
         return $this->credit;

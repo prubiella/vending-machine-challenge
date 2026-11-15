@@ -32,4 +32,17 @@ final class WalletTest extends TestCase
         self::assertTrue($inserted->stock()->equals($stock));
         self::assertTrue($wallet->credit()->isEmpty());
     }
+
+    public function testReturningTheCreditGivesBackExactlyTheInsertedCoinsIncludingTheOne(): void
+    {
+        $stock = CoinCollection::of(Coin::FiveCents);
+        $wallet = Wallet::stocked($stock)->insert(Coin::OneHundredCents)->insert(Coin::TenCents)->insert(Coin::TenCents);
+
+        $payout = $wallet->returnCredit();
+
+        self::assertTrue($payout->coins()->equals(CoinCollection::of(Coin::OneHundredCents, Coin::TenCents, Coin::TenCents)));
+        self::assertTrue($payout->wallet()->credit()->isEmpty());
+        self::assertTrue($payout->wallet()->stock()->equals($stock));
+        self::assertSame(120, $wallet->credit()->total()->cents());
+    }
 }
