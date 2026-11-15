@@ -29,7 +29,20 @@ final readonly class TokenParser
             return new InsertCoinCommand(self::coinCents($token));
         }
 
-        throw RejectedTokenException::unknownAction($token);
+        throw RejectedTokenException::unknownAction($token, self::usage());
+    }
+
+    public static function usage(): string
+    {
+        return \sprintf('insert %s, %s<SELECTOR> or %s', self::acceptedCoins('or'), self::SELECT_PREFIX, self::RETURN_COINS);
+    }
+
+    private static function acceptedCoins(string $conjunction): string
+    {
+        $coins = array_map(static fn (Coin $coin): string => MoneyNotation::coinToken($coin->value), Coin::cases());
+        $lastCoin = array_pop($coins);
+
+        return \sprintf('%s %s %s', implode(', ', $coins), $conjunction, $lastCoin);
     }
 
     private static function isSelection(string $token): bool
@@ -47,6 +60,6 @@ final readonly class TokenParser
             }
         }
 
-        throw RejectedTokenException::foreignCoin($token);
+        throw RejectedTokenException::foreignCoin($token, self::acceptedCoins('and'));
     }
 }

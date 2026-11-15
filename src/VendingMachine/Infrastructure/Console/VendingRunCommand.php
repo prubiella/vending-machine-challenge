@@ -77,7 +77,7 @@ final readonly class VendingRunCommand
     private function runSession(InputInterface $input, SymfonyStyle $io): void
     {
         $this->showProducts($io);
-        $io->writeln('Insert 0.05, 0.10, 0.25 or 1, choose GET-<SELECTOR>, RETURN-COIN or SERVICE, one per line. QUIT leaves.');
+        $io->writeln(\sprintf('One action per line: %s. SERVICE services the machine and QUIT leaves.', TokenParser::usage()));
 
         while (null !== $action = $this->nextAction($input, $io)) {
             if ('' !== $action) {

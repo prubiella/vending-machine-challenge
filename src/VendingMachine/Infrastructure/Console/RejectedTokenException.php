@@ -6,13 +6,13 @@ namespace App\VendingMachine\Infrastructure\Console;
 
 final class RejectedTokenException extends \InvalidArgumentException
 {
-    public static function foreignCoin(string $token): self
+    public static function foreignCoin(string $token, string $acceptedCoins): self
     {
-        return new self(\sprintf('The machine does not accept a coin of %s: it takes 0.05, 0.10, 0.25 and 1.', $token));
+        return new self(\sprintf('The machine does not accept a coin of %s: it takes %s.', $token, $acceptedCoins));
     }
 
-    public static function unknownAction(string $token): self
+    public static function unknownAction(string $token, string $usage): self
     {
-        return new self(\sprintf('Unknown action "%s": insert 0.05, 0.10, 0.25 or 1, GET-<SELECTOR> or RETURN-COIN.', $token));
+        return new self(\sprintf('Unknown action "%s": %s.', $token, $usage));
     }
 }
