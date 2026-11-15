@@ -42,6 +42,17 @@ final class TrayTest extends TestCase
         self::assertSame([$water, $soda, $water], $tray->products());
     }
 
+    public function testAddingAProductKeepsTheCoinsTheTrayHolds(): void
+    {
+        $water = self::water();
+        $coins = CoinCollection::of(Coin::TenCents, Coin::FiveCents);
+
+        $tray = Tray::empty()->addCoins($coins)->addProduct($water);
+
+        self::assertSame([$water], $tray->products());
+        self::assertTrue($tray->coins()->equals($coins));
+    }
+
     public function testAddingCoinsPutsThemInTheTray(): void
     {
         $coins = CoinCollection::of(Coin::TwentyFiveCents, Coin::FiveCents);
