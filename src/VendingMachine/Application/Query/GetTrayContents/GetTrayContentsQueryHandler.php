@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Application\Query\GetTrayContents;
 
-use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\VendingMachineRepository;
@@ -32,8 +31,8 @@ final readonly class GetTrayContentsQueryHandler
     private static function centsFromTheLargestCoin(CoinCollection $coins): array
     {
         $cents = [];
-        foreach (array_reverse(Coin::cases()) as $coin) {
-            $cents = [...$cents, ...array_fill(0, $coins->countOf($coin), $coin->value)];
+        foreach (array_reverse($coins->countsByCents(), true) as $coinCents => $count) {
+            $cents = [...$cents, ...array_fill(0, $count, $coinCents)];
         }
 
         return $cents;

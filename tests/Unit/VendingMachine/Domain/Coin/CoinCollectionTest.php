@@ -53,6 +53,13 @@ final class CoinCollectionTest extends TestCase
         CoinCollection::fromCounts([10 => -1]);
     }
 
+    public function testGivesTheCountOfEveryCoinByItsCentsFromTheSmallest(): void
+    {
+        $coins = CoinCollection::of(Coin::TwentyFiveCents, Coin::FiveCents, Coin::TwentyFiveCents);
+
+        self::assertSame([5 => 1, 10 => 0, 25 => 2, 100 => 0], $coins->countsByCents());
+    }
+
     public function testTotalsTheAmountOfItsCoins(): void
     {
         $coins = CoinCollection::of(Coin::OneHundredCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TenCents, Coin::FiveCents);

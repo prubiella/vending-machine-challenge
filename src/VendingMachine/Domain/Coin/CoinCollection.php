@@ -47,6 +47,19 @@ final readonly class CoinCollection
         return self::of(...$coins);
     }
 
+    /**
+     * @return array<int, int> every coin included, from the smallest
+     */
+    public function countsByCents(): array
+    {
+        $countsByCents = [];
+        foreach (Coin::cases() as $coin) {
+            $countsByCents[$coin->value] = $this->countOf($coin);
+        }
+
+        return $countsByCents;
+    }
+
     public function add(Coin $coin): self
     {
         $countsByCents = $this->countsByCents;

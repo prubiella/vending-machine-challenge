@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Application\Query\GetMachineStatus;
 
-use App\VendingMachine\Domain\Coin\Coin;
-use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\VendingMachineRepository;
 
@@ -22,7 +20,7 @@ final readonly class GetMachineStatusQueryHandler
 
         return new MachineStatusResponse(
             self::unitsBySelector($machine->inventory()),
-            self::coinStockByCents($machine->wallet()->stock()),
+            $machine->wallet()->stock()->countsByCents(),
         );
     }
 
@@ -37,18 +35,5 @@ final readonly class GetMachineStatusQueryHandler
         }
 
         return $units;
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private static function coinStockByCents(CoinCollection $stock): array
-    {
-        $counts = [];
-        foreach (Coin::cases() as $coin) {
-            $counts[$coin->value] = $stock->countOf($coin);
-        }
-
-        return $counts;
     }
 }
