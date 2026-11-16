@@ -16,7 +16,7 @@ final class LoggingChangeMakerTest extends KernelTestCase
 {
     use StartsWithNoStoredMachine;
 
-    public function testASaleLogsTheChangeItGives(): void
+    public function testASaleLogsTheChangeItComputes(): void
     {
         $container = self::getContainer();
         $container->get(LoggerInterface::class)->pushHandler($logs = new TestHandler());
@@ -25,6 +25,6 @@ final class LoggingChangeMakerTest extends KernelTestCase
         $commandBus->dispatch(new InsertCoinCommand(100));
         $commandBus->dispatch(new SelectProductCommand('WATER'));
 
-        self::assertTrue($logs->hasInfo('Change of 35 cents made.'));
+        self::assertTrue($logs->hasInfo('Change of 35 cents computed.'));
     }
 }
