@@ -7,12 +7,9 @@ namespace App\VendingMachine\Infrastructure\Console;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Domain\DomainException;
-use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
-use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
-use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -31,6 +28,7 @@ final readonly class VendingRunCommand
         private QueryBus $queryBus,
         private TokenParser $parser,
         private ServiceForm $serviceForm,
+        private TrayPrinter $trayPrinter,
     ) {
     }
 
@@ -66,7 +64,7 @@ final readonly class VendingRunCommand
         foreach (explode(',', $sequence) as $token) {
             $this->dispatchToken(trim($token), $io);
         }
-        $this->printAndCollectTray($io);
+        $this->trayPrinter->printAndCollect($io);
     }
 
     private function runSession(InputInterface $input, SymfonyStyle $io): void
@@ -80,7 +78,7 @@ final readonly class VendingRunCommand
             }
 
             $this->dispatchSessionAction($action, $input, $io);
-            $this->printAndCollectTray($io);
+            $this->trayPrinter->printAndCollect($io);
         }
     }
 
@@ -159,36 +157,11 @@ final readonly class VendingRunCommand
         }
     }
 
-    private function printAndCollectTray(SymfonyStyle $io): void
-    {
-        $trayLine = self::trayLine($this->trayContents());
-        if ('' !== $trayLine) {
-            $io->writeln($trayLine);
-        }
-
-        $this->commandBus->dispatch(new CollectTrayCommand());
-    }
-
-    private static function trayLine(TrayContentsResponse $tray): string
-    {
-        $coins = array_map(MoneyNotation::coinToken(...), $tray->coins);
-
-        return implode(', ', [...$tray->selectors, ...$coins]);
-    }
-
     private function machine(): MachineResponse
     {
         $machine = $this->queryBus->query(new GetMachineQuery());
         \assert($machine instanceof MachineResponse);
 
         return $machine;
-    }
-
-    private function trayContents(): TrayContentsResponse
-    {
-        $tray = $this->queryBus->query(new GetTrayContentsQuery());
-        \assert($tray instanceof TrayContentsResponse);
-
-        return $tray;
     }
 }

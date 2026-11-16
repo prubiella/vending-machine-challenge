@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
+use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
+use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
+use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
+use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use App\VendingMachine\Infrastructure\Console\RejectedTokenException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -60,6 +64,19 @@ final class VendingServiceCommandTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStatus(['WATER' => 10, 'JUICE' => 10, 'SODA' => 4], self::DEFAULT_COINS);
+    }
+
+    public function testPrintsAndCollectsTheCreditTheServiceReturns(): void
+    {
+        $tester = self::tester();
+        self::getContainer()->get(CommandBus::class)->dispatch(new InsertCoinCommand(100));
+
+        $exitCode = $tester->execute([], ['interactive' => false]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("1\nThe machine is serviced.\n", $tester->getDisplay(true));
+        $tray = self::getContainer()->get(QueryBus::class)->query(new GetTrayContentsQuery());
+        self::assertEquals(new TrayContentsResponse([], []), $tray);
     }
 
     public function testTheInputEndingLeavesTheMachineUnserviced(): void

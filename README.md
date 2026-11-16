@@ -103,7 +103,9 @@ middle of `SERVICE` leaves the machine as it was.
 
 `vending:service` services the machine outside a session. `--units SELECTOR:UNITS` and
 `--coins COIN:COUNT` give the new values, each repeated as needed, and it asks the rest with the
-current values as defaults; with `-n` it keeps the current value of what the options leave out:
+current values as defaults; with `-n` it keeps the current value of what the options leave out.
+Servicing returns the credit left in the machine, so it first prints those coins as `vending:run`
+prints the tray:
 
 ```bash
 make run -- vending:service --units WATER:20 --coins 0.25:15 --coins 1:0 -n

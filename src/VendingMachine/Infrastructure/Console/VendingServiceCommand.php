@@ -26,6 +26,7 @@ final readonly class VendingServiceCommand
     public function __construct(
         private CommandBus $commandBus,
         private ServiceForm $serviceForm,
+        private TrayPrinter $trayPrinter,
     ) {
     }
 
@@ -52,10 +53,10 @@ final readonly class VendingServiceCommand
             return Command::FAILURE;
         }
 
-        return $this->dispatch($service, $io);
+        return $this->service($service, $io);
     }
 
-    private function dispatch(ServiceMachineCommand $service, SymfonyStyle $io): int
+    private function service(ServiceMachineCommand $service, SymfonyStyle $io): int
     {
         try {
             $this->commandBus->dispatch($service);
@@ -65,6 +66,7 @@ final readonly class VendingServiceCommand
             return Command::FAILURE;
         }
 
+        $this->trayPrinter->printAndCollect($io);
         $io->writeln('The machine is serviced.');
 
         return Command::SUCCESS;
