@@ -52,6 +52,7 @@ final class TechnicianContext implements Context
     {
         $this->iLogIn($username, $password);
         $this->iAmLetIn();
+        $this->keepTheTokenOfTheLogin();
     }
 
     #[When('I log in as :username with the password :password')]
@@ -70,9 +71,7 @@ final class TechnicianContext implements Context
     public function iAmLetIn(): void
     {
         Assert::assertSame(200, $this->client->getResponse()->getStatusCode());
-        $token = $this->responseBody()['token'] ?? null;
-        Assert::assertIsString($token);
-        $this->authHeaders = ['HTTP_AUTHORIZATION' => 'Bearer '.$token];
+        Assert::assertIsString($this->responseBody()['token'] ?? null);
     }
 
     #[Then('the machine holds :units units of :selector')]
@@ -102,6 +101,13 @@ final class TechnicianContext implements Context
         Assert::assertSame($status, $this->client->getResponse()->getStatusCode());
         Assert::assertIsString($error['message']);
         Assert::assertStringContainsString($excerpt, $error['message']);
+    }
+
+    private function keepTheTokenOfTheLogin(): void
+    {
+        $token = $this->responseBody()['token'] ?? null;
+        \assert(\is_string($token));
+        $this->authHeaders = ['HTTP_AUTHORIZATION' => 'Bearer '.$token];
     }
 
     /**
