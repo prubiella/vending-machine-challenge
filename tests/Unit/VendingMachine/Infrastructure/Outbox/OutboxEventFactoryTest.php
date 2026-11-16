@@ -74,6 +74,19 @@ final class OutboxEventFactoryTest extends TestCase
         self::assertSame([], $factory->releasedFrom($machine));
     }
 
+    public function testDescribesALowStockWithTheSelectorAndTheUnitsLeft(): void
+    {
+        $machine = self::machine();
+        $machine->service(TechnicianId::fromString(self::TECHNICIAN_ID), ['WATER' => 6], CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents));
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents));
+
+        $events = self::factory()->releasedFrom($machine);
+
+        self::assertSame(OutboxEventFactory::STOCK_RUNNING_LOW, $events[2]->type);
+        self::assertSame(['selector' => 'WATER', 'units_left' => 5], $events[2]->payload);
+    }
+
     private static function factory(): OutboxEventFactory
     {
         $sequence = new class implements UuidGenerator {

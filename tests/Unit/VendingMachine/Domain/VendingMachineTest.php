@@ -13,6 +13,7 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
+use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
@@ -443,6 +444,35 @@ final class VendingMachineTest extends TestCase
         }
 
         self::assertSame([], $machine->releaseEvents());
+    }
+
+    public function testASaleThatLeavesASlotAtTheLowStockThresholdRecordsThatItRunsLow(): void
+    {
+        $machine = self::installed();
+        $machine->service(self::technician(), ['WATER' => Slot::LOW_STOCK_THRESHOLD + 1], CoinCollection::fromCounts([25 => 10, 10 => 10]));
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        $events = $machine->releaseEvents();
+        self::assertCount(2, $events);
+        self::assertInstanceOf(ProductSold::class, $events[0]);
+        self::assertInstanceOf(StockRunningLow::class, $events[1]);
+        self::assertSame('WATER', $events[1]->selector()->value());
+        self::assertSame(Slot::LOW_STOCK_THRESHOLD, $events[1]->unitsLeft());
+    }
+
+    public function testTheLowStockIsRecordedOncePerCrossingNotOnEveryLaterSale(): void
+    {
+        $machine = self::installed();
+        $machine->service(self::technician(), ['WATER' => Slot::LOW_STOCK_THRESHOLD], CoinCollection::fromCounts([25 => 10, 10 => 10]));
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        self::assertSame([ProductSold::class], array_map(static fn (object $event): string => $event::class, $machine->releaseEvents()));
     }
 
     public function testEventsAreReleasedOnceInTheOrderTheyHappened(): void

@@ -10,6 +10,7 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
+use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Event\VendingMachineEvent;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
@@ -64,13 +65,18 @@ final class VendingMachine
 
     public function select(Selector $selector, ChangeMaker $changeMaker): void
     {
-        $product = $this->inventory->slotFor($selector)->product();
+        $slot = $this->inventory->slotFor($selector);
+        $product = $slot->product();
         $inventory = $this->inventory->dispense($selector);
         $payout = $this->wallet->charge($product->price(), $changeMaker);
         $tray = $this->tray->addProduct($product)->addCoins($payout->coins());
 
         $this->replaceParts($inventory, $payout->wallet(), $tray);
         $this->record(new ProductSold($product, $payout->coins()));
+        $slotLeft = $inventory->slotFor($selector);
+        if ($slotLeft->isRunningLow() && !$slot->isRunningLow()) {
+            $this->record(new StockRunningLow($selector, $slotLeft->units()));
+        }
     }
 
     public function returnCoins(): void

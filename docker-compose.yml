@@ -21,6 +21,31 @@ services:
       mongo:
         condition: service_healthy
 
+  # Copies the machine's outbox to the history in MySQL, a pass every two seconds (ADR 20). It
+  # restarts until the dependencies are installed and the databases migrated, as on a first run.
+  outbox-relay:
+    build:
+      context: etc/infrastructure
+      dockerfile: php.Dockerfile
+    image: ${PROJECT_HOSTNAME}-php-fpm
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+    environment:
+      - HOME=/tmp
+      - PHP_XDEBUG_MODE=off
+    working_dir: /var/www
+    volumes:
+      - "./:/var/www"
+    command: ["bin/console", "vending:outbox:relay", "--watch"]
+    # The PHP-FPM image stops with SIGQUIT, which ends the command at once; SIGTERM lets the pass in
+    # progress finish.
+    stop_signal: SIGTERM
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
   nginx:
     image: "nginx:${NGINX_VERSION:-1.30.6-alpine}"
     environment:

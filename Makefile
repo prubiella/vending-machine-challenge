@@ -60,7 +60,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell mongo-shell tools tools-stop migrate jwt-keys hooks
+.PHONY: run run-debug logs status shell db-shell mongo-shell tools tools-stop migrate relay jwt-keys hooks
 
 run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -92,6 +92,9 @@ tools-stop: ## Stop and remove phpMyAdmin and mongo-express
 migrate: ## Run the database migrations on the dev and test databases
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
+
+relay: ## Copy the events waiting in the machine's outbox to the history, one pass (the outbox-relay container keeps doing it)
+	@$(DOCKER_COMPOSE) exec php-fpm bin/console vending:outbox:relay
 
 jwt-keys: ## Create the key pair that signs the technicians' tokens, at the paths in .env (config/jwt, git ignores it), unless both keys exist
 	@$(DOCKER_COMPOSE) exec php-fpm php etc/jwt/ensure-key-pair.php

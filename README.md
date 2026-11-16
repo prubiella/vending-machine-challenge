@@ -271,9 +271,11 @@ db.vending_machines.findOne()
 ```
 
 The document also holds the `outbox`: the events of what happened to the machine (a sale, the credit
-returned, a service) waiting to be copied to MySQL. `make run -- vending:outbox:relay` copies them
-to the `machine_history` table and empties the outbox
-([ADR 20](docs/adr/0020-domain-events-and-outbox.md)).
+returned, a service) waiting to be copied to MySQL. The `outbox-relay` container runs
+`vending:outbox:relay --watch`, which copies them to the `machine_history` table every two seconds
+and empties the outbox ([ADR 20](docs/adr/0020-domain-events-and-outbox.md)); `make logs outbox-relay`
+shows each pass that relayed something, and `make relay` makes one pass by hand. On a first run it
+restarts until the dependencies are installed and the databases migrated.
 
 MySQL holds the technicians, the migrations table, `machine_history`, and the `vending_machine` and
 `vending_machine_outbox` tables of `DbalVendingMachineRepository`, a second adapter that passes the
@@ -288,7 +290,9 @@ The command bus logs every command with its name and data: info when handled, no
 refuses it, error for anything else, and notice for each retry after a concurrent update. A command
 carrying a secret or personal data implements `SensitiveCommand` and masks those fields: a password
 is logged as `***` and a username as its first three characters (`pau***`), and a console
-`--password` option is masked too. `LoggingChangeMaker` logs the change computed for a sale.
+`--password` option is masked too. `LoggingChangeMaker` logs the change computed for a sale, and
+the outbox relay logs a warning when a sale leaves a product at 5 units or fewer
+(`WATER is running low: 5 units left.`), once each time it drops there.
 
 In dev the application's own logs go to a file a day, `var/log/dev-<YYYY-MM-DD>.log` (the last seven
 are kept; `tail -f var/log/dev-$(date +%F).log`), and only its warnings and errors also reach stderr,

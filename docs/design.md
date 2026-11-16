@@ -261,10 +261,13 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
 `ProductSold` with the product and the change given, `CreditReturned` with the coins given back
 (by `RETURN-COIN` or by a service, only when there were any) and `MachineServiced` with the
-technician's id, the counts set and the coins collected from the cash box. A refusal records
-nothing. `releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId`
-of this context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default
-machine is built by `installStocked()`, which records no service.
+technician's id, the counts set and the coins collected from the cash box. A sale that leaves a
+slot at or under `Slot::LOW_STOCK_THRESHOLD` (5 units), coming from above it, also records
+`StockRunningLow` with the selector and the units left: once per crossing, not on every later
+sale, and never for a service, since the technician chose that stock. A refusal records nothing.
+`releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId` of this
+context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default machine
+is built by `installStocked()`, which records no service.
 
 ### Why change making is a search and not greedy
 
@@ -430,7 +433,12 @@ sequenceDiagram
     Note over Relay,Outbox: a crash before remove() relays them again, and the history ignores them
 ```
 
-`remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
+The `outbox-relay` container runs it with `--watch`: a pass every two seconds, without a broker. On
+SIGTERM it finishes the pass in progress and exits; the compose service sets that signal, since the
+PHP-FPM image would stop it with SIGQUIT. A pass that dies anyway is the crash above, and the next
+pass repeats it. Before a `StockRunningLow` event reaches the history, the relay hands it to the `LowStockNotifier`
+port, whose adapter logs a warning; notifying first means a crash may repeat a warning but never
+loses one. `remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
 the pass stay for the next one, and a save of the machine never conflicts with the relay.
 
 ## 6. Persistence
