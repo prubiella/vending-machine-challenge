@@ -16,6 +16,8 @@ Reviewed `<base>...<head>` (<n> files, +<added> -<deleted>) through the lenses: 
 
 - <lens>: <choice the change makes>: <the alternative, and why it may be worth confirming>
 
+<n> other decisions left out.
+
 ## Declined
 
 - <lens>: <behaviour set aside>: <why>

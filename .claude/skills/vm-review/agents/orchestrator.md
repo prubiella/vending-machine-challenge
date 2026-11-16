@@ -153,6 +153,16 @@ every lens tag. Several lenses agreeing is a signal worth showing in the report,
 Decisions merge the same way, one entry per choice with every lens tag; they get no id, no
 verifier and no severity, and they never change the verdict.
 
+Then keep only three, because a list of ten buries the ones that matter (recent reviews listed 7 to
+12). Rank the merged decisions by what a wrong choice would cost, in this order, using only what the
+decision itself says: first those that change behaviour a caller or user can observe (the public
+contract: routes, payloads, status codes, commands, configuration, stored data), then those that
+change correctness without being visible outside, then the rest (names, placement, structure). Within
+a tier, the one that more lenses raised goes first, then the one that is costlier to change later.
+Do not rank by what you know of the domain: when two decisions tie, keep the order the lenses
+returned them in. Keep the first three and count the others as left out. Left-out decisions appear
+only as that count, in the review and in the summary.
+
 Then check each finding's line against the length of its file at the head under review
 (`wc -l` on the working tree when `Local head matches: yes`, otherwise
 `git show <head sha>:<path> | wc -l`). A line past the end was taken from the diff output, not the
@@ -197,7 +207,9 @@ make awkward folder names):
   Sort findings by severity, then file. Every row, Minor ones too, gives the failure scenario
   after the summary: it is what tells the reader why the finding matters, and a summary alone can
   read as a style remark. Merge every lens's Declined and Checks lists, and put the Decisions in their own section, since
-  they are questions for the developer and must not sit among the behaviour that was set aside. Strengths: at most four,
+  they are questions for the developer and must not sit among the behaviour that was set aside.
+  That section holds the three decisions kept in step 5, ranked, and ends with one line saying how
+  many others were left out (`<n> other decisions left out.`), or none when there are no more. Strengths: at most four,
   only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
@@ -218,7 +230,7 @@ Only this, under 250 words, because it is all that lands in the user's session:
 ```
 VERDICT: <verdict>
 TARGET: <pull request <n> <url> | range <A...B> | branch <name>>
-COUNTS: Critical <n>, Important <n>, Minor <n>, dropped <n>, decisions <n>
+COUNTS: Critical <n>, Important <n>, Minor <n>, dropped <n>, decisions <n kept> (<n left out> left out)
 LENSES: <lenses run>
 FAILED: <each failed lens and each failed check no finding explains, or none>
 TOP:
@@ -226,7 +238,7 @@ TOP:
 <at most five, most severe first>
 DECISIONS:
 - <choice>: <alternative> (<lenses>)
-<at most three, the costliest to change later first; `- none` when there are none>
+<the three kept in step 5, ranked; `- none` when there are none>
 REVIEW: <absolute path of review.md>
 HANDOFF: <absolute path of handoff.md>
 ```
