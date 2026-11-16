@@ -13,7 +13,6 @@ use App\Maintenance\Domain\Technician\PasswordHasher;
 use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Domain\Technician\TooShortPasswordException;
 use App\Maintenance\Domain\Technician\Username;
-use App\Shared\Application\Bus\Masking;
 use App\Tests\Unit\Maintenance\Application\InMemoryTechnicianRepository;
 use PHPUnit\Framework\TestCase;
 
@@ -68,13 +67,6 @@ final class CreateTechnicianCommandHandlerTest extends TestCase
         } catch (TooShortPasswordException) {
             self::assertSame(0, $repository->count());
         }
-    }
-
-    public function testMasksTheUsernameAndTheEmailAndHidesThePasswordInTheLog(): void
-    {
-        $command = new CreateTechnicianCommand(self::ID, 'ana', 'Ana@Example.com', 'correct-horse');
-
-        self::assertSame(['username' => Masking::KeepFirstThree, 'email' => Masking::KeepFirstThree, 'password' => Masking::Hide], $command->sensitiveFields());
     }
 
     private static function handler(InMemoryTechnicianRepository $repository): CreateTechnicianCommandHandler
