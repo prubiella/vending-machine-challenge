@@ -32,7 +32,7 @@ final class LoggingChangeMakerTest extends TestCase
         self::assertTrue($change->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
         self::assertSame([[
             Level::Info,
-            'Change of 35 cents made.',
+            'Change of 35 cents computed.',
             ['amount_cents' => 35, 'change_by_cents' => [5 => 0, 10 => 1, 25 => 1, 100 => 0]],
         ]], $this->records());
     }
@@ -45,7 +45,7 @@ final class LoggingChangeMakerTest extends TestCase
         } catch (NoExactChangeException $e) {
             self::assertSame([[
                 Level::Notice,
-                'No change made: Cannot give exactly 20 cents with the coins available.',
+                'No change computed: Cannot give exactly 20 cents with the coins available.',
                 ['amount_cents' => 20, 'available_by_cents' => [5 => 0, 10 => 0, 25 => 1, 100 => 0]],
             ]], $this->records());
         }

@@ -24,7 +24,7 @@ final readonly class LoggingChangeMaker implements ChangeMaker
             $change = $this->changeMaker->makeChange($amount, $available);
         } catch (NoExactChangeException $noChange) {
             $this->logger->notice(
-                \sprintf('No change made: %s', $noChange->getMessage()),
+                \sprintf('No change computed: %s', $noChange->getMessage()),
                 ['amount_cents' => $amount->cents(), 'available_by_cents' => $available->countsByCents()],
             );
 
@@ -32,7 +32,7 @@ final readonly class LoggingChangeMaker implements ChangeMaker
         }
 
         $this->logger->info(
-            \sprintf('Change of %d cents made.', $amount->cents()),
+            \sprintf('Change of %d cents computed.', $amount->cents()),
             ['amount_cents' => $amount->cents(), 'change_by_cents' => $change->countsByCents()],
         );
 

@@ -12,6 +12,7 @@ use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Monolog\LogRecord;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Handler\HandlersLocator;
 use Symfony\Component\Messenger\MessageBus;
@@ -32,6 +33,33 @@ final class LoggingCommandMiddlewareTest extends TestCase
         })->dispatch(new InsertCoinCommand(25));
 
         self::assertSame([[Level::Info, 'Command InsertCoinCommand handled.', ['command' => InsertCoinCommand::class, 'data' => ['cents' => 25]]]], $this->records());
+    }
+
+    /**
+     * @return iterable<string, array{LogInCommand, array<string, string>}>
+     */
+    public static function sensitiveCommands(): iterable
+    {
+        yield 'a secret hidden, personal data kept to its first three characters' => [
+            new LogInCommand('pau@example.com', 'correct horse', 'T-1'),
+            ['email' => 'pau***', 'password' => '***', 'terminal' => 'T-1'],
+        ];
+        yield 'personal data of three characters or fewer hidden' => [
+            new LogInCommand('pau', 'pw', 'T-1'),
+            ['email' => '***', 'password' => '***', 'terminal' => 'T-1'],
+        ];
+    }
+
+    /**
+     * @param array<string, string> $loggedData
+     */
+    #[DataProvider('sensitiveCommands')]
+    public function testLogsEachSensitiveFieldOfACommandMaskedByItsRule(LogInCommand $command, array $loggedData): void
+    {
+        $this->bus(static function (): void {
+        })->dispatch($command);
+
+        self::assertSame([[Level::Info, 'Command LogInCommand handled.', ['command' => LogInCommand::class, 'data' => $loggedData]]], $this->records());
     }
 
     public function testLogsARefusedCommandAtNoticeAndRethrowsTheRefusal(): void
@@ -76,7 +104,7 @@ final class LoggingCommandMiddlewareTest extends TestCase
         return new MessageBus([
             new LoggingCommandMiddleware(new Logger('test', [$this->logs])),
             new UnpackExceptionMiddleware(),
-            new HandleMessageMiddleware(new HandlersLocator([InsertCoinCommand::class => [$handler]])),
+            new HandleMessageMiddleware(new HandlersLocator([InsertCoinCommand::class => [$handler], LogInCommand::class => [$handler]])),
         ]);
     }
 }

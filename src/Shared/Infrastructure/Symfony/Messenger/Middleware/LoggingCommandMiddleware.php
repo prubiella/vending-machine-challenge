@@ -21,7 +21,7 @@ final readonly class LoggingCommandMiddleware implements MiddlewareInterface
     {
         $command = $envelope->getMessage();
         $name = LoggedCommand::name($command);
-        $context = [...LoggedCommand::context($command), 'data' => get_object_vars($command)];
+        $context = LoggedCommand::context($command);
 
         try {
             $handled = $stack->next()->handle($envelope, $stack);
