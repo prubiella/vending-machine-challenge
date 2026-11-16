@@ -61,9 +61,9 @@ check. `VendingMachine` must not depend on whatever keeps the technicians
   never quotes a username, an email or a password. Symfony logs a console command with its input, so
   `PasswordOptionMaskingProcessor` logs a `--password` option as `***`.
 - **Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id,
-  from the console login or from the token. No handler reads it: the command bus log records it on
-  every service, and that log is the audit trail until domain events exist, when a
-  `MachineServiced` event goes to the outbox and the history.
+  from the console login or from the token. The handler turns it into the machine's own
+  `TechnicianId`, and the `MachineServiced` domain event carries it, with what the service set and
+  collected, through the outbox into the history ([ADR 20](0020-domain-events-and-outbox.md)).
 - **Failures the client can fix answer 401, the server's own do not.** A missing, malformed, badly
   signed or expired token answers 401 in the API's error format; a token the server cannot check
   because of its own key (a file it cannot read) answers 500 and is logged as critical, since
@@ -82,7 +82,8 @@ check. `VendingMachine` must not depend on whatever keeps the technicians
   starts, and login answers, until something reads readiness.
 - Every login token carries `ROLE_TECHNICIAN`, so a 403 cannot be reached from a login; the kernel
   tests cover it with a token made without the role.
-- The audit trail is a log line until domain events exist.
+- The audit trail is the machine history, filled by the outbox relay; until the relay runs, the
+  `MachineServiced` event waits in the outbox, saved with the machine.
 
 ## Alternatives considered
 
