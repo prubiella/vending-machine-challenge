@@ -105,7 +105,7 @@ hooks: ## Use the project's git hooks (they run inside the PHP image)
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
 
-behat: ## Run the customer scenarios of features/ against the kernel (no server, no hosts entry)
+behat: ## Run the customer and technician scenarios of features/ against the kernel (no server, no hosts entry)
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/behat $(ARGS)
 
 coverage: ## Run the tests with an HTML coverage report in var/coverage

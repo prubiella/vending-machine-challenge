@@ -135,7 +135,8 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    machine lacks its 500 (a command also its 409); the statuses of its own are for you to list.
 5. Scenario: a customer use case gets a scenario in `features/customer/<topic>.feature`, written in
    the customer's words, reusing the steps of `tests/Behat/CustomerContext.php` and adding one only
-   when no step says it. Feature files hold no PHP and no HTTP details.
+   when no step says it; a technician's use case does the same in `features/technician/` with
+   `tests/Behat/TechnicianContext.php`. Feature files hold no PHP and no HTTP details.
 6. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
    and for every handler with logic of its own; integration tests in `tests/Integration/<Context>/`
    for wiring that only the kernel can prove. A handler with no logic (one that returns a
@@ -171,7 +172,8 @@ and a kernel test that touches the machine uses `StartsWithNoStoredMachine`, so 
 default machine. A new adapter of `VendingMachineRepository` gets a test case that extends
 `VendingMachineRepositoryContractTestCase`. Behat (`behat.dist.php`, the FriendsOfBehat Symfony
 extension) runs the scenarios of `features/` against the kernel through BrowserKit, on the same
-test databases; `CustomerContext` deletes the stored machine before each scenario. `tests/Behat/`
+test databases; `CustomerContext` deletes the stored machine before each scenario, and
+`TechnicianContext` the technicians too. `tests/Behat/`
 is outside `src/`, so deptrac does not see it, and PHPStan analyses it with the rest of `tests/`.
 `make hooks` (part of `make first-run`) enables the git hooks: pre-commit runs the checks when
 code, configuration or tooling is staged, and refuses the commit when those staged files also have

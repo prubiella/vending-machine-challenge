@@ -397,7 +397,7 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | Command | What it does |
 |---|---|
 | `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
-| `make behat` | The customer scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
+| `make behat` | The customer and technician scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
 | `make coverage` | The tests with an HTML coverage report in `var/coverage` |
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
 | `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
@@ -432,6 +432,13 @@ read, such as "When I insert 0.25 / And I select SODA / Then the tray holds SODA
 steps live in `tests/Behat/CustomerContext.php`. Each scenario starts from the default machine, and
 a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" services it first. The
 scenarios use the test database, so `make migrate` must have run.
+
+`features/technician/` holds the technician's side, with the steps of
+`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token, and
+reading the stock and the change. Each scenario starts with no technician and the default machine,
+and a `Given` creates the technician it logs in as. Every login gives a token with the technician's
+role, so a 403 cannot be reached from a scenario: the kernel tests make a token without the role to
+cover it.
 
 ## Debugging with PhpStorm
 
