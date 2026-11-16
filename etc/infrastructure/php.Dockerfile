@@ -16,7 +16,7 @@ COPY php/xdebug.ini /usr/local/etc/php/conf.d/
 
 RUN apk add --no-cache bash git icu-libs libzip libssl3 \
     && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libzip-dev linux-headers openssl-dev \
-    && docker-php-ext-install -j"$(nproc)" intl pdo_mysql zip \
+    && docker-php-ext-install -j"$(nproc)" intl pcntl pdo_mysql zip \
     && pecl install "xdebug-${XDEBUG_VERSION}" \
     && pecl install "mongodb-${MONGODB_VERSION}" \
     && docker-php-ext-enable xdebug mongodb \

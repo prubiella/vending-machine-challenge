@@ -159,7 +159,8 @@ classDiagram
         +select(Selector, ChangeMaker)
         +returnCoins()
         +collectTray()
-        +service(unitsBySelector, CoinCollection)
+        +service(TechnicianId, unitsBySelector, CoinCollection)
+        +releaseEvents() list~VendingMachineEvent~
     }
     class Inventory {
         +slotFor(Selector) Slot
@@ -255,6 +256,19 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
   the cash box together are the coins the machine took, so a sale conserves them.
 - **Rules live in the domain.** A handler only loads, calls the domain and saves.
 
+### Events
+
+The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
+`ProductSold` with the product and the change given, `CreditReturned` with the coins given back
+(by `RETURN-COIN` or by a service, only when there were any) and `MachineServiced` with the
+technician's id, the counts set and the coins collected from the cash box. A sale that leaves a
+slot at or under `Slot::LOW_STOCK_THRESHOLD` (5 units), coming from above it, also records
+`StockRunningLow` with the selector and the units left: once per crossing, not on every later
+sale, and never for a service, since the technician chose that stock. A refusal records nothing.
+`releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId` of this
+context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default machine
+is built by `installStocked()`, which records no service.
+
 ### Why change making is a search and not greedy
 
 The machine holds a finite number of each coin, so the usual greedy algorithm (largest coin first)
@@ -293,8 +307,9 @@ sequenceDiagram
     Handler->>Repo: get()
     Repo-->>Handler: machine (credit 100)
     Handler->>Machine: select(WATER, changeMaker)
-    Note over Machine: dispense, charge 65, change 25 + 10, new tray, then replace the parts
+    Note over Machine: dispense, charge 65, change 25 + 10, new tray, then replace the parts, record ProductSold
     Handler->>Repo: save(machine)
+    Note over Repo: the state and ProductSold in one write, the event in the outbox
     API-->>Customer: 204
     Customer->>API: GET /machine/tray
     API-->>Customer: 200 {"selectors":["WATER"],"coins":[25,10]}
@@ -397,6 +412,35 @@ sequenceDiagram
 The second purchase decides again on the fresh state, so two requests on the same credit cannot
 vend twice: the second fails on credit. When the retries run out, the request answers `409`.
 
+### The relay to the history
+
+The events wait in the machine's outbox until `vending:outbox:relay` copies them to the
+`machine_history` table of MySQL ([ADR 20](adr/0020-domain-events-and-outbox.md)). It writes the
+history first and empties the outbox after, so a crash in between relays the same events again; the
+history is keyed by the event's id and keeps each once.
+
+```mermaid
+sequenceDiagram
+    participant Relay as vending:outbox:relay
+    participant Outbox as MachineOutbox (MongoDB)
+    participant History as machine_history (MySQL)
+    Relay->>Outbox: pending()
+    Outbox-->>Relay: events, oldest first
+    loop each event
+        Relay->>History: INSERT, ON DUPLICATE KEY keep the row
+    end
+    Relay->>Outbox: remove(ids): $pull the relayed ids
+    Note over Relay,Outbox: a crash before remove() relays them again, and the history ignores them
+```
+
+The `outbox-relay` container runs it with `--watch`: a pass every two seconds, without a broker. On
+SIGTERM it finishes the pass in progress and exits; the compose service sets that signal, since the
+PHP-FPM image would stop it with SIGQUIT. A pass that dies anyway is the crash above, and the next
+pass repeats it. Before a `StockRunningLow` event reaches the history, the relay hands it to the `LowStockNotifier`
+port, whose adapter logs a warning; notifying first means a crash may repeat a warning but never
+loses one. `remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
+the pass stay for the next one, and a save of the machine never conflicts with the relay.
+
 ## 6. Persistence
 
 The machine is one MongoDB document of the `vending_machines` collection
@@ -415,15 +459,21 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
 - **A hand-written mapper.** `VendingMachineMapper` turns the aggregate into an array and back. It
   rebuilds the object through the domain's named constructors (`VendingMachine::restore()`,
   `Wallet::of()`), so loading cannot produce a state the domain would refuse.
+- **The outbox is part of the machine's write** ([ADR 20](adr/0020-domain-events-and-outbox.md)).
+  On save, `OutboxEventFactory` takes the machine's events and gives each an id from `UuidGenerator`
+  and the time from the clock. MongoDB pushes them into the document's `outbox` array in the same
+  `updateOne` that sets the state, the version still in the filter, so a conflict writes neither;
+  the DBAL adapter inserts them into `vending_machine_outbox` in the transaction of its row.
+  `MachineOutbox::pending()` reads them back, oldest first.
 - **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
   `vending:reset` deletes the stored document.
 - **A second adapter under the same contract.** `DbalVendingMachineRepository` stores the same
   machine as a row of the MySQL table `vending_machine`, with JSON columns
   ([ADR 12](adr/0012-persistence-mysql-with-dbal.md), superseded by ADR 16 as the default). Both
   adapters pass `VendingMachineRepositoryContractTestCase`, so the port, not an engine, defines the
-  behaviour. Swapping them is changing two aliases in `config/services.yaml`.
-- **MySQL** holds the technicians, the migrations table and the DBAL adapter's table, and is
-  meant for the sales history later.
+  behaviour. Swapping them is changing three aliases in `config/services.yaml`.
+- **MySQL** holds the technicians, the migrations table, the DBAL adapter's tables and
+  `machine_history`, where reports such as sales per product and day are a plain `GROUP BY`.
 
 ## 7. Security
 
@@ -452,9 +502,10 @@ server cannot check because of its own keys 500, logged as critical, since loggi
 fix it. The key pair is created by `make jwt-keys` and ignored by git. A token stays valid for its
 hour after its technician is removed: nothing is looked up per request.
 
-**Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id.
-No handler reads it: the command bus logs every command with its data, so the log records who
-serviced the machine on every service. That log is the audit trail until domain events exist.
+**Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id,
+and the machine records it in a `MachineServiced` event, which the outbox saves with the machine
+and the relay copies to `machine_history` ([ADR 20](adr/0020-domain-events-and-outbox.md)): the
+history is the audit trail of who serviced the machine. The command bus log still records it too.
 
 **Masking.** A command that carries a secret or personal data implements `SensitiveCommand` and
 maps each such field to a `Masking` rule (`Hide` logs `***`, `KeepFirstThree` logs `pau***`):
@@ -562,12 +613,10 @@ Trade-offs worth saying out loud:
 
 ## 11. Future work
 
-- **Domain events and a sales history.** The aggregate would record events (a sale, the change
-  given, a service) in an embedded outbox in the same MongoDB document, so the machine and its
-  events are one atomic write. A publisher would feed a history in MySQL, where reports such as
-  sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
-  `MachineServiced` event with the technician's id would replace the command bus log as the record
-  of who serviced the machine.
+- **A broker between the outbox and its consumers.** The relay would publish to a Messenger
+  transport, and the history and the low stock alert would become consumers with their own retries
+  ([ADR 20](adr/0020-domain-events-and-outbox.md)). Reports over `machine_history` (sales per
+  product and day) and an endpoint to read it come with them.
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since

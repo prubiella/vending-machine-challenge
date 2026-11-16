@@ -27,10 +27,12 @@ final readonly class DefaultVendingMachineFactory
 
     public function create(): VendingMachine
     {
-        $machine = VendingMachine::install($this->machineId, ...$this->defaultProducts());
-        $machine->service($this->defaultUnitsBySelector(), CoinCollection::fromCounts($this->coinStockByCents));
-
-        return $machine;
+        return VendingMachine::installStocked(
+            $this->machineId,
+            $this->defaultUnitsBySelector(),
+            CoinCollection::fromCounts($this->coinStockByCents),
+            ...$this->defaultProducts(),
+        );
     }
 
     /**

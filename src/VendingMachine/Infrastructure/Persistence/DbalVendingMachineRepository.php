@@ -8,14 +8,22 @@ use App\Shared\Application\Persistence\ConcurrentUpdateException;
 use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
+use App\VendingMachine\Infrastructure\Outbox\MachineOutbox;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventFactory;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventMapper;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 /**
+ * The machine as a row of vending_machine, and the events of each save as rows of
+ * vending_machine_outbox written in the same transaction (ADR 20).
+ *
  * @phpstan-import-type MachineRow from VendingMachineMapper
  */
-final readonly class DbalVendingMachineRepository implements VendingMachineRepository, StoredMachineResetter
+final readonly class DbalVendingMachineRepository implements VendingMachineRepository, StoredMachineResetter, MachineOutbox
 {
+    private const string OUTBOX = 'vending_machine_outbox';
     private const int NOT_STORED = 0;
     private const string AGGREGATE = 'vending machine';
 
@@ -27,6 +35,8 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
         private VendingMachineMapper $mapper,
         private DefaultVendingMachineFactory $defaultMachineFactory,
         private MachineId $machineId,
+        private OutboxEventFactory $outboxEventFactory,
+        private OutboxEventMapper $outboxEventMapper,
     ) {
         $this->versions = new \WeakMap();
     }
@@ -49,19 +59,50 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     {
         $loadedVersion = $this->versions[$machine] ?? self::NOT_STORED;
         $row = $this->mapper->toRow($machine);
+        $events = $this->outboxEventFactory->releasedFrom($machine);
 
-        if (self::NOT_STORED === $loadedVersion) {
-            $this->insert($row);
-        } else {
-            $this->update($row, $loadedVersion);
-        }
+        $this->connection->transactional(function () use ($row, $loadedVersion, $events): void {
+            if (self::NOT_STORED === $loadedVersion) {
+                $this->insert($row);
+            } else {
+                $this->update($row, $loadedVersion);
+            }
+            foreach ($events as $event) {
+                $this->connection->insert(self::OUTBOX, ['machine_id' => $row['id'], ...$this->outboxEventMapper->toRow($event)]);
+            }
+        });
 
         $this->versions[$machine] = $loadedVersion + 1;
     }
 
+    public function pending(): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT id, type, occurred_at, payload FROM vending_machine_outbox WHERE machine_id = ? ORDER BY occurred_at, id',
+            [$this->machineId->value()],
+        );
+
+        return array_map($this->outboxEventMapper->fromRow(...), $rows);
+    }
+
+    public function remove(array $ids): void
+    {
+        if ([] === $ids) {
+            return;
+        }
+        $this->connection->executeStatement(
+            'DELETE FROM vending_machine_outbox WHERE id IN (?)',
+            [$ids],
+            [ArrayParameterType::STRING],
+        );
+    }
+
     public function reset(): void
     {
-        $this->connection->delete('vending_machine', ['id' => $this->machineId->value()]);
+        $this->connection->transactional(function (): void {
+            $this->connection->delete(self::OUTBOX, ['machine_id' => $this->machineId->value()]);
+            $this->connection->delete('vending_machine', ['id' => $this->machineId->value()]);
+        });
     }
 
     /**

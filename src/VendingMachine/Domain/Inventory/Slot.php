@@ -9,6 +9,7 @@ use App\VendingMachine\Domain\Product\Product;
 final readonly class Slot
 {
     public const int CAPACITY = 200;
+    public const int LOW_STOCK_THRESHOLD = 5;
 
     private function __construct(
         private Product $product,
@@ -38,6 +39,11 @@ final readonly class Slot
     public function isEmpty(): bool
     {
         return 0 === $this->units;
+    }
+
+    public function isRunningLow(): bool
+    {
+        return $this->units <= self::LOW_STOCK_THRESHOLD;
     }
 
     public function dispense(): self
