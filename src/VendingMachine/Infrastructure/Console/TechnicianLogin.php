@@ -18,14 +18,18 @@ final readonly class TechnicianLogin
     ) {
     }
 
-    // Null when the technician is not let in: the reason is on stderr, except when the input ends,
-    // which the caller reports, since it ends the caller's questions too.
-    public function technicianId(InputInterface $input, SymfonyStyle $io, ?string $givenUsername, #[\SensitiveParameter] ?string $givenPassword): ?string
+    /**
+     * Asks for what the technician left out and prints a refusal on stderr, returning null: the
+     * technician is not let in and the reason is already reported.
+     *
+     * @throws InputEndedException when the input ends while asking, which ends the caller's questions too
+     */
+    public function logIn(InputInterface $input, SymfonyStyle $io, ?string $givenUsername, #[\SensitiveParameter] ?string $givenPassword): ?string
     {
         $startedInteractive = $input->isInteractive();
-        [$username, $password] = self::askForMissingCredentials($input, $io, $givenUsername, $givenPassword);
-        if ($startedInteractive && !$input->isInteractive()) {
-            return null;
+        [$username, $password] = self::askCredentialsLeftOut($input, $io, $givenUsername, $givenPassword);
+        if (InputEnd::reachedSince($startedInteractive, $input)) {
+            throw InputEndedException::beforeLogin();
         }
 
         if (null === $username || null === $password) {
@@ -38,7 +42,7 @@ final readonly class TechnicianLogin
     /**
      * @return array{?string, ?string} the username and the password, null when not given
      */
-    private static function askForMissingCredentials(InputInterface $input, SymfonyStyle $io, ?string $givenUsername, #[\SensitiveParameter] ?string $givenPassword): array
+    private static function askCredentialsLeftOut(InputInterface $input, SymfonyStyle $io, ?string $givenUsername, #[\SensitiveParameter] ?string $givenPassword): array
     {
         $username = $givenUsername;
         $password = $givenPassword;
