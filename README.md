@@ -112,6 +112,10 @@ make run -- vending:service --units WATER:20 --coins 0.25:15 --coins 1:0 -n
 # The machine is serviced.
 ```
 
+Both `SERVICE` and `vending:service` read the current values once, before asking, and set every
+value, the kept ones included. A sale that another session saves in between is therefore undone
+by the service: service the machine while nobody else is using it.
+
 The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
 exits with 1, the only case besides an unexpected error where it does not exit with 0.
 
