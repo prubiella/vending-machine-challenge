@@ -42,12 +42,14 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         $exitCode = $tester->execute([]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
-        self::assertStringContainsString('Username', $tester->getDisplay(true));
-        self::assertStringContainsString('Email', $tester->getDisplay(true));
-        self::assertSame('ana@example.com', self::storedTechnician('ana')->email()->value());
-        self::assertStringContainsString('Password', $tester->getDisplay(true));
-        self::assertStringNotContainsString('correct-horse', $tester->getDisplay(true));
-        self::assertPasswordIs('correct-horse', self::storedTechnician('ana'));
+        $display = $tester->getDisplay(true);
+        self::assertStringContainsString('Username', $display);
+        self::assertStringContainsString('Email', $display);
+        self::assertStringContainsString('Password', $display);
+        self::assertStringNotContainsString('correct-horse', $display);
+        $technician = self::storedTechnician('ana');
+        self::assertSame('ana@example.com', $technician->email()->value());
+        self::assertPasswordIs('correct-horse', $technician);
     }
 
     public function testKeepsTheSpacesAroundAnAskedPassword(): void
