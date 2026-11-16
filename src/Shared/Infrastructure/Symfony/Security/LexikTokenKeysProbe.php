@@ -8,8 +8,7 @@ use App\Shared\Application\Query\HealthCheck\TokenKeysProbe;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWSProvider\JWSProviderInterface;
 use Psr\Log\LoggerInterface;
 
-// Signs a throwaway token and verifies it, so a missing or unreadable key, and a public key of
-// another pair, are found before a technician's token fails.
+// A public key of another pair must fail the probe, which is why it verifies what it signs.
 final readonly class LexikTokenKeysProbe implements TokenKeysProbe
 {
     public function __construct(
