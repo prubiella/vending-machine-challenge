@@ -9,9 +9,12 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Event\ProductInstalled;
+use App\VendingMachine\Domain\Event\ProductRetired;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Event\VendingMachineEvent;
+use App\VendingMachine\Domain\Inventory\CatalogChange;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Product;
@@ -98,16 +101,26 @@ final class VendingMachine
     /**
      * @param array<int|string, int> $unitsBySelector
      */
-    public function service(TechnicianId $technicianId, array $unitsBySelector, CoinCollection $coins): void
+    public function service(TechnicianId $technicianId, array $unitsBySelector, CoinCollection $coins, ?CatalogChange $catalogChange = null): void
     {
+        $catalogChange ??= CatalogChange::none();
+        $catalogChange->refuseUnitsGivenTo($unitsBySelector);
+        self::refuseUnpayablePrices(...array_map(static fn (Slot $slot): Product => $slot->product(), $catalogChange->installs()));
         $collectedFromCashBox = $this->wallet->cashBox();
-        $inventory = $this->inventory->restockAll($unitsBySelector);
+        $retiredSlots = array_map($this->inventory->slotFor(...), $catalogChange->retires());
+        $inventory = $this->inventory->applying($catalogChange)->restockAll($unitsBySelector);
         $refund = $this->wallet->returnCredit();
         $wallet = $refund->wallet()->restock($coins);
         $tray = $this->tray->addCoins($refund->coins());
 
         $this->replaceParts($inventory, $wallet, $tray);
         $this->record(new MachineServiced($technicianId, $unitsBySelector, $coins, $collectedFromCashBox));
+        foreach ($retiredSlots as $slot) {
+            $this->record(new ProductRetired($technicianId, $slot->product(), $slot->units()));
+        }
+        foreach ($catalogChange->installs() as $slot) {
+            $this->record(new ProductInstalled($technicianId, $slot->product(), $slot->units()));
+        }
         $this->recordCreditReturned($refund->coins());
     }
 

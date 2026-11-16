@@ -7,6 +7,8 @@ namespace App\VendingMachine\Infrastructure\Outbox;
 use App\Shared\Application\Uuid\UuidGenerator;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Event\ProductInstalled;
+use App\VendingMachine\Domain\Event\ProductRetired;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Event\VendingMachineEvent;
@@ -62,6 +64,20 @@ final readonly class OutboxEventFactory
                 'units' => $event->unitsBySelector(),
                 'coins' => $event->coins()->countsByCents(),
                 'collected_from_cash_box' => $event->collectedFromCashBox()->countsByCents(),
+            ]],
+            $event instanceof ProductInstalled => ['product_installed', [
+                'technician_id' => $event->technicianId()->value(),
+                'selector' => $event->product()->selector()->value(),
+                'name' => $event->product()->name()->value(),
+                'price_cents' => $event->product()->price()->cents(),
+                'units' => $event->units(),
+            ]],
+            $event instanceof ProductRetired => ['product_retired', [
+                'technician_id' => $event->technicianId()->value(),
+                'selector' => $event->product()->selector()->value(),
+                'name' => $event->product()->name()->value(),
+                'price_cents' => $event->product()->price()->cents(),
+                'units_removed' => $event->unitsRemoved(),
             ]],
             $event instanceof StockRunningLow => [self::STOCK_RUNNING_LOW, [
                 'selector' => $event->selector()->value(),

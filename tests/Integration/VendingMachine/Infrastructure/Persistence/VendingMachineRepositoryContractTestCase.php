@@ -9,12 +9,14 @@ use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Inventory\CatalogChange;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
+use App\VendingMachine\Domain\TechnicianId;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
@@ -32,6 +34,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
 {
+    private const string TECHNICIAN_ID = '0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61';
+
     abstract protected static function repository(): VendingMachineRepository&StoredMachineResetter&MachineOutbox;
 
     // Not the StartsWithNoStoredMachine trait: that one resets the container's store, and this case
@@ -156,6 +160,33 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         $repository->save($reloaded);
 
         self::assertSame(25, $repository->get()->wallet()->credit()->total()->cents());
+    }
+
+    public function testGivesBackTheCatalogThatAServiceChanged(): void
+    {
+        $repository = static::repository();
+        $machine = $repository->get();
+        $machine->service(
+            TechnicianId::fromString(self::TECHNICIAN_ID),
+            [],
+            CoinCollection::empty(),
+            CatalogChange::of(
+                [Slot::installed(self::product('TEA', 'Green tea: 2 bags', 120), 6), Slot::installed(self::product('SODA', 'Soda', 160), 2)],
+                [Selector::fromString('JUICE')],
+            ),
+        );
+
+        $repository->save($machine);
+
+        $stored = array_map(
+            static fn (Slot $slot): array => [$slot->product()->selector()->value(), $slot->product()->name()->value(), $slot->product()->price()->cents(), $slot->units()],
+            $repository->get()->inventory()->slots(),
+        );
+        self::assertSame([['WATER', 'Water', 65, 10], ['SODA', 'Soda', 160, 2], ['TEA', 'Green tea: 2 bags', 120, 6]], $stored);
+        self::assertSame(
+            ['machine_serviced', 'product_retired', 'product_installed', 'product_installed'],
+            array_map(static fn (OutboxEvent $event): string => $event->type, $repository->pending()),
+        );
     }
 
     public function testTheOutboxOfANewMachineIsEmpty(): void
