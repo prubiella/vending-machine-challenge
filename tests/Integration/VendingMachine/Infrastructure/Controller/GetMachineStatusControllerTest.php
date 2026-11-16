@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Controller;
 
 use App\Tests\Integration\Maintenance\LogsInAsATechnician;
+use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\InMemoryUser;
@@ -45,6 +46,23 @@ final class GetMachineStatusControllerTest extends VendingMachineApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
         self::assertSame(['error' => ['code' => 401, 'message' => 'The token is invalid: log in again.']], $this->responseBody());
+    }
+
+    public function testRefusesAnExpiredTokenWith401(): void
+    {
+        $anHourAgo = time() - 3600;
+        $token = self::getContainer()->get(JWTEncoderInterface::class)->encode([
+            'sub' => self::TECHNICIAN_ID,
+            'roles' => ['ROLE_TECHNICIAN'],
+            'iat' => $anHourAgo - 60,
+            'exp' => $anHourAgo,
+        ]);
+
+        $this->client->request('GET', '/machine/status', server: ['HTTP_AUTHORIZATION' => 'Bearer '.$token]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertResponseHeaderSame('WWW-Authenticate', 'Bearer');
+        self::assertSame(['error' => ['code' => 401, 'message' => 'The token has expired: log in again.']], $this->responseBody());
     }
 
     public function testRefusesATokenWithoutTheTechnicianRoleWith403(): void
