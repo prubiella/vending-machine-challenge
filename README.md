@@ -1,5 +1,7 @@
 # Vending machine
 
+[![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
+
 A vending machine modelled in PHP: it accepts coins (0.05, 0.10, 0.25 and 1), sells products
 (Water 0.65, Juice 1.00, Soda 1.50), gives change, returns the inserted coins on request and lets
 a technician service it by setting the available change and the stock of each product.
@@ -307,7 +309,16 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
 | `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
 | `make cs-fixer` | Fixes the coding standard |
-| `make code-check` | The tests, PHPStan, deptrac and the coding standard in check mode (no coverage) |
+| `make cs-check` | Checks the coding standard without changing files |
+| `make lint-container` | Compiles the service container and checks that every service is wired |
+| `make code-check` | The tests, PHPStan, deptrac, the coding standard in check mode and the container lint (no coverage) |
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
+`master`, in the project's own PHP image on GitHub-hosted runners. One job builds the image into
+the Actions cache; then each static check, the unit tests and the integration tests run as parallel
+jobs that load it, so a failing check does not hide the others, and only the integration tests
+start a database. It also runs the skill check and validates `composer.lock`. Branch protection
+requires the last job, `All checks passed`, which fails unless every other job passed.
 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
