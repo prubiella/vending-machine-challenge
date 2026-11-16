@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Infrastructure\Persistence;
 
+use App\Shared\Domain\DomainException;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -77,12 +78,20 @@ final readonly class VendingMachineMapper
      */
     private static function restore(string $id, array $parts): VendingMachine
     {
-        return VendingMachine::restore(
-            MachineId::fromString($id),
-            self::inventory($parts['inventory']),
-            Wallet::of(CoinCollection::fromCounts($parts['wallet_credit']), CoinCollection::fromCounts($parts['wallet_stock'])),
-            self::tray($parts['tray']),
-        );
+        $machineId = MachineId::fromString($id);
+
+        // A stored machine whose parts break a rule is broken storage, not a request the domain
+        // refuses: it must answer 500 and be logged as critical, not answer the refusal's status.
+        try {
+            return VendingMachine::restore(
+                $machineId,
+                self::inventory($parts['inventory']),
+                Wallet::of(CoinCollection::fromCounts($parts['wallet_credit']), CoinCollection::fromCounts($parts['wallet_stock'])),
+                self::tray($parts['tray']),
+            );
+        } catch (DomainException $brokenRule) {
+            throw new \UnexpectedValueException('The stored vending machine breaks a rule: '.$brokenRule->getMessage(), 0, $brokenRule);
+        }
     }
 
     /**

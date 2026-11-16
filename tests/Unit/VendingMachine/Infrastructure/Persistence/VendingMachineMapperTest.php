@@ -8,6 +8,7 @@ use App\Shared\Domain\Money\Money;
 use App\Shared\Domain\Uuid\InvalidUuidException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Coin\NegativeCoinCountException;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\MachineId;
@@ -94,6 +95,20 @@ final class VendingMachineMapperTest extends TestCase
         $this->expectException(InvalidUuidException::class);
 
         $mapper->fromDocument($document);
+    }
+
+    public function testRefusesAStoredMachineThatBreaksARuleAsBrokenStorageNotAsARefusal(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = $mapper->toDocument(self::machine());
+        $document['wallet_stock'] = [25 => -1];
+
+        try {
+            $mapper->fromDocument($document);
+            self::fail('A stored machine with a negative count was loaded.');
+        } catch (\UnexpectedValueException $broken) {
+            self::assertInstanceOf(NegativeCoinCountException::class, $broken->getPrevious());
+        }
     }
 
     public function testWritesEachPartOfTheMachineAsJson(): void
