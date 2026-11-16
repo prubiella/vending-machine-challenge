@@ -367,11 +367,10 @@ files also have unstaged changes, since the checks read the disk. `commit-msg` r
 
 ## Development tools
 
-**Xdebug and PhpStorm.** Xdebug is installed in the PHP image and off by default
-(`XDEBUG_MODE=off` in `.env`). `make run-debug` and `make coverage` turn it on for one command. To
-debug web requests, set `XDEBUG_MODE=develop,debug,coverage` in `.env` and run `make start` again:
-with `start_with_request=yes`, every PHP process then tries to reach the IDE on port 9003. A `.env`
-created before Xdebug was off by default keeps the value it has. In Settings > PHP > Servers add a server named `vending-machine.test`, host
+**Xdebug and PhpStorm.** Xdebug is installed in the PHP image, and `.env` enables it
+(`XDEBUG_MODE=develop,debug,coverage`, `start_with_request=yes`), so every PHP process tries to reach
+the IDE on port 9003. Set `XDEBUG_MODE=off` in `.env`, or start with `XDEBUG_MODE=off make start`,
+when you do not need it. In Settings > PHP > Servers add a server named `vending-machine.test`, host
 `vending-machine.test`, port 443, mapping the project root to `/var/www`; listen for debug
 connections, set a breakpoint and send a request, or run
 `make run-debug -- <command> <options>` for a console command.
