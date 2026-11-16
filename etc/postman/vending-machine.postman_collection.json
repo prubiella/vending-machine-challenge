@@ -240,6 +240,41 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Return coins",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/coin-return",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"coin-return"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
