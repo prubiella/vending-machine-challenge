@@ -9,6 +9,7 @@ final readonly class HealthCheckQueryHandler
     public function __construct(
         private DatabaseProbe $databaseProbe,
         private DocumentStoreProbe $documentStoreProbe,
+        private TokenKeysProbe $tokenKeysProbe,
     ) {
     }
 
@@ -17,14 +18,15 @@ final readonly class HealthCheckQueryHandler
         return new HealthCheckResponse(HealthCheckResponse::OK, [
             'database' => self::statusOf($this->databaseProbe->isReachable()),
             'document_store' => self::statusOf($this->documentStoreProbe->isReachable()),
+            'jwt_keys' => self::statusOf($this->tokenKeysProbe->isUsable()),
         ]);
     }
 
     /**
      * @return HealthCheckResponse::OK|HealthCheckResponse::KO
      */
-    private static function statusOf(bool $reachable): string
+    private static function statusOf(bool $answers): string
     {
-        return $reachable ? HealthCheckResponse::OK : HealthCheckResponse::KO;
+        return $answers ? HealthCheckResponse::OK : HealthCheckResponse::KO;
     }
 }

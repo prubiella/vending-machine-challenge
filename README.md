@@ -46,16 +46,18 @@ the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
 make run -- app:health-check
-# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
 ```
 
 The same use case has two entry points: the controllers behind `/health-check` and
 `/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
 the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
-its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL and `document_store` is
-MongoDB. A `ko` dependency logs a warning with the reason it did not answer.
+its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL, `document_store` is MongoDB
+and `jwt_keys` is the key pair that signs the technicians' tokens, checked by signing a throwaway
+token and verifying it, so a missing or unreadable key, or a public key of another pair, is `ko`. A
+`ko` dependency logs a warning with the reason it did not answer.
 
 - Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
   `ko`, so a database that does not answer never marks the application itself as down.

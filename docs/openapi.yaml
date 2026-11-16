@@ -347,15 +347,19 @@ paths:
                 allOk:
                   value:
                     status: ok
-                    checks: { database: ok, document_store: ok }
+                    checks: { database: ok, document_store: ok, jwt_keys: ok }
                 databaseDown:
                   value:
                     status: ok
-                    checks: { database: ko, document_store: ok }
+                    checks: { database: ko, document_store: ok, jwt_keys: ok }
                 documentStoreDown:
                   value:
                     status: ok
-                    checks: { database: ok, document_store: ko }
+                    checks: { database: ok, document_store: ko, jwt_keys: ok }
+                jwtKeysUnusable:
+                  value:
+                    status: ok
+                    checks: { database: ok, document_store: ok, jwt_keys: ko }
 
   /health-check/ready:
     get:
@@ -372,7 +376,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ok, document_store: ok }
+                checks: { database: ok, document_store: ok, jwt_keys: ok }
         '503':
           description: At least one dependency is `ko`. The body has the same shape as in the 200 answer.
           content:
@@ -381,7 +385,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ok, document_store: ko }
+                checks: { database: ok, document_store: ko, jwt_keys: ok }
 
 components:
   schemas:

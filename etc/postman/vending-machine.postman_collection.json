@@ -18,7 +18,7 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('responds 200', () => pm.response.to.have.status(200));",
-									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok', document_store: 'ok' } }));"
+									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok', document_store: 'ok', jwt_keys: 'ok' } }));"
 								]
 							}
 						}
@@ -52,7 +52,7 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('responds 200 when every dependency is ok', () => pm.response.to.have.status(200));",
-									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok', document_store: 'ok' } }));"
+									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok', document_store: 'ok', jwt_keys: 'ok' } }));"
 								]
 							}
 						}

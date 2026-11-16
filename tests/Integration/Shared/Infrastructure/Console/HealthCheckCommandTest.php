@@ -19,7 +19,7 @@ final class HealthCheckCommandTest extends KernelTestCase
         $exitCode = $commandTester->execute([]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
-        self::assertSame('{"status":"ok","checks":{"database":"ok","document_store":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
+        self::assertSame('{"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
     }
 
     public function testSucceedsWhenTheDatabaseIsNotReachable(): void
@@ -29,7 +29,7 @@ final class HealthCheckCommandTest extends KernelTestCase
         $exitCode = $commandTester->execute([]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
-        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
+        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok","jwt_keys":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
     }
 
     public function testReadySucceedsWhenEveryDependencyIsOk(): void
@@ -48,7 +48,7 @@ final class HealthCheckCommandTest extends KernelTestCase
         $exitCode = $commandTester->execute(['--ready' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
+        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok","jwt_keys":"ok"}}'.\PHP_EOL, $commandTester->getDisplay());
     }
 
     private static function tester(): CommandTester

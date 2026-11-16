@@ -458,8 +458,10 @@ nginx. Secrets are never committed: `.env` is ignored, and `.env.dist` holds saf
 ## 8. Operations
 
 **Health checks.** One query, `HealthCheckQuery`, answers both the controllers and the console
-command `app:health-check`. It reports each dependency, `database` (MySQL) and `document_store`
-(MongoDB), as `ok` or `ko`. A new dependency is one more probe port and one more entry in
+command `app:health-check`. It reports each dependency, `database` (MySQL), `document_store`
+(MongoDB) and `jwt_keys` (the key pair of the technicians' tokens, checked by signing a throwaway
+token and verifying it, so a mismatched pair is caught before a technician's token fails), as `ok`
+or `ko`. A new dependency is one more probe port and one more entry in
 `HealthCheckResponse::$checks`.
 
 | Check | Route and command | Behaviour |
