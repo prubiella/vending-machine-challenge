@@ -18,9 +18,9 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
 {
     public function testGivesTheDefaultMachineUntilOneIsSaved(): void
     {
-        $defaultMachine = self::defaultMachineFactory();
+        $defaultMachineFactory = self::defaultMachineFactory();
 
-        self::assertEquals($defaultMachine->create(), new InMemoryVendingMachineRepository($defaultMachine)->get());
+        self::assertEquals($defaultMachineFactory->create(), new InMemoryVendingMachineRepository($defaultMachineFactory)->get());
     }
 
     public function testAChangeIsNotStoredUntilTheMachineIsSaved(): void

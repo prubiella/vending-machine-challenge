@@ -15,7 +15,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     public function __construct(
         private Connection $connection,
         private VendingMachineMapper $mapper,
-        private DefaultVendingMachineFactory $defaultMachine,
+        private DefaultVendingMachineFactory $defaultMachineFactory,
     ) {
     }
 
@@ -26,7 +26,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
             [self::MACHINE_ID],
         );
 
-        return false === $row ? $this->defaultMachine->create() : $this->mapper->fromRow($row);
+        return false === $row ? $this->defaultMachineFactory->create() : $this->mapper->fromRow($row);
     }
 
     public function save(VendingMachine $machine): void

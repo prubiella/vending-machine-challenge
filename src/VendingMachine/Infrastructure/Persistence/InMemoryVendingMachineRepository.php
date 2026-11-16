@@ -12,7 +12,7 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
     private ?VendingMachine $machine = null;
 
     public function __construct(
-        private readonly DefaultVendingMachineFactory $defaultMachine,
+        private readonly DefaultVendingMachineFactory $defaultMachineFactory,
     ) {
     }
 
@@ -20,7 +20,7 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
     // The parts of the machine are immutable, so a shallow clone is enough.
     public function get(): VendingMachine
     {
-        $this->machine ??= $this->defaultMachine->create();
+        $this->machine ??= $this->defaultMachineFactory->create();
 
         return clone $this->machine;
     }
