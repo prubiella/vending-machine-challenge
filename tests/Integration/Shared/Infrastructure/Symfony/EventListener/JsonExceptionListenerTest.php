@@ -43,7 +43,7 @@ final class JsonExceptionListenerTest extends KernelTestCase
     #[DataProvider('refusals')]
     public function testAnswersEachRefusalOfTheMachineWithItsStatusAndNeverLogsItAsAnError(\Throwable $refusal, int $status): void
     {
-        $logs = self::appLogs();
+        $logs = self::captureRequestLogs();
 
         $response = self::answer($refusal);
 
@@ -63,7 +63,7 @@ final class JsonExceptionListenerTest extends KernelTestCase
 
     public function testAnswersABrokenInvariantWith500AndLogsItAsCritical(): void
     {
-        $logs = self::appLogs();
+        $logs = self::captureRequestLogs();
 
         $response = self::answer(NegativeUnitsException::fromUnits(-1));
 
@@ -71,6 +71,8 @@ final class JsonExceptionListenerTest extends KernelTestCase
         self::assertTrue($logs->hasCriticalThatContains('NegativeUnitsException'));
     }
 
+    // Reuses the booted kernel: booting again would build a new container and lose the handler
+    // that captureRequestLogs() attached to its logger.
     private static function answer(\Throwable $exception): JsonResponse
     {
         $event = new ExceptionEvent(self::$kernel ?? self::bootKernel(), new Request(), HttpKernelInterface::MAIN_REQUEST, $exception);
@@ -93,11 +95,12 @@ final class JsonExceptionListenerTest extends KernelTestCase
         return $body['error']['message'];
     }
 
-    private static function appLogs(): TestHandler
+    private static function captureRequestLogs(): TestHandler
     {
         self::bootKernel();
         $logger = self::getContainer()->get('monolog.logger.request');
-        $logger->pushHandler($logs = new TestHandler());
+        $logs = new TestHandler();
+        $logger->pushHandler($logs);
 
         return $logs;
     }
