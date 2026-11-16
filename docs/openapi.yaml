@@ -277,6 +277,11 @@ paths:
         change in `coins` (a coin left out is set to none), as `vending:service` does. The credit
         inserted so far drops into the tray as coins. The command carries the technician's id from
         the token, so the log tells who serviced the machine.
+
+        The same service can change the catalog: `install` adds a product, or redefines the name,
+        price and units of one the machine has, and `retire` takes a product and its units out.
+        Replacing a product by another is a retire and an install in one service. A service that
+        any rule refuses changes nothing (ADR 22).
       security:
         - technicianToken: []
       requestBody:
@@ -285,9 +290,21 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ServiceMachineRequest'
-            example:
-              units: { WATER: 20, JUICE: 15, SODA: 10 }
-              coins: { '0.05': 20, '0.10': 20, '0.25': 20, '1': 0 }
+            examples:
+              restock:
+                summary: Restock the products and the change
+                value:
+                  units: { WATER: 20, JUICE: 15, SODA: 10 }
+                  coins: { '0.05': 20, '0.10': 20, '0.25': 20, '1': 0 }
+              replaceProduct:
+                summary: Replace JUICE by TEA and raise the price of WATER
+                value:
+                  units: { SODA: 10 }
+                  coins: { '0.05': 20, '0.10': 20, '0.25': 20, '1': 0 }
+                  install:
+                    - { selector: TEA, name: Green tea, priceCents: 120, units: 12 }
+                    - { selector: WATER, name: Water, priceCents: 70, units: 20 }
+                  retire: [JUICE]
       responses:
         '204':
           description: The machine is serviced.
@@ -304,7 +321,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
-          description: A selector of `units` is not a product of the machine.
+          description: A selector of `units` or `retire` is not a product of the machine.
           content:
             application/json:
               schema:
@@ -323,7 +340,10 @@ paths:
           description: |
             The body has no `units` or no `coins`, a count is negative or not an integer, a coin is
             not one the machine takes, or more is given than a slot (200 units) or a coin tube (500
-            coins) holds.
+            coins) holds. Or the catalog change is refused: a product of `install` lacks a field, has
+            a blank name, a selector that is not one, or a price that is not above zero or not a
+            multiple of 5 cents; a selector is installed or retired twice, both installed and
+            retired, or also given under `units`; or the machine would hold more than 40 products.
           content:
             application/json:
               schema:
@@ -353,6 +373,30 @@ paths:
                   summary: A body without coins
                   value:
                     error: { code: 422, message: The "coins" field is required. }
+                malformedProduct:
+                  summary: A product to install without its price
+                  value:
+                    error: { code: 422, message: 'Give each product of "install" a "selector" and a "name" as text, "units" as a whole number and "priceCents" as a whole number of cents, zero or more.' }
+                unpayablePrice:
+                  summary: A price no coins can pay exactly
+                  value:
+                    error: { code: 422, message: 'The price of TEA, 67 cents, is not a multiple of the smallest coin, 5 cents.' }
+                nonPositivePrice:
+                  summary: A price of zero
+                  value:
+                    error: { code: 422, message: 'The product of selector TEA needs a price greater than zero.' }
+                blankName:
+                  summary: A product with a blank name
+                  value:
+                    error: { code: 422, message: 'A product name cannot be blank, got " ".' }
+                contradiction:
+                  summary: A selector both installed and retired
+                  value:
+                    error: { code: 422, message: 'The service both installs and retires TEA.' }
+                inventoryCapacity:
+                  summary: More products than the machine holds
+                  value:
+                    error: { code: 422, message: 'The machine holds at most 40 products, got 41.' }
         '409':
           $ref: '#/components/responses/ConcurrentUpdate'
         '500':
@@ -588,6 +632,45 @@ components:
             type: integer
             minimum: 0
             maximum: 500
+        install:
+          type: array
+          description: |
+            The products to install, each with the units it starts with. A selector the machine has
+            is redefined: its name, its price and its units. Not given under `units` too.
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/InstalledProduct'
+        retire:
+          type: array
+          description: The selectors of the products to take out, with the units left in them. Not given under `units` too.
+          items:
+            type: string
+            pattern: '^[A-Z0-9_]+$'
+          example: [JUICE]
+
+    InstalledProduct:
+      type: object
+      required: [selector, name, priceCents, units]
+      properties:
+        selector:
+          type: string
+          pattern: '^[A-Z0-9_]+$'
+          example: TEA
+        name:
+          type: string
+          minLength: 1
+          example: Green tea
+        priceCents:
+          type: integer
+          minimum: 5
+          multipleOf: 5
+          description: The price in cents, as `GET /machine` answers it; a multiple of the smallest coin.
+          example: 120
+        units:
+          type: integer
+          minimum: 0
+          maximum: 200
+          example: 12
 
     LoginRequest:
       type: object

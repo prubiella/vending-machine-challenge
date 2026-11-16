@@ -11,6 +11,9 @@ use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Event\ProductInstalled;
+use App\VendingMachine\Domain\Event\ProductRetired;
+use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\VendingMachine;
 use PHPUnit\Framework\TestCase;
@@ -74,6 +77,29 @@ final class ServiceMachineCommandHandlerTest extends TestCase
         self::assertCount(1, $events);
         self::assertInstanceOf(MachineServiced::class, $events[0]);
         self::assertSame(self::TECHNICIAN_ID, $events[0]->technicianId()->value());
+    }
+
+    public function testInstallsAndRetiresTheProductsTheCommandNames(): void
+    {
+        $repository = VendingMachineRepositoryMother::withTheStatementProducts();
+
+        (new ServiceMachineCommandHandler($repository, new RecordingCashBoxCollectionLog()))(new ServiceMachineCommand(
+            self::TECHNICIAN_ID,
+            ['SODA' => 2],
+            [],
+            [['selector' => 'TEA', 'name' => 'Green tea', 'priceCents' => 120, 'units' => 6]],
+            ['WATER'],
+        ));
+
+        $slots = array_map(
+            static fn (Slot $slot): array => [$slot->product()->selector()->value(), $slot->product()->name()->value(), $slot->product()->price()->cents(), $slot->units()],
+            $repository->get()->inventory()->slots(),
+        );
+        self::assertSame([['JUICE', 'Juice', 100, 5], ['SODA', 'Soda', 150, 2], ['TEA', 'Green tea', 120, 6]], $slots);
+        self::assertSame(
+            [MachineServiced::class, ProductRetired::class, ProductInstalled::class],
+            array_map(static fn (object $event): string => $event::class, $repository->savedEvents()),
+        );
     }
 
     private static function unitsOf(VendingMachine $machine, string $selector): int

@@ -28,9 +28,52 @@ final class ServiceMachineController extends BaseController
             $technician->getUserIdentifier(),
             $units,
             self::rekeyByCoinCents($coinsByNotation),
+            self::requireProducts($request->install),
+            self::requireSelectors($request->retire),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Refuses a product whose fields are missing or of the wrong type with a 422, as for the counts.
+     * A negative price is refused here too, since Money cannot hold one: the domain's own refusal
+     * of it means a broken invariant (500), not a technician's typo.
+     *
+     * @param array<int|string, mixed> $install
+     *
+     * @return list<array{selector: string, name: string, priceCents: int, units: int}>
+     */
+    private static function requireProducts(array $install): array
+    {
+        $products = [];
+        foreach ($install as $product) {
+            if (!\is_array($product) || !\is_string($product['selector'] ?? null) || !\is_string($product['name'] ?? null)
+                || !\is_int($product['priceCents'] ?? null) || $product['priceCents'] < 0 || !\is_int($product['units'] ?? null)) {
+                throw new UnprocessableEntityHttpException('Give each product of "install" a "selector" and a "name" as text, "units" as a whole number and "priceCents" as a whole number of cents, zero or more.');
+            }
+            $products[] = ['selector' => $product['selector'], 'name' => $product['name'], 'priceCents' => $product['priceCents'], 'units' => $product['units']];
+        }
+
+        return $products;
+    }
+
+    /**
+     * @param array<int|string, mixed> $retire
+     *
+     * @return list<string>
+     */
+    private static function requireSelectors(array $retire): array
+    {
+        $selectors = [];
+        foreach ($retire as $selector) {
+            if (!\is_string($selector)) {
+                throw new UnprocessableEntityHttpException('Give "retire" as a list of selectors, such as ["WATER"].');
+            }
+            $selectors[] = $selector;
+        }
+
+        return $selectors;
     }
 
     /**
