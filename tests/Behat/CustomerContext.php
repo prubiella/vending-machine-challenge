@@ -41,7 +41,7 @@ final readonly class CustomerContext implements Context
     public function selectorIsSoldOut(string $selector): void
     {
         $status = $this->machineStatus();
-        $this->service([...$status->unitsBySelector, $selector => 0], $status->coinStockByCents);
+        $this->serviceMachineWith([...$status->unitsBySelector, $selector => 0], $status->coinStockByCents);
     }
 
     #[Given('the machine has :count coins of :coin')]
@@ -50,7 +50,7 @@ final readonly class CustomerContext implements Context
         $status = $this->machineStatus();
         $coinStock = $status->coinStockByCents;
         $coinStock[MoneyNotation::requireCoinCents($coin)] = $count;
-        $this->service($status->unitsBySelector, $coinStock);
+        $this->serviceMachineWith($status->unitsBySelector, $coinStock);
     }
 
     #[When('I insert :coin')]
@@ -80,15 +80,12 @@ final readonly class CustomerContext implements Context
     #[Then('/^the tray holds (no product|[A-Z]+) and (no coins|the coins .+)$/')]
     public function theTrayHolds(string $product, string $coins): void
     {
-        $expectedProducts = 'no product' === $product ? [] : [$product];
-        $expectedCoins = 'no coins' === $coins ? [] : array_map(
-            static fn (string $coin): int => MoneyNotation::requireCoinCents(trim($coin)),
-            explode(',', substr($coins, \strlen('the coins '))),
-        );
-
         $this->client->request('GET', '/machine/tray');
 
-        Assert::assertSame(['selectors' => $expectedProducts, 'coins' => $expectedCoins], $this->responseBody());
+        Assert::assertSame(
+            ['selectors' => $this->productsFromStep($product), 'coins' => $this->coinCentsFromStep($coins)],
+            $this->responseBody(),
+        );
     }
 
     #[Then('the tray is empty')]
@@ -107,24 +104,51 @@ final readonly class CustomerContext implements Context
         Assert::assertSame($amount, MoneyNotation::twoDecimals($credit));
     }
 
-    #[Then('the machine refuses it with status :status saying :excerpt')]
-    public function theMachineRefusesIt(int $status, string $excerpt): void
+    #[Then('the machine refuses it with status :status saying :messageFragment')]
+    public function theMachineRefusesIt(int $status, string $messageFragment): void
     {
+        Assert::assertSame($status, $this->client->getResponse()->getStatusCode());
+
         $error = $this->responseBody()['error'];
         \assert(\is_array($error));
 
-        Assert::assertSame($status, $this->client->getResponse()->getStatusCode());
         Assert::assertIsString($error['message']);
-        Assert::assertStringContainsString($excerpt, $error['message']);
+        Assert::assertStringContainsString($messageFragment, $error['message']);
     }
 
     /**
      * @param array<int|string, int> $unitsBySelector
      * @param array<int, int>        $coinStockByCents
      */
-    private function service(array $unitsBySelector, array $coinStockByCents): void
+    private function serviceMachineWith(array $unitsBySelector, array $coinStockByCents): void
     {
         $this->commandBus->dispatch(new ServiceMachineCommand($unitsBySelector, $coinStockByCents));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function productsFromStep(string $product): array
+    {
+        return 'no product' === $product ? [] : [$product];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function coinCentsFromStep(string $coins): array
+    {
+        if ('no coins' === $coins) {
+            return [];
+        }
+
+        $matched = preg_match('/^the coins (.+)$/', $coins, $matches);
+        \assert(1 === $matched);
+
+        return array_map(
+            static fn (string $coin): int => MoneyNotation::requireCoinCents(trim($coin)),
+            explode(',', $matches[1]),
+        );
     }
 
     private function machineStatus(): MachineStatusResponse
