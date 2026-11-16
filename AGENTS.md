@@ -27,8 +27,8 @@ to run it.
   `./etc/git/hooks-docker/run-in-php-image.sh composer install`). `run-in-php-image.sh` joins
   `vending_machine_network` when it exists, so the checks it runs, the pre-commit hook's included,
   reach the mysql and mongo services: start the containers before committing, or the database
-  tests fail. A worktree has no `.env`, so Symfony reads `.env.dist`; a Flex recipe run there writes
-  a `.env` of its own that hides `.env.dist`: delete it.
+  tests fail. `post-checkout` also copies `.env.dist` to `.env` in a new worktree (it holds no
+  secrets), so a Flex recipe run there finds one and writes no `.env` of its own.
 
 ## Bounded contexts
 
@@ -194,12 +194,16 @@ rather than a rule of the codebase.
    main checkout stays untouched while it works. It commits on its branch, runs the checks with
    `./etc/git/hooks-docker/run-in-php-image.sh`, and stops there: no push, no pull request.
 2. The developer tests the branch in the main checkout, where the containers, `make`, the IDE and
-   Xdebug point. A branch can be checked out in one worktree only, so the session and its
-   worktree go first (`claude rm <id>`), then `git switch <branch>`.
-3. Only with the developer's approval is the branch pushed and a pull request opened
-   (`gh pr create --assignee @me`).
+   Xdebug point, with `git switch --detach <branch>`: a branch can be checked out in one worktree
+   only, and a detached checkout leaves it free, so the session keeps working on it while the
+   developer tests. The session and its worktree go (`claude rm <id>`) once its branch is pushed.
+3. A branch the developer has tested is pushed and its pull request opened
+   (`gh pr create --assignee @me`); fixes for a review of an open pull request are pushed to its
+   branch as they land. A force push, anything on `master`, discarding unpushed work and merging
+   always wait for the developer.
 4. A review (`/vm-review`) runs when the developer asks for it, not as soon as a pull request
-   opens.
+   opens. It does not need the main checkout at the reviewed head: CI runs the checks on every
+   pull request.
 
 ## Changing a skill
 
