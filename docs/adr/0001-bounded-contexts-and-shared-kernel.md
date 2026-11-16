@@ -18,8 +18,8 @@ unrelated features share namespaces and nothing stops one from reaching into ano
 - `VendingMachine`: coins, products, change, service.
 - `Maintenance` (technicians and their login) is added when technician authentication arrives. A
   context exists only once a feature needs it, and a folder only once it holds code. Note,
-  2026-11-16: it now exists, with the technicians, their hashed passwords and their credentials
-  check, under the same layers and deptrac rules.
+  2026-11-16: it now exists, with the technicians and their hashed passwords, under the same layers
+  and deptrac rules.
 - `Shared` is a small, stable kernel that every context may use and that uses no context:
   `Money` and the base `DomainException`, the command and query bus ports and their Messenger
   implementations, the base controller and the JSON error listener.
