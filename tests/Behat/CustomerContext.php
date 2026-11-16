@@ -22,6 +22,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class CustomerContext implements Context
 {
+    // The scenario's setup services the machine as no stored technician: the command only carries the
+    // id to the log.
+    private const string SETUP_TECHNICIAN_ID = 'behat-setup';
+
     public function __construct(
         #[Autowire(service: 'test.client')]
         private KernelBrowser $client,
@@ -122,7 +126,7 @@ final readonly class CustomerContext implements Context
      */
     private function serviceMachineWith(array $unitsBySelector, array $coinStockByCents): void
     {
-        $this->commandBus->dispatch(new ServiceMachineCommand($unitsBySelector, $coinStockByCents));
+        $this->commandBus->dispatch(new ServiceMachineCommand(self::SETUP_TECHNICIAN_ID, $unitsBySelector, $coinStockByCents));
     }
 
     /**

@@ -19,6 +19,13 @@ final readonly class Technician
         return new self($id, $username, $email, $password);
     }
 
+    public function authenticate(string $password, PasswordHasher $hasher): void
+    {
+        if (!$hasher->verify($this->password, $password)) {
+            throw InvalidCredentialsException::wrongUsernameOrPassword();
+        }
+    }
+
     public function id(): TechnicianId
     {
         return $this->id;

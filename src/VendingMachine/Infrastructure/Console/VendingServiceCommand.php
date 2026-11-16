@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'vending:service',
-    description: 'Set the units of each product and the count of each coin, asking what the options leave out',
+    description: 'As a technician, set the units of each product and the count of each coin, asking what the options leave out',
 )]
 final readonly class VendingServiceCommand
 {
@@ -38,8 +38,13 @@ final readonly class VendingServiceCommand
         array $units = [],
         #[Option('The count of a coin, as COIN:COUNT, such as 0.25:10 (repeat it for each coin)')]
         array $coins = [],
+        #[Option('The technician\'s username')]
+        ?string $username = null,
+        #[Option('The technician\'s password (asked hidden when left out)')]
+        #[\SensitiveParameter]
+        ?string $password = null,
     ): int {
-        if (!$this->machineServicer->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins))) {
+        if (!$this->machineServicer->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins), $username, $password)) {
             return Command::FAILURE;
         }
 

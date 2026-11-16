@@ -143,19 +143,27 @@ unknown selector) keeps the credit: both are reported on the error output and th
 on.
 
 Without a sequence, `make run -- vending:run` opens an interactive session: it lists the products,
-takes one action per line, prints what drops into the tray after each one and shows the credit
-in the prompt. `SERVICE` asks the units of each product and the count of each coin (Enter keeps
-the current value) and services the machine. `QUIT` or Ctrl+D ends the session; Ctrl+D in the
-middle of `SERVICE` leaves the machine as it was.
+takes one action per line, prints what drops into the tray after each one and shows the credit in
+the prompt. `SERVICE` asks the technician's username and password (hidden), then the units of each
+product and the count of each coin (Enter keeps the current value) and services the machine. The
+service command carries the authenticated technician's id, and the command bus log records it on
+every service: that log is the audit trail of who serviced the machine until domain events exist,
+when a `MachineServiced` event goes to the outbox and the history. `QUIT` or Ctrl+D ends the
+session; Ctrl+D in the middle of `SERVICE` leaves the machine as it was.
 
-`vending:service` services the machine outside a session. `--units SELECTOR:UNITS` and
-`--coins COIN:COUNT` give the new values, each repeated as needed, and it asks the rest with the
-current values as defaults; with `-n` it keeps the current value of what the options leave out.
+`vending:service` services the machine outside a session. `--username` and `--password` give the
+credentials of a technician (see [Technicians](#technicians)); it asks what they leave out, the
+password hidden, and with `-n` both are required. `--units SELECTOR:UNITS` and `--coins COIN:COUNT`
+give the new values, each repeated as needed, and it asks the rest with the current values as
+defaults; with `-n` it keeps the current value of what the options leave out.
 Servicing returns the credit left in the machine, so it first prints those coins as `vending:run`
 prints the tray:
 
 ```bash
-make run -- vending:service --units WATER:20 --coins 0.25:15 --coins 1:0 -n
+make run -- vending:service --username ana --units WATER:20 --coins 0.25:15 --coins 1:0
+# Password:
+# Units of JUICE [10]:
+# ... every unit and coin the options leave out, Enter keeps the current value
 # The machine is serviced.
 ```
 
@@ -168,7 +176,7 @@ exits with 1, the only case besides an unexpected error where it does not exit w
 `vending:service` exits with 0 once the machine is serviced and with 1 whenever it is not, since
 then the technician's service did not happen: an option it cannot read (not a pair, given twice, a
 foreign coin, or a selector the machine lacks, which it checks before asking anything), input that
-ends before the last answer, or a service the machine refuses.
+ends before the last answer, credentials missing or wrong, or a service the machine refuses.
 
 The machine is stored in MongoDB, so each run carries on where the last one left it: the stock and
 the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
@@ -198,6 +206,13 @@ typed at the hidden prompt or given as an option, so spaces around it count. The
 stored or logged in clear: the command bus logs only the first three characters of the username and
 of the email, the password as `***`, and the refusals (an invalid or taken username or email)
 without the value.
+
+`SERVICE` and `vending:service` check the credentials before asking any count, and refuse an
+unknown username and a wrong password with the same message, so a refusal does not tell which
+usernames exist. The service command carries the technician's id, which the command bus logs, so
+the log tells who serviced the machine. `VendingMachine` reaches the technicians through the
+`TechnicianAuthenticator` port of `Shared/Application`, which `Maintenance` implements, since no
+context uses another.
 
 ```bash
 make run -- vending:technician:create --username ana --email ana@example.com
@@ -254,7 +269,8 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change, and also when another request changed the machine at the same time and the
 retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
 malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
-and is logged as critical. Servicing the machine stays in the console until technicians can log in.
+and is logged as critical. Servicing the machine stays in the console: the HTTP API has no
+technician login.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -476,7 +492,8 @@ src/
   Kernel.php
   Shared/            Shared kernel: small, stable, used by every context, uses none.
     Domain/          Money and DomainException, the base of every domain exception.
-    Application/     The Command and Query interfaces, the bus ports, the health check query.
+    Application/     The Command and Query interfaces, the bus ports, the health check query,
+                     the TechnicianAuthenticator port that VendingMachine logs technicians in with.
     Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
   VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
@@ -484,8 +501,9 @@ src/
     Infrastructure/  Symfony, controllers, console commands, persistence.
   Maintenance/       The technicians who service the machine.
     Domain/          Technician, its username and password rules, the repository and hasher ports.
-    Application/     Use cases: creating a technician.
-    Infrastructure/  The technicians table, the Symfony password hasher, console commands.
+    Application/     Use cases: creating a technician, checking its credentials.
+    Infrastructure/  The technicians table, the Symfony password hasher, console commands, the
+                     TechnicianAuthenticator adapter over the credentials query.
 config/              Symfony configuration; routes in config/routes/<context>.php.
 tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).

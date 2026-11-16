@@ -11,6 +11,7 @@ use App\Maintenance\Domain\Technician\Username;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Uuid\UuidGenerator;
 use App\Shared\Domain\DomainException;
+use App\Shared\Infrastructure\Console\PasswordQuestion;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -53,7 +54,7 @@ final readonly class VendingTechnicianCreateCommand
                 $io,
                 $password,
                 'password',
-                self::untrimmedHiddenQuestion('Password'),
+                PasswordQuestion::hidden('Password'),
                 PlainPassword::fromString(...),
             );
 
@@ -116,17 +117,6 @@ final readonly class VendingTechnicianCreateCommand
                 return $value;
             })
             ->setMaxAttempts(self::ATTEMPTS)
-        ;
-    }
-
-    // A password is never trimmed, here as in --password, so the spaces typed are kept; only the line
-    // ending that closes the answer goes.
-    private static function untrimmedHiddenQuestion(string $question): Question
-    {
-        return new Question($question)
-            ->setHidden(true)
-            ->setTrimmable(false)
-            ->setNormalizer(static fn (mixed $answer): mixed => \is_string($answer) ? rtrim($answer, "\r\n") : $answer)
         ;
     }
 

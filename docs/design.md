@@ -319,9 +319,13 @@ order, reads the tray, prints it and collects it.
 
 ### SERVICE
 
-Servicing is done from the console today (`SERVICE` in an interactive session, or
-`vending:service`). The console asks the units of each product and the count of each coin, with the
-current values as defaults, then dispatches one command.
+Servicing is done from the console (`SERVICE` in an interactive session, or `vending:service`).
+The console first logs the technician in: `TechnicianLogin` asks the username and the password
+(hidden, never trimmed) that the options leave out and checks them through the
+`TechnicianAuthenticator` port, which `Maintenance` answers with `AuthenticateTechnicianQuery`. A
+wrong or missing credential ends the service before any count is asked. Then the console asks the
+units of each product and the count of each coin, with the current values as defaults, and
+dispatches one command that carries the technician's id.
 
 ```mermaid
 sequenceDiagram
@@ -335,9 +339,13 @@ sequenceDiagram
     Technician->>Console: SERVICE
     Console->>QBus: GetMachineStatusQuery
     QBus-->>Console: current units and coins
+    Console->>Technician: asks the username and the password (hidden)
+    Technician-->>Console: credentials
+    Console->>QBus: AuthenticateTechnicianQuery (through TechnicianAuthenticator)
+    QBus-->>Console: the technician's id, or Wrong username or password
     Console->>Technician: asks each value, Enter keeps the current one
     Technician-->>Console: new values
-    Console->>CBus: ServiceMachineCommand
+    Console->>CBus: ServiceMachineCommand with the technician's id
     CBus->>Handler: __invoke
     Handler->>Repo: get()
     Handler->>Machine: service(units, coins)
@@ -413,16 +421,23 @@ customer routes have none. The API answers cross-origin requests only from the S
 Input is validated at the edge: a foreign coin, a malformed selector or a body without a coin
 answers `422`.
 
-**What exists today on the technician side.** Servicing is a console operation. Whoever can run the
-console in the container can service the machine, and the HTTP API has no service route.
+**Technicians.** The `Maintenance` context keeps the technicians in MySQL: a UUID, a unique
+username, a unique email and the bcrypt hash of the password, never the password itself.
+`vending:technician:create` adds one. Servicing is a console operation that asks for a technician's
+credentials first (see [SERVICE](#service)): `VendingMachine` checks them through the
+`TechnicianAuthenticator` port of `Shared`, since no context uses another, and an unknown username
+and a wrong password are refused with the same message, so a refusal does not tell which usernames
+exist.
 
-**Technician authentication arrives with technician authentication.** It will live in the
-`Maintenance` context, which does not exist yet. The plan is to let technicians log in over HTTP
-with a token, to ask for credentials in the console, to store only hashed passwords, and to keep
-the technician's identity in the service path. `SensitiveCommand` is already in place for it: a
-command that carries a secret or personal data maps each such field to a `Masking` rule (`Hide`
-logs `***`, `KeepFirstThree` logs `pau***`), so logs never hold a password. This section will be
-updated when that work merges.
+**Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id.
+No handler reads it: the command bus logs every command with its data, so the log records who
+serviced the machine on every service. That log is the audit trail until domain events exist.
+
+**Masking.** A command that carries a secret or personal data implements `SensitiveCommand` and
+maps each such field to a `Masking` rule (`Hide` logs `***`, `KeepFirstThree` logs `pau***`):
+`CreateTechnicianCommand` hides the password and keeps the first three characters of the username
+and the email. The credentials check is a query, which the bus does not log, and a refusal's
+message never quotes a username, an email or a password.
 
 **Transport.** TLS ends at Traefik, a certificate from a local CA, and traffic is re-encrypted to
 nginx. Secrets are never committed: `.env` is ignored, and `.env.dist` holds safe defaults.
@@ -523,7 +538,9 @@ Trade-offs worth saying out loud:
 - **Domain events and a sales history.** The aggregate would record events (a sale, the change
   given, a service) in an embedded outbox in the same MongoDB document, so the machine and its
   events are one atomic write. A publisher would feed a history in MySQL, where reports such as
-  sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it.
+  sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
+  `MachineServiced` event with the technician's id would replace the command bus log as the record
+  of who serviced the machine.
 - **Technician authentication.** The `Maintenance` context, described in
   [section 7](#7-security), with service and status over HTTP.
 - **Several machines.** The machine already has a UUID, taken from configuration

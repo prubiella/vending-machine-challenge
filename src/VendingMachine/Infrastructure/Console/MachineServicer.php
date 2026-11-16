@@ -20,6 +20,7 @@ final readonly class MachineServicer
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private TechnicianLogin $technicianLogin,
     ) {
     }
 
@@ -27,9 +28,16 @@ final readonly class MachineServicer
      * @param array<string, int> $givenUnits the units of each selector
      * @param array<int, int>    $givenCoins the count of each coin, by its cents
      */
-    public function service(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): bool
-    {
-        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins);
+    public function service(
+        InputInterface $input,
+        SymfonyStyle $io,
+        array $givenUnits = [],
+        array $givenCoins = [],
+        ?string $username = null,
+        #[\SensitiveParameter]
+        ?string $password = null,
+    ): bool {
+        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins, $username, $password);
         if (null === $service) {
             return false;
         }
@@ -49,31 +57,42 @@ final readonly class MachineServicer
      * @param array<string, int> $givenUnits
      * @param array<int, int>    $givenCoins
      */
-    private function askForCompleteService(InputInterface $input, SymfonyStyle $io, array $givenUnits, array $givenCoins): ?ServiceMachineCommand
-    {
+    private function askForCompleteService(
+        InputInterface $input,
+        SymfonyStyle $io,
+        array $givenUnits,
+        array $givenCoins,
+        ?string $username,
+        #[\SensitiveParameter]
+        ?string $password,
+    ): ?ServiceMachineCommand {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
         self::rejectUnknownSelectors($status, $givenUnits);
 
+        try {
+            $technicianId = $this->technicianLogin->logIn($input, $io, $username, $password);
+        } catch (InputEndedException) {
+            return self::refuseInputEnded($io);
+        }
+        if (null === $technicianId) {
+            return null;
+        }
+
         $service = new ServiceMachineCommand(
+            $technicianId,
             self::unitsBySelector($io, $status, $givenUnits),
             self::coinStockByCents($io, $status, $givenCoins),
         );
 
-        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
-            return null;
-        }
-
-        return $service;
+        return InputEnd::reachedSince($startedInteractive, $input) ? self::refuseInputEnded($io) : $service;
     }
 
-    // When the input runs out, the question helper turns it non-interactive and answers every
-    // question left with its default, so those answers are not the technician's.
-    private static function inputEndedWhileAsking(bool $startedInteractive, InputInterface $input): bool
+    private static function refuseInputEnded(SymfonyStyle $io): null
     {
-        return $startedInteractive && !$input->isInteractive();
+        $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
+
+        return null;
     }
 
     /**

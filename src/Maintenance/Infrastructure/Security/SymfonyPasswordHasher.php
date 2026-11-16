@@ -20,4 +20,9 @@ final readonly class SymfonyPasswordHasher implements PasswordHasher
     {
         return HashedPassword::fromString($this->hasher->hash($password->value()));
     }
+
+    public function verify(HashedPassword $hash, #[\SensitiveParameter] string $password): bool
+    {
+        return $this->hasher->verify($hash->value(), $password);
+    }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Maintenance\Infrastructure\Security;
 
+use App\Maintenance\Domain\Technician\HashedPassword;
 use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Infrastructure\Security\SymfonyPasswordHasher;
 use PHPUnit\Framework\TestCase;
@@ -20,5 +21,15 @@ final class SymfonyPasswordHasherTest extends TestCase
         self::assertStringNotContainsString('correct-horse', $hash->value());
         self::assertTrue($nativeHasher->verify($hash->value(), 'correct-horse'));
         self::assertFalse($nativeHasher->verify($hash->value(), 'wrong-horse'));
+    }
+
+    public function testVerifiesAPasswordAgainstItsHash(): void
+    {
+        $nativeHasher = new NativePasswordHasher(cost: 4);
+        $hasher = new SymfonyPasswordHasher($nativeHasher);
+        $hash = HashedPassword::fromString($nativeHasher->hash('correct-horse'));
+
+        self::assertTrue($hasher->verify($hash, 'correct-horse'));
+        self::assertFalse($hasher->verify($hash, 'wrong-horse'));
     }
 }

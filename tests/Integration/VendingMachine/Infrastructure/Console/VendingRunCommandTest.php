@@ -7,6 +7,7 @@ namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
+use App\Tests\Integration\Maintenance\HasATechnician;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
@@ -24,6 +25,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class VendingRunCommandTest extends KernelTestCase
 {
+    use HasATechnician;
     use StartsWithNoStoredMachine;
 
     /**
@@ -165,7 +167,7 @@ final class VendingRunCommandTest extends KernelTestCase
         $juice = ['2'];
         $sodaKeptAtItsCurrentUnits = [''];
         $coinsFromTheSmallest = ['4', '5', '6', '7'];
-        $tester->setInputs(['1', 'SERVICE', ...$waterAfterARejectedCount, ...$juice, ...$sodaKeptAtItsCurrentUnits, ...$coinsFromTheSmallest, 'GET-WATER', 'QUIT']);
+        $tester->setInputs(['1', 'SERVICE', self::TECHNICIAN_USERNAME, self::TECHNICIAN_PASSWORD, ...$waterAfterARejectedCount, ...$juice, ...$sodaKeptAtItsCurrentUnits, ...$coinsFromTheSmallest, 'GET-WATER', 'QUIT']);
 
         $tester->execute([], ['capture_stderr_separately' => true]);
 
@@ -183,12 +185,25 @@ final class VendingRunCommandTest extends KernelTestCase
         self::getContainer()->set(CommandBus::class, new ServiceRefusingCommandBus(new MessengerCommandBus(self::getContainer()->get('command.bus'))));
         $tester = new CommandTester($application->find('vending:run'));
         $keepEveryCurrentUnitAndCoinCount = array_fill(0, 7, '');
-        $tester->setInputs(['0.25', 'SERVICE', ...$keepEveryCurrentUnitAndCoinCount, 'RETURN-COIN', 'QUIT']);
+        $tester->setInputs(['0.25', 'SERVICE', self::TECHNICIAN_USERNAME, self::TECHNICIAN_PASSWORD, ...$keepEveryCurrentUnitAndCoinCount, 'RETURN-COIN', 'QUIT']);
 
         $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertSame(ServiceRefusingCommandBus::REFUSAL."\n", $tester->getErrorOutput(true));
+        self::assertSame(['0.25'], self::trayLines($tester->getDisplay(true)));
+    }
+
+    public function testTheSessionReportsWrongCredentialsAndGoesOnWithoutServicing(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['0.25', 'SERVICE', self::TECHNICIAN_USERNAME, 'wrong-horse', 'RETURN-COIN', 'QUIT']);
+
+        $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("Wrong username or password. The machine was not serviced.\n", $tester->getErrorOutput(true));
+        self::assertStringNotContainsString('Units of', $tester->getDisplay(true));
         self::assertSame(['0.25'], self::trayLines($tester->getDisplay(true)));
     }
 
@@ -203,7 +218,7 @@ final class VendingRunCommandTest extends KernelTestCase
     public function testTheInputEndingDuringServiceLeavesTheMachineUnservicedAndEndsTheSession(): void
     {
         $tester = self::tester();
-        $tester->setInputs(['1', 'SERVICE', '3']);
+        $tester->setInputs(['1', 'SERVICE', self::TECHNICIAN_USERNAME, self::TECHNICIAN_PASSWORD, '3']);
 
         $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
 
