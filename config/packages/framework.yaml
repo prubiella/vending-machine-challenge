@@ -1,5 +1,19 @@
 parameters:
     env(TRUSTED_PROXIES): 'PRIVATE_SUBNETS'
+    # The domain exceptions that answer 500 and are logged as critical, since the HTTP API cannot
+    # reach them or they mean a broken invariant, never a customer's mistake. Every other domain
+    # exception has a status under framework.exceptions below, and DomainExceptionStatusTest
+    # fails when one is on neither side.
+    app.domain_exceptions_answering_500:
+        - App\Shared\Domain\Money\InsufficientMoneyException
+        - App\Shared\Domain\Money\NegativeMoneyException
+        - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
+        - App\VendingMachine\Domain\Coin\NegativeCoinCountException
+        - App\VendingMachine\Domain\Coin\UnknownCoinException
+        - App\VendingMachine\Domain\Inventory\DuplicateSelectorException
+        - App\VendingMachine\Domain\Inventory\NegativeUnitsException
+        - App\VendingMachine\Domain\Product\EmptyProductNameException
+        - App\VendingMachine\Domain\Product\NonPositivePriceException
 
 framework:
     secret: '%env(APP_SECRET)%'
@@ -10,12 +24,32 @@ framework:
     trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
     php_errors:
         log: true
-    # Symfony logs an exception that is not an HTTP one as critical, but these are a customer's
-    # refused requests, which JsonExceptionListener answers with a 4xx status.
+    # The customer-facing refusals: each answers its status (JsonExceptionListener renders it) and
+    # is logged as info. Any other exception answers 500 and Symfony logs it as critical. This is
+    # the only place that decides either, so the HTTP side never logs an exception twice.
     exceptions:
-        App\Shared\Domain\DomainException:
+        App\VendingMachine\Domain\Inventory\UnknownSelectorException:
+            status_code: 404
+            log_level: info
+        App\VendingMachine\Domain\Inventory\SoldOutException:
+            status_code: 409
+            log_level: info
+        App\VendingMachine\Domain\Wallet\InsufficientCreditException:
+            status_code: 409
+            log_level: info
+        App\VendingMachine\Domain\Change\NoExactChangeException:
+            status_code: 409
+            log_level: info
+        App\VendingMachine\Domain\Product\InvalidSelectorException:
+            status_code: 422
             log_level: info
         App\VendingMachine\Infrastructure\Notation\ForeignCoinException:
+            status_code: 422
+            log_level: info
+        # Not a business refusal: the retry middleware already logged it as an error once its
+        # retries ran out, and the request can simply be sent again.
+        App\Shared\Application\Persistence\ConcurrentUpdateException:
+            status_code: 409
             log_level: info
 
 when@test:

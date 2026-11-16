@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Shared\Infrastructure;
 
-use App\Shared\Infrastructure\Symfony\EventListener\JsonExceptionListener;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -29,7 +28,7 @@ final class OpenApiDocumentTest extends KernelTestCase
         }
     }
 
-    public function testDocumentsEveryStatusThatTheExceptionListenerMaps(): void
+    public function testDocumentsEveryStatusThatFrameworkExceptionsMap(): void
     {
         $documented = [];
         foreach (self::operations() as $definition) {
@@ -38,8 +37,8 @@ final class OpenApiDocumentTest extends KernelTestCase
             }
         }
 
-        foreach (array_unique(self::statusesMappedByTheListener()) as $status) {
-            self::assertArrayHasKey((string) $status, $documented, \sprintf('No operation documents the %d the listener maps', $status));
+        foreach (array_unique(self::statusesMappedByFramework()) as $status) {
+            self::assertArrayHasKey((string) $status, $documented, \sprintf('No operation documents the %d the exceptions mapping has', $status));
         }
     }
 
@@ -164,12 +163,16 @@ final class OpenApiDocumentTest extends KernelTestCase
     /**
      * @return list<int>
      */
-    private static function statusesMappedByTheListener(): array
+    private static function statusesMappedByFramework(): array
     {
-        $services = self::node(Yaml::parseFile(self::projectDir().'/config/services.yaml'));
-        $map = self::at($services, 'services', JsonExceptionListener::class, 'arguments', '$statusByException');
+        $framework = self::node(Yaml::parseFile(self::projectDir().'/config/packages/framework.yaml'));
+        $mapping = self::at($framework, 'framework', 'exceptions');
 
-        return array_values(array_map(static fn (mixed $status): int => \is_int($status) ? $status : self::fail('A mapped status is not an integer'), $map));
+        return array_values(array_map(static function (mixed $exception): int {
+            $status = self::node($exception)['status_code'] ?? null;
+
+            return \is_int($status) ? $status : self::fail('A mapped status is not an integer');
+        }, $mapping));
     }
 
     /**

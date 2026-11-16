@@ -47,7 +47,7 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
             self::fail('Expected a ConcurrentUpdateException.');
         } catch (ConcurrentUpdateException $e) {
             self::assertSame(3, $this->attempts);
-            self::assertSame('The thing changed since it was loaded at version 3.', $e->getMessage());
+            self::assertSame('The thing was changed by another request since it was loaded at version 3. The request can be retried.', $e->getMessage());
         }
     }
 

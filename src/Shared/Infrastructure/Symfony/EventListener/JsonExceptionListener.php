@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Symfony\EventListener;
 
-use App\Shared\Domain\DomainException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -13,19 +12,16 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
- * Priority -64: after Symfony has logged the exception (priority 0) and before its HTML error page
- * (priority -128).
+ * Priority -64: after Symfony has logged the exception and given the mapped ones their status
+ * (priority 0, `framework.exceptions`) and before its HTML error page (priority -128). The
+ * exceptions that no mapping covers answer 500, as Symfony logs them: critical.
  */
 #[AsEventListener(event: 'kernel.exception', priority: -64)]
 final readonly class JsonExceptionListener
 {
-    /**
-     * @param array<class-string<\Throwable>, int> $statusByException
-     */
     public function __construct(
         #[Autowire('%kernel.debug%')]
         private bool $debug,
-        private array $statusByException,
     ) {
     }
 
@@ -49,14 +45,6 @@ final readonly class JsonExceptionListener
     {
         if ($exception instanceof HttpExceptionInterface) {
             return $exception->getStatusCode();
-        }
-
-        if (isset($this->statusByException[$exception::class])) {
-            return $this->statusByException[$exception::class];
-        }
-
-        if ($exception instanceof DomainException) {
-            return Response::HTTP_BAD_REQUEST;
         }
 
         return Response::HTTP_INTERNAL_SERVER_ERROR;
