@@ -162,7 +162,9 @@ implements `SensitiveCommand` lists the fields it carries that must not be logge
 each with a `Masking` rule: `Hide` logs a secret such as a password or a token as `***`, and
 `KeepFirstThree` logs personal data such as a technician's email with its first three characters
 and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
-hidden whole. Each retry after a concurrent update is logged
+hidden whole. A rule for a field that is not a public property of the command stops its dispatch
+with a `LogicException`, so a misspelt or renamed field is never logged in clear. Each retry after
+a concurrent update is logged
 at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
 notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs

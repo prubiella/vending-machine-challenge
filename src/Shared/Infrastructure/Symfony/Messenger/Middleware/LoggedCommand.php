@@ -42,9 +42,10 @@ final class LoggedCommand
     private static function maskSensitiveFields(SensitiveCommand $command, array $data): array
     {
         foreach ($command->sensitiveFields() as $field => $masking) {
-            if (\array_key_exists($field, $data)) {
-                $data[$field] = $masking->mask($data[$field]);
+            if (!\array_key_exists($field, $data)) {
+                throw new \LogicException(\sprintf('%s masks the field "%s", which is not one of its public properties.', $command::class, $field));
             }
+            $data[$field] = $masking->mask($data[$field]);
         }
 
         return $data;
