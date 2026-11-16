@@ -45,6 +45,16 @@ final readonly class MoneyNotation
         return self::joinCoinTokens(' or ');
     }
 
+    // Read as text, never as a float, and only with the two decimals twoDecimals() writes.
+    public static function amountCents(string $notation): ?int
+    {
+        if (1 !== preg_match('/^(\d+)\.(\d{2})$/', $notation, $parts)) {
+            return null;
+        }
+
+        return (int) $parts[1] * 100 + (int) $parts[2];
+    }
+
     public static function twoDecimals(int $cents): string
     {
         return \sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);

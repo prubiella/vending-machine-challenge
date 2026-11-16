@@ -94,4 +94,28 @@ final class MoneyNotationTest extends TestCase
     {
         self::assertSame($notation, MoneyNotation::twoDecimals($cents));
     }
+
+    #[DataProvider('amounts')]
+    public function testReadsAnAmountWrittenWithTwoDecimals(int $cents, string $notation): void
+    {
+        self::assertSame($cents, MoneyNotation::amountCents($notation));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function notAmounts(): iterable
+    {
+        yield 'one decimal' => ['1.2'];
+        yield 'no decimals' => ['1'];
+        yield 'a comma' => ['1,20'];
+        yield 'a sign' => ['-0.65'];
+        yield 'text' => ['cheap'];
+    }
+
+    #[DataProvider('notAmounts')]
+    public function testReadsNoAmountFromAnythingElse(string $notation): void
+    {
+        self::assertNull(MoneyNotation::amountCents($notation));
+    }
 }
