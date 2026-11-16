@@ -77,6 +77,19 @@ services:
         arguments:
             $changeMaker: '@.inner'
 
+    App\Maintenance\Domain\Technician\TechnicianRepository: '@App\Maintenance\Infrastructure\Persistence\DbalTechnicianRepository'
+
+    App\Maintenance\Domain\Technician\PasswordHasher: '@App\Maintenance\Infrastructure\Security\SymfonyPasswordHasher'
+
+    Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher: ~
+
+    Symfony\Component\PasswordHasher\PasswordHasherInterface: '@Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher'
+
 when@test:
     parameters:
         mongodb.database: '%env(MONGODB_DATABASE)%_test'
+    services:
+        # The lowest bcrypt cost keeps the tests fast; the other environments use the hasher's default.
+        Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher:
+            arguments:
+                $cost: 4

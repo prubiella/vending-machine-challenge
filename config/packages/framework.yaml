@@ -5,6 +5,9 @@ parameters:
     # exception has a status under framework.exceptions below, and DomainExceptionStatusTest
     # fails when one is on neither side.
     app.domain_exceptions_answering_500:
+        - App\Maintenance\Domain\Technician\InvalidUsernameException
+        - App\Maintenance\Domain\Technician\TooShortPasswordException
+        - App\Maintenance\Domain\Technician\UsernameTakenException
         - App\Shared\Domain\Money\InsufficientMoneyException
         - App\Shared\Domain\Money\NegativeMoneyException
         - App\Shared\Domain\Uuid\InvalidUuidException

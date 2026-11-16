@@ -37,6 +37,19 @@ deptrac:
         - type: classLike
           value: ^App\\VendingMachine\\Infrastructure\\.*
 
+    - name: MaintenanceDomain
+      collectors:
+        - type: classLike
+          value: ^App\\Maintenance\\Domain\\.*
+    - name: MaintenanceApplication
+      collectors:
+        - type: classLike
+          value: ^App\\Maintenance\\Application\\.*
+    - name: MaintenanceInfrastructure
+      collectors:
+        - type: classLike
+          value: ^App\\Maintenance\\Infrastructure\\.*
+
   ruleset:
     Kernel:
       - Framework
@@ -58,6 +71,20 @@ deptrac:
     VendingMachineInfrastructure:
       - VendingMachineDomain
       - VendingMachineApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - Framework
+
+    MaintenanceDomain:
+      - SharedDomain
+    MaintenanceApplication:
+      - MaintenanceDomain
+      - SharedDomain
+      - SharedApplication
+    MaintenanceInfrastructure:
+      - MaintenanceDomain
+      - MaintenanceApplication
       - SharedDomain
       - SharedApplication
       - SharedInfrastructure
