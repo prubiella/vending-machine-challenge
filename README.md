@@ -10,6 +10,7 @@ Work in progress: the project is being built in small pull requests, infrastruct
 
 - PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
 - MySQL 8.4
+- MongoDB 9.0, in an optional compose profile (see below)
 - nginx behind Traefik 3.7, HTTPS end to end
 - PHPUnit 13, PHPStan 2 (max level), deptrac, php-cs-fixer
 
@@ -21,8 +22,8 @@ Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 - GNU make
 - [mkcert](https://github.com/FiloSottile/mkcert#installation), for the local HTTPS certificate
 - `sudo` rights, once, to add the hostname to `/etc/hosts` and trust the mkcert authority
-- Free ports on localhost: 80, 443, 8080 (Traefik dashboard) and 3307 (MySQL). They can be changed
-  in `.env`.
+- Free ports on localhost: 80, 443, 8080 (Traefik dashboard), 3307 (MySQL) and 27018 (MongoDB).
+  They can be changed in `.env`.
 
 ## First run
 
@@ -69,9 +70,27 @@ new migration).
 | Web | <https://vending-machine.test> |
 | Traefik dashboard | <http://127.0.0.1:8080> |
 | MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
+| MongoDB (profile `mongo`) | `127.0.0.1:27018`, database `app`, user `root` and password `root` as set in `.env` |
 
 All ports bind to localhost only. The PHP container runs as your user, so files it writes through
 the bind mount stay yours.
+
+### MongoDB
+
+MongoDB will hold the vending machine aggregate and its outbox, while MySQL keeps the technicians
+and the history. Its repository adapter is not written yet, so the `mongo` service sits in the
+compose profile `mongo` and `make start` does not start it. Start it on demand:
+
+```bash
+docker compose --profile mongo up -d mongo
+```
+
+`make stop` and `make down` leave it alone, since they do not enable the profile: stop it with
+`docker compose --profile mongo stop mongo`. Its data lives in the `mongo-data` volume. Copy the
+`MONGO_*` variables from `.env.dist` into an existing `.env`.
+
+`make start` builds the PHP image with the `mongodb` extension, installed through PECL like
+Xdebug, so the first start after pulling this change takes a few minutes longer.
 
 ## Using the machine from the console
 
