@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Infrastructure\Persistence;
 
 use App\Shared\Domain\Money\Money;
+use App\Shared\Domain\Uuid\InvalidUuidException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -74,12 +75,23 @@ final class VendingMachineMapperTest extends TestCase
         $mapper->fromDocument($document);
     }
 
-    public function testRefusesADocumentWhoseIdIsNotAUuid(): void
+    public function testRefusesADocumentWhoseIdIsNotAString(): void
     {
         $mapper = new VendingMachineMapper();
         $document = ['_id' => 1, ...array_diff_key($mapper->toDocument(self::machine()), ['_id' => true])];
 
         $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('The stored vending machine has no "_id".');
+
+        $mapper->fromDocument($document);
+    }
+
+    public function testRefusesADocumentWhoseIdIsNotAUuid(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = ['_id' => 'not-a-uuid', ...array_diff_key($mapper->toDocument(self::machine()), ['_id' => true])];
+
+        $this->expectException(InvalidUuidException::class);
 
         $mapper->fromDocument($document);
     }
@@ -121,6 +133,16 @@ final class VendingMachineMapperTest extends TestCase
         $row = array_diff_key($mapper->toRow(self::machine()), ['id' => true]);
 
         $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromRow($row);
+    }
+
+    public function testRefusesARowWhoseIdIsNotAUuid(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $row = ['id' => 'not-a-uuid', ...array_diff_key($mapper->toRow(self::machine()), ['id' => true])];
+
+        $this->expectException(InvalidUuidException::class);
 
         $mapper->fromRow($row);
     }
