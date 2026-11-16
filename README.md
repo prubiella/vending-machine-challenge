@@ -203,6 +203,13 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change; `422` for a foreign coin, a body without a coin as a string or a malformed
 selector. Servicing the machine stays in the console until technicians can log in.
 
+[`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
+answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
+code, and `tests/Integration/Shared/Infrastructure/OpenApiDocumentTest.php` fails when a route is
+missing from it, a documented route does not exist, or a status the exception listener maps is
+documented nowhere. To read it, open the file in PhpStorm (it renders OpenAPI files) or paste it into
+an online viewer such as [Swagger Editor](https://editor.swagger.io).
+
 The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
 that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
 answers above. The functional tests play the statement's three examples through the API, each from
@@ -363,6 +370,7 @@ tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...
 etc/infrastructure   Docker images and the host setup scripts.
 etc/git              Git hooks.
 etc/postman          Postman collection and environment.
+docs/                The OpenAPI document of the HTTP API.
 ```
 
 A second context, `Maintenance` (technicians and their login), will arrive with technician
