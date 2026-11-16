@@ -79,6 +79,47 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "VendingMachine",
+			"item": [
+				{
+					"name": "Get machine",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('lists the products of the statement', () => pm.expect(pm.response.json().products.map((product) => [product.selector, product.name, product.priceCents])).to.eql([['WATER', 'Water', 65], ['JUICE', 'Juice', 100], ['SODA', 'Soda', 150]]));",
+									"pm.test('tells whether each product is available', () => pm.response.json().products.forEach((product) => pm.expect(product.available).to.be.a('boolean')));",
+									"pm.test('shows the credit in cents', () => pm.expect(pm.response.json().creditCents).to.be.a('number'));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }
