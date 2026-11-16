@@ -10,6 +10,8 @@ use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventFactory;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventMapper;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\VendingMachineMapper;
@@ -30,6 +32,8 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
             new VendingMachineMapper(),
             $container->get(DefaultVendingMachineFactory::class),
             $container->get(MachineId::class),
+            $container->get(OutboxEventFactory::class),
+            new OutboxEventMapper(),
         );
         $repository = new class($stored) implements VendingMachineRepository {
             public int $saves = 0;

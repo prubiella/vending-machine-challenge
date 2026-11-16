@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Persistence;
 
 use App\VendingMachine\Domain\MachineId;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventFactory;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEventMapper;
 use App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use App\VendingMachine\Infrastructure\Persistence\VendingMachineMapper;
@@ -32,6 +34,8 @@ final class DbalVendingMachineRepositoryTest extends VendingMachineRepositoryCon
             new VendingMachineMapper(),
             self::getContainer()->get(DefaultVendingMachineFactory::class),
             MachineId::fromString(self::configuredMachineId()),
+            self::getContainer()->get(OutboxEventFactory::class),
+            new OutboxEventMapper(),
         );
     }
 }

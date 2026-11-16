@@ -171,8 +171,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 `app_test` databases of MySQL and MongoDB: `make migrate` brings the MySQL one up to date (from a
 worktree, `bin/console doctrine:migrations:migrate -n --env=test` through `run-in-php-image.sh`),
 and a kernel test that touches the machine uses `StartsWithNoStoredMachine`, so it starts from the
-default machine. A new adapter of `VendingMachineRepository` gets a test case that extends
-`VendingMachineRepositoryContractTestCase`. Behat (`behat.dist.php`, the FriendsOfBehat Symfony
+default machine. A new adapter of `VendingMachineRepository` also implements `MachineOutbox`,
+writing the machine's events in the same atomic write as its state, and gets a test case that
+extends `VendingMachineRepositoryContractTestCase`. Behat (`behat.dist.php`, the FriendsOfBehat Symfony
 extension) runs the scenarios of `features/` against the kernel through BrowserKit, on the same
 test databases; `CustomerContext` deletes the stored machine before each scenario, and
 `TechnicianContext` the technicians too. `tests/Behat/`

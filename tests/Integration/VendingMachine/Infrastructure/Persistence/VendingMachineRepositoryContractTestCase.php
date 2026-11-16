@@ -6,6 +6,7 @@ namespace App\Tests\Integration\VendingMachine\Infrastructure\Persistence;
 
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
 use App\Shared\Domain\Money\Money;
+use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -18,6 +19,8 @@ use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
 use App\VendingMachine\Domain\Wallet\Wallet;
+use App\VendingMachine\Infrastructure\Outbox\MachineOutbox;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEvent;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter;
 use PHPUnit\Framework\Attributes\Before;
@@ -29,7 +32,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
 {
-    abstract protected static function repository(): VendingMachineRepository&StoredMachineResetter;
+    abstract protected static function repository(): VendingMachineRepository&StoredMachineResetter&MachineOutbox;
 
     // Not the StartsWithNoStoredMachine trait: that one resets the container's store, and this case
     // resets the adapter under test.
@@ -153,6 +156,89 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         $repository->save($reloaded);
 
         self::assertSame(25, $repository->get()->wallet()->credit()->total()->cents());
+    }
+
+    public function testTheOutboxOfANewMachineIsEmpty(): void
+    {
+        self::assertSame([], static::repository()->pending());
+    }
+
+    public function testSavesTheEventsOfTheMachineInItsOutboxOldestFirst(): void
+    {
+        $repository = static::repository();
+        $before = new \DateTimeImmutable();
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $repository->save($machine);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::FiveCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+        $after = new \DateTimeImmutable();
+
+        $pending = $repository->pending();
+
+        self::assertSame(['product_sold', 'credit_returned'], array_map(static fn (OutboxEvent $event): string => $event->type, $pending));
+        self::assertEquals(['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'change' => [5 => 0, 10 => 1, 25 => 1, 100 => 0]], $pending[0]->payload);
+        self::assertEquals(['coins' => [5 => 1, 10 => 0, 25 => 0, 100 => 0]], $pending[1]->payload);
+        self::assertNotSame($pending[0]->id, $pending[1]->id);
+        foreach ($pending as $event) {
+            self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $event->id);
+            self::assertGreaterThanOrEqual($before, $event->occurredAt);
+            self::assertLessThanOrEqual($after, $event->occurredAt);
+        }
+    }
+
+    public function testKeepsTheEventsOfEverySaveOfTheSameMachine(): void
+    {
+        $repository = static::repository();
+        $machine = $repository->get();
+
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+        $machine->insertCoin(Coin::FiveCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+
+        self::assertCount(2, $repository->pending());
+    }
+
+    public function testARefusedSaveAddsNoEventToTheOutbox(): void
+    {
+        $repository = static::repository();
+        $repository->save(self::machineWithEveryPartFilled());
+        $first = $repository->get();
+        $second = $repository->get();
+        $first->returnCoins();
+        $repository->save($first);
+        $second->returnCoins();
+
+        try {
+            $repository->save($second);
+            self::fail('Expected ConcurrentUpdateException.');
+        } catch (ConcurrentUpdateException) {
+            self::assertCount(1, $repository->pending());
+        }
+    }
+
+    public function testResettingForgetsThePendingEvents(): void
+    {
+        $repository = static::repository();
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+
+        $repository->reset();
+
+        self::assertSame([], $repository->pending());
+    }
+
+    private static function changeMaker(): FewestCoinsChangeMaker
+    {
+        return new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
     }
 
     private static function machineWithEveryPartFilled(): VendingMachine
