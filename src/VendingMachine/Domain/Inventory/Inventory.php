@@ -34,6 +34,14 @@ final readonly class Inventory
         return $this->slotsBySelector[$selector->value()] ?? throw UnknownSelectorException::forSelector($selector);
     }
 
+    /**
+     * @return list<Slot>
+     */
+    public function slots(): array
+    {
+        return array_values($this->slotsBySelector);
+    }
+
     public function dispense(Selector $selector): self
     {
         return $this->replacing($this->slotFor($selector)->dispense());

@@ -1,3 +1,11 @@
+parameters:
+    vending_machine.default_products:
+        - { selector: WATER, name: Water, price_cents: 65, units: 10 }
+        - { selector: JUICE, name: Juice, price_cents: 100, units: 10 }
+        - { selector: SODA, name: Soda, price_cents: 150, units: 10 }
+    # The count of each coin by its cents.
+    vending_machine.default_coin_stock: { 5: 10, 10: 10, 25: 10, 100: 0 }
+
 services:
     _defaults:
         autowire: true
@@ -10,9 +18,31 @@ services:
             - '%kernel.project_dir%/src/*/Domain/'
             - '%kernel.project_dir%/src/*/Application/Command/*/*Command.php'
             - '%kernel.project_dir%/src/*/Application/Query/*/*Query.php'
+            - '%kernel.project_dir%/src/*/Application/Query/*/*Response.php'
+
+    command_handlers:
+        namespace: App\
+        resource: '%kernel.project_dir%/src/*/Application/Command/**/*CommandHandler.php'
+        tags: [ { name: messenger.message_handler, bus: command.bus } ]
+        autoconfigure: false
 
     query_handlers:
         namespace: App\
         resource: '%kernel.project_dir%/src/*/Application/Query/**/*QueryHandler.php'
         tags: [ { name: messenger.message_handler, bus: query.bus } ]
         autoconfigure: false
+
+    App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository:
+        arguments:
+            $products: '%vending_machine.default_products%'
+            $coinStockByCents: '%vending_machine.default_coin_stock%'
+
+    App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository'
+
+    App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
+        arguments:
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::FiveCents
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::TenCents
+            - !php/enum App\VendingMachine\Domain\Coin\Coin::TwentyFiveCents
+
+    App\VendingMachine\Domain\Change\ChangeMaker: '@App\VendingMachine\Domain\Change\FewestCoinsChangeMaker'

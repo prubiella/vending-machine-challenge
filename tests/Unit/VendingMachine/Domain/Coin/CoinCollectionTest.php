@@ -7,6 +7,8 @@ namespace App\Tests\Unit\VendingMachine\Domain\Coin;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Coin\CoinNotInCollectionException;
+use App\VendingMachine\Domain\Coin\NegativeCoinCountException;
+use App\VendingMachine\Domain\Coin\UnknownCoinException;
 use PHPUnit\Framework\TestCase;
 
 final class CoinCollectionTest extends TestCase
@@ -27,6 +29,35 @@ final class CoinCollectionTest extends TestCase
         self::assertSame(2, $coins->countOf(Coin::TwentyFiveCents));
         self::assertSame(1, $coins->countOf(Coin::FiveCents));
         self::assertSame(0, $coins->countOf(Coin::OneHundredCents));
+    }
+
+    public function testIsBuiltFromTheCountOfEachCoinByItsCents(): void
+    {
+        $coins = CoinCollection::fromCounts([5 => 2, 25 => 1, 100 => 0]);
+
+        self::assertTrue($coins->equals(CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TwentyFiveCents)));
+    }
+
+    public function testRejectsACountOfAnUnknownCoin(): void
+    {
+        $this->expectException(UnknownCoinException::class);
+
+        CoinCollection::fromCounts([5 => 2, 50 => 1]);
+    }
+
+    public function testRejectsANegativeCount(): void
+    {
+        $this->expectException(NegativeCoinCountException::class);
+        $this->expectExceptionMessageIs('A coin of 10 cents cannot have a negative count, got -1.');
+
+        CoinCollection::fromCounts([10 => -1]);
+    }
+
+    public function testGivesTheCountOfEveryCoinByItsCentsFromTheSmallest(): void
+    {
+        $coins = CoinCollection::of(Coin::TwentyFiveCents, Coin::FiveCents, Coin::TwentyFiveCents);
+
+        self::assertSame([5 => 1, 10 => 0, 25 => 2, 100 => 0], $coins->countsByCents());
     }
 
     public function testTotalsTheAmountOfItsCoins(): void

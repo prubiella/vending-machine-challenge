@@ -13,6 +13,11 @@ enum Coin: int
     case TwentyFiveCents = 25;
     case OneHundredCents = 100;
 
+    public static function fromCents(int $cents): self
+    {
+        return self::tryFrom($cents) ?? throw UnknownCoinException::fromCents($cents);
+    }
+
     public function amount(): Money
     {
         return Money::fromCents($this->value);
