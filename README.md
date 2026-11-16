@@ -168,7 +168,28 @@ what they did is read with a query, such as the tray after a purchase.
 | `GET /machine/tray` | The selectors of the products in the tray and the cents of each coin, from the largest | `200` |
 | `POST /machine/tray/collect` | Empties the tray | `204` |
 
-The statement's last example, `1, GET-WATER`:
+A customer who buys a water with a coin of 1, the statement's last example (`1, GET-WATER`), reads
+the products, inserts the coin, selects the water, finds it in the tray with the change and
+collects it:
+
+```mermaid
+sequenceDiagram
+    actor Customer
+    participant API as vending-machine.test
+    Customer->>API: GET /machine
+    API-->>Customer: 200 products, prices, availability, creditCents 0
+    Customer->>API: POST /machine/coins {"coin":"1"}
+    API-->>Customer: 204
+    Customer->>API: POST /machine/selections/WATER
+    API-->>Customer: 204 (409 if sold out, no exact change or not enough credit)
+    Customer->>API: GET /machine/tray
+    API-->>Customer: 200 {"selectors":["WATER"],"coins":[25,10]}
+    Customer->>API: POST /machine/tray/collect
+    API-->>Customer: 204
+    Note over Customer,API: POST /machine/coin-return drops the inserted coins in the tray instead
+```
+
+The same purchase with curl:
 
 ```bash
 curl -X POST https://vending-machine.test/machine/coins -H 'Content-Type: application/json' -d '{"coin": "1"}'
@@ -187,6 +208,23 @@ that `vending:run` sees, and the other way round. Start from `make run -- vendin
 answers above. The functional tests play the statement's three examples through the API, each from
 the default machine
 (`tests/Integration/VendingMachine/Infrastructure/Controller/StatementExamplesTest.php`).
+
+Each request reaches a controller through Traefik and nginx (see
+[How a request travels](#how-a-request-travels)). The controller sends a command or a query to its
+bus: a command goes through the logging and retry middleware to its handler, which loads the
+machine, asks the aggregate to act and saves it with its version; a query is answered from MySQL.
+
+```mermaid
+flowchart LR
+    C[Client] -->|HTTPS| T[Traefik]
+    T -->|HTTPS, re-encrypted| N[nginx]
+    N --> P[PHP-FPM controller]
+    P -->|command| CB[Command bus: logging, retry]
+    CB --> H[Handler]
+    H --> M[VendingMachine aggregate]
+    H <-->|load, save with version| DB[(MySQL)]
+    P -->|query| QB[Query bus] --> QH[Query handler] --> DB
+```
 
 ## Logs
 
