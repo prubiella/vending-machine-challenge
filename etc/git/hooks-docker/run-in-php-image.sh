@@ -14,9 +14,17 @@ fi
 
 source "${env_file}"
 
+# On the compose network the tests reach the mysql service, as they do from the php-fpm container.
+# Without the network (after `make down`) the checks still run, and only the database tests fail.
+network=()
+if docker network inspect vending_machine_network >/dev/null 2>&1; then
+  network=(--network vending_machine_network)
+fi
+
 # git hands hooks absolute paths (GIT_DIR in a worktree, GIT_INDEX_FILE for `commit -a`), so the
 # checkout and the git directory are mounted at the same paths as on the host.
 docker run --rm \
+  "${network[@]}" \
   --user "$(id -u):$(id -g)" \
   -e HOME=/tmp \
   -e GIT_DIR \

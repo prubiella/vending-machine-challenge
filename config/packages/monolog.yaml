@@ -10,7 +10,7 @@ when@dev:
                 path: "php://stderr"
                 level: debug
                 formatter: 'monolog.formatter.json'
-                channels: [ "!event", "!messenger", "!console" ]
+                channels: [ "!event", "!messenger", "!console", "!doctrine" ]
 
 when@test:
     monolog:

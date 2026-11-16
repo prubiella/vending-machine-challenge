@@ -36,13 +36,21 @@ hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok"}
+# {"status":"ok","checks":{"database":"ok"}}
 make run -- app:health-check
-# {"status":"ok"}
+# {"status":"ok","checks":{"database":"ok"}}
 ```
 
-The same use case has two entry points: the controller behind `/health-check` and the
-`app:health-check` console command both send a `HealthCheckQuery` to the query bus.
+The same use case has two entry points: the controllers behind `/health-check` and
+`/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
+the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
+its dependencies, `ok` or `ko`, under `checks`. A `ko` database logs a warning with the reason it
+did not answer.
+
+- Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
+  `ko`, so a database that does not answer never marks the application itself as down.
+- Readiness: `/health-check/ready` answers 503 and `app:health-check --ready` exits 1 when any
+  dependency is `ko`, so a Docker healthcheck can wait for the database.
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
 `make run -- <command> <options>` runs a Symfony console command, for example
@@ -51,7 +59,8 @@ Give an option its value after a space: make takes a word with `=` (`--format=js
 and drops it.
 
 A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
-message until the certificate files exist in `etc/infrastructure/certs/`.
+message until the certificate files exist in `etc/infrastructure/certs/`. A checkout from before the
+database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`.
 
 | Service | Where |
 |---|---|
@@ -149,7 +158,8 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
-the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
+the tests. The hooks join the containers' network when it exists, so the tests that use MySQL need
+the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
 skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
 with the same refusal. `commit-msg` accepts

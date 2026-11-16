@@ -6,11 +6,23 @@ namespace App\Shared\Application\Query\HealthCheck;
 
 final readonly class HealthCheckQueryHandler
 {
-    /**
-     * @return array{status: 'ok'}
-     */
-    public function __invoke(HealthCheckQuery $query): array
+    public function __construct(
+        private DatabaseProbe $databaseProbe,
+    ) {
+    }
+
+    public function __invoke(HealthCheckQuery $query): HealthCheckResponse
     {
-        return ['status' => 'ok'];
+        return new HealthCheckResponse(HealthCheckResponse::OK, [
+            'database' => self::statusOf($this->databaseProbe->isReachable()),
+        ]);
+    }
+
+    /**
+     * @return HealthCheckResponse::OK|HealthCheckResponse::KO
+     */
+    private static function statusOf(bool $reachable): string
+    {
+        return $reachable ? HealthCheckResponse::OK : HealthCheckResponse::KO;
     }
 }
