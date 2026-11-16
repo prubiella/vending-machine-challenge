@@ -13,6 +13,8 @@ Work in progress: the project is being built in small pull requests, infrastruct
 The code is split by bounded context and then by layer, and the layers may only depend inwards
 (deptrac enforces it). [docs/design.md](docs/design.md) explains the architecture, the domain
 model and the main flows with diagrams; [docs/adr](docs/adr/README.md) has one record per decision.
+[docs/development.md](docs/development.md) tells how it was built: Claude Code sessions in their
+own worktrees, the developer deciding and testing each change, reviews and CI.
 
 ## Stack
 
