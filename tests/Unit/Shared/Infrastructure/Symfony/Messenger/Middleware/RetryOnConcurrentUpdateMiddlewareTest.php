@@ -83,6 +83,16 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message, $record->context], $this->logs->getRecords())));
     }
 
+    public function testLogsEachRetryWithTheSensitiveFieldsOfTheCommandMasked(): void
+    {
+        $this->bus($this->handlerFailingWith(1), maxRetries: 3)->dispatch(new LogInCommand('pau@example.com', 'correct horse', 'T-1'));
+
+        $context = ['command' => LogInCommand::class, 'data' => ['email' => 'pau***', 'password' => '***', 'terminal' => 'T-1']];
+        self::assertSame([
+            [Level::Notice, 'Command LogInCommand met a concurrent update: retry 1 of 3.', $context],
+        ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message, $record->context], $this->logs->getRecords())));
+    }
+
     private function handlerFailingWith(int $concurrentUpdates): \Closure
     {
         return function () use ($concurrentUpdates): void {
@@ -97,7 +107,7 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         return new MessageBus([
             new UnpackExceptionMiddleware(),
             new RetryOnConcurrentUpdateMiddleware($maxRetries, new Logger('test', [$this->logs])),
-            new HandleMessageMiddleware(new HandlersLocator([\stdClass::class => [$handler]])),
+            new HandleMessageMiddleware(new HandlersLocator([\stdClass::class => [$handler], LogInCommand::class => [$handler]])),
         ]);
     }
 }
