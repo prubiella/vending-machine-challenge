@@ -10,6 +10,8 @@ use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
+use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Infrastructure\CashBox\RememberingCashBoxCollectionLog;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,6 +23,7 @@ final readonly class MachineServicer
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private TechnicianLogin $technicianLogin,
+        private RememberingCashBoxCollectionLog $cashBoxCollections,
     ) {
     }
 
@@ -50,7 +53,27 @@ final readonly class MachineServicer
             return false;
         }
 
+        self::reportCashBox($io, $this->cashBoxCollections->takeLastCollected());
+
         return true;
+    }
+
+    private static function reportCashBox(SymfonyStyle $io, CoinCollection $collected): void
+    {
+        if ($collected->isEmpty()) {
+            return;
+        }
+
+        $coinLines = [];
+        foreach (array_filter($collected->countsByCents()) as $cents => $count) {
+            $coinLines[] = \sprintf('%d x %s', $count, MoneyNotation::coinToken($cents));
+        }
+
+        $io->writeln(\sprintf(
+            'Collected from the cash box: %s (%s).',
+            implode(', ', $coinLines),
+            MoneyNotation::twoDecimals($collected->total()->cents()),
+        ));
     }
 
     /**

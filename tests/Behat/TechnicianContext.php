@@ -67,6 +67,15 @@ final class TechnicianContext implements Context
         $this->client->request('GET', '/machine/status', server: $this->authHeaders);
     }
 
+    #[Given('a customer paid for :selector with a coin of :coin')]
+    public function aCustomerBoughtWithACoin(string $selector, string $coin): void
+    {
+        $this->client->jsonRequest('POST', '/machine/coins', ['coin' => $coin]);
+        $this->client->request('POST', '/machine/selections/'.$selector);
+        $this->client->request('POST', '/machine/tray/collect');
+        Assert::assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
     #[When('I service the machine with :units units of :selector and only :count coins of :coin')]
     public function iServiceTheMachine(int $units, string $selector, int $count, string $coin): void
     {
@@ -96,6 +105,15 @@ final class TechnicianContext implements Context
         Assert::assertIsArray($coinStockByCents);
 
         Assert::assertSame($count, $coinStockByCents[MoneyNotation::requireCoinCents($coin)] ?? null);
+    }
+
+    #[Then('the cash box holds :count coins of :coin')]
+    public function theCashBoxHoldsCoins(int $count, string $coin): void
+    {
+        $cashBoxByCents = $this->responseBody()['cashBoxByCents'] ?? null;
+        Assert::assertIsArray($cashBoxByCents);
+
+        Assert::assertSame($count, $cashBoxByCents[MoneyNotation::requireCoinCents($coin)] ?? null);
     }
 
     #[Then('the machine refuses it with status :status saying :excerpt')]

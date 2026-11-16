@@ -31,7 +31,10 @@ change.
 - The cash box is never used for change: the change maker only sees the tubes. It is filled by a
   sale only, and `SERVICE` empties it, since the technician takes the money; `SERVICE` still sets the
   tube of the 1s like any other.
-- `GET /machine/status` shows it as `cashBoxByCents`.
+- `GET /machine/status` shows it as `cashBoxByCents`, and `vending:service` prints what it collected.
+  What a service collected is also logged at info level by `CashBoxCollectionLog`, a port of the
+  `ServiceMachine` use case that a logger adapter implements, until a `MachineServiced` domain event
+  carries it.
 - It is stored as one more part of the machine, `wallet_cash_box`: a field of the MongoDB document and
   a JSON column of the MySQL row, added by a migration with an empty default (MySQL takes no literal
   default on a JSON column, so it is the expression `JSON_OBJECT()`). A document stored before it is

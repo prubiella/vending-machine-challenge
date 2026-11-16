@@ -62,6 +62,13 @@ services:
             $coinStockByCents: '%vending_machine.default_coin_stock%'
 
     App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
+
+    App\VendingMachine\Infrastructure\CashBox\RememberingCashBoxCollectionLog:
+        arguments:
+            $log: '@App\VendingMachine\Infrastructure\CashBox\LoggerCashBoxCollectionLog'
+
+    App\VendingMachine\Application\Command\ServiceMachine\CashBoxCollectionLog: '@App\VendingMachine\Infrastructure\CashBox\RememberingCashBoxCollectionLog'
+
     App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
 
     App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
