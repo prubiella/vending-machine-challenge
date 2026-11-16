@@ -3,8 +3,8 @@
 ## Status
 
 Accepted. Built and merged: `DbalVendingMachineRepository` and `VendingMachineMapper` are the
-adapter in use. `InMemoryVendingMachineRepository` stays for now, and moves to `tests/` as a test
-double in the polish pull request.
+adapter in use. `InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as
+a test double is planned polish.
 
 ## Context
 

@@ -38,8 +38,8 @@ or vend twice on the same credit.
 - The middleware must sit right before `handle_message`: every attempt goes to the same next
   middleware, because the first one uses up the rest of the stack. That is why `command.bus` lists
   its middleware by hand with `default_middleware: false`. That setting is under review: with it, a
-  command routed to a transport would run synchronously without a warning, and the polish pull
-  request checks whether the retry works with Symfony's default middleware so it can go.
+  command routed to a transport would run synchronously without a warning. Planned polish: check
+  whether the retry works with Symfony's default middleware, so the setting can go.
 - There is no `RetryableException` marker interface. Only one failure is retried today, and the
   middleware names it. A marker earns its place when a second failure is worth retrying.
 

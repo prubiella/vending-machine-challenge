@@ -27,9 +27,10 @@ business (a sale, the change given).
 - Domain services: a decorator in Infrastructure, `LoggingChangeMaker`, implements `ChangeMaker`,
   wraps `FewestCoinsChangeMaker` and is wired with `decorates:` in `services.yaml`. It logs the
   change at info and a refusal for want of exact change at notice. The handler receives it without
-  knowing. This is one more reason for the interface (ADR 8). One decorator per domain service. The
-  message says the change was computed, not given: the decorator logs before the save and once per
-  retry.
+  knowing. This is one more reason for the interface (ADR 8). One decorator per domain service.
+  Known issue: the message reads "Change of N cents made", but the decorator logs before the save
+  and once per retry, so it does not mean the change was given. Planned polish: reword it to say the
+  change was computed.
 - Where it goes: the application's own channel (`app`) writes JSON to `var/log/dev.log` in dev, and
   only its warnings and errors also reach stderr, so the console shows the machine's output and its
   refusals alone. Symfony's own logs go to stderr as JSON, without the noisy `event`, `messenger`,
@@ -42,8 +43,8 @@ business (a sale, the change given).
   database connection at warning.
 - Sensitive data: the middleware logs every field of a command, which is fine while commands hold
   only product selectors and coins. Before technician login exists, fields such as a password or a
-  token must be masked: the polish pull request adds a way for a command to list its sensitive
-  fields, which are logged as `***`. This is required before the `Maintenance` context.
+  token must be masked. Nothing masks them yet. Planned polish: a way for a command to list its sensitive
+  fields, which would be logged as `***`. This is required before the `Maintenance` context.
 - The domain never depends on a logger and has no `DomainLogger` port.
 - Business facts are better as domain events published after the commit. A subscriber can then log
   them, send them to a queue or build a sales history. That work comes later.
