@@ -92,6 +92,9 @@ belongs:
   and a hand-written login on the query bus instead of `json_login` or FOSUserBundle (ADR 18, with
   technician authentication).
 - Machine capacities as domain rules checked on restock (ADR 19, with technician authentication).
+- Domain events with an outbox inside the machine's document, relayed to a history in MySQL by a
+  worker without a broker, and a low stock alert on the same events, notified before the history
+  is written (ADR 20).
 - Which review findings to fix and which to decline, on every pull request.
 
 ## What went wrong, and what changed because of it
