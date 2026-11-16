@@ -27,11 +27,23 @@ final class LoggedCommand
     private static function data(object $command): array
     {
         $data = get_object_vars($command);
-        if ($command instanceof SensitiveCommand) {
-            foreach ($command->sensitiveFields() as $field => $masking) {
-                if (\array_key_exists($field, $data)) {
-                    $data[$field] = $masking->mask($data[$field]);
-                }
+        if (!$command instanceof SensitiveCommand) {
+            return $data;
+        }
+
+        return self::maskSensitiveFields($command, $data);
+    }
+
+    /**
+     * @param array<mixed> $data
+     *
+     * @return array<mixed>
+     */
+    private static function maskSensitiveFields(SensitiveCommand $command, array $data): array
+    {
+        foreach ($command->sensitiveFields() as $field => $masking) {
+            if (\array_key_exists($field, $data)) {
+                $data[$field] = $masking->mask($data[$field]);
             }
         }
 
