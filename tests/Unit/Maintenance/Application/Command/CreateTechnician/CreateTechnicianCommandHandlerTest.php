@@ -6,14 +6,12 @@ namespace App\Tests\Unit\Maintenance\Application\Command\CreateTechnician;
 
 use App\Maintenance\Application\Command\CreateTechnician\CreateTechnicianCommand;
 use App\Maintenance\Application\Command\CreateTechnician\CreateTechnicianCommandHandler;
-use App\Maintenance\Domain\Technician\HashedPassword;
 use App\Maintenance\Domain\Technician\InvalidEmailException;
 use App\Maintenance\Domain\Technician\InvalidUsernameException;
-use App\Maintenance\Domain\Technician\PasswordHasher;
-use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Domain\Technician\TooShortPasswordException;
 use App\Maintenance\Domain\Technician\Username;
 use App\Tests\Unit\Maintenance\Application\InMemoryTechnicianRepository;
+use App\Tests\Unit\Maintenance\Domain\PrefixPasswordHasher;
 use PHPUnit\Framework\TestCase;
 
 final class CreateTechnicianCommandHandlerTest extends TestCase
@@ -30,7 +28,7 @@ final class CreateTechnicianCommandHandlerTest extends TestCase
         self::assertNotNull($technician);
         self::assertSame(self::ID, $technician->id()->value());
         self::assertSame('ana@example.com', $technician->email()->value());
-        self::assertSame('hashed:correct-horse', $technician->password()->value());
+        self::assertSame(PrefixPasswordHasher::PREFIX.'correct-horse', $technician->password()->value());
     }
 
     public function testRefusesAnInvalidUsername(): void
@@ -71,11 +69,6 @@ final class CreateTechnicianCommandHandlerTest extends TestCase
 
     private static function handler(InMemoryTechnicianRepository $repository): CreateTechnicianCommandHandler
     {
-        return new CreateTechnicianCommandHandler($repository, new class implements PasswordHasher {
-            public function hash(PlainPassword $password): HashedPassword
-            {
-                return HashedPassword::fromString('hashed:'.$password->value());
-            }
-        });
+        return new CreateTechnicianCommandHandler($repository, new PrefixPasswordHasher());
     }
 }

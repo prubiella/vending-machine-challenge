@@ -6,6 +6,7 @@ parameters:
     # fails when one is on neither side.
     app.domain_exceptions_answering_500:
         - App\Maintenance\Domain\Technician\EmailTakenException
+        - App\Maintenance\Domain\Technician\InvalidCredentialsException
         - App\Maintenance\Domain\Technician\InvalidEmailException
         - App\Maintenance\Domain\Technician\InvalidUsernameException
         - App\Maintenance\Domain\Technician\TooLongPasswordException
