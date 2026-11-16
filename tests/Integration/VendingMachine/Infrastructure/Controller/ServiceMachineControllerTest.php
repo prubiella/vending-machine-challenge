@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Controller;
 
-use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
 use App\Tests\Integration\Maintenance\LogsInAsATechnician;
+use App\Tests\Integration\VendingMachine\RecordingCommandBus;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -25,19 +25,20 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
 
     public function testSetsTheGivenUnitsAndTheWholeCoinStock(): void
     {
-        $technician = self::asTechnician($this->client);
+        $authHeaders = self::asTechnician($this->client);
 
         $this->client->jsonRequest('PUT', '/machine/service', [
             'units' => ['WATER' => 2, 'SODA' => 0],
             'coins' => ['0.05' => 1, '0.25' => 3, '1' => 4],
-        ], $technician);
+        ], $authHeaders);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame('', $this->client->getResponse()->getContent());
-        self::assertSame(
-            ['unitsBySelector' => ['WATER' => 2, 'JUICE' => 10, 'SODA' => 0], 'coinStockByCents' => [5 => 1, 10 => 0, 25 => 3, 100 => 4]],
-            $this->machineStatus($technician),
-        );
+        $expectedStatus = [
+            'unitsBySelector' => ['WATER' => 2, 'JUICE' => 10, 'SODA' => 0],
+            'coinStockByCents' => [5 => 1, 10 => 0, 25 => 3, 100 => 4],
+        ];
+        self::assertSame($expectedStatus, $this->machineStatus($authHeaders));
     }
 
     public function testDropsTheCreditIntoTheTray(): void
@@ -54,28 +55,14 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
 
     public function testServicesTheMachineInTheNameOfTheTechnicianOfTheToken(): void
     {
-        $recordingBus = new class(new MessengerCommandBus(self::getContainer()->get('command.bus'))) implements CommandBus {
-            /** @var list<Command> */
-            public array $dispatched = [];
-
-            public function __construct(private readonly CommandBus $commandBus)
-            {
-            }
-
-            public function dispatch(Command $command): void
-            {
-                $this->dispatched[] = $command;
-                $this->commandBus->dispatch($command);
-            }
-        };
-        self::getContainer()->set(CommandBus::class, $recordingBus);
+        $recordingBus = self::recordingCommandBus();
 
         $this->client->jsonRequest('PUT', '/machine/service', ['units' => [], 'coins' => []], self::bearer(self::TECHNICIAN_ID, 'ROLE_TECHNICIAN'));
 
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
-        $service = $recordingBus->dispatched[0] ?? null;
-        self::assertInstanceOf(ServiceMachineCommand::class, $service);
-        self::assertSame(self::TECHNICIAN_ID, $service->technicianId);
+        $dispatchedCommand = $recordingBus->dispatched[0] ?? null;
+        self::assertInstanceOf(ServiceMachineCommand::class, $dispatchedCommand);
+        self::assertSame(self::TECHNICIAN_ID, $dispatchedCommand->technicianId);
     }
 
     public function testRefusesARequestWithoutATokenWith401(): void
@@ -127,34 +114,43 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
     #[DataProvider('negativeCounts')]
     public function testRefusesANegativeCountWith422(array $body): void
     {
-        $technician = self::asTechnician($this->client);
+        $authHeaders = self::asTechnician($this->client);
 
-        $this->client->jsonRequest('PUT', '/machine/service', $body, $technician);
+        $this->client->jsonRequest('PUT', '/machine/service', $body, $authHeaders);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(self::DEFAULT_STATUS, $this->machineStatus($technician));
+        self::assertSame(self::DEFAULT_STATUS, $this->machineStatus($authHeaders));
     }
 
     public function testRefusesABodyWithoutTheCoinsWith422(): void
     {
-        $technician = self::asTechnician($this->client);
+        $authHeaders = self::asTechnician($this->client);
 
-        $this->client->jsonRequest('PUT', '/machine/service', ['units' => ['WATER' => 2]], $technician);
+        $this->client->jsonRequest('PUT', '/machine/service', ['units' => ['WATER' => 2]], $authHeaders);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(self::DEFAULT_STATUS, $this->machineStatus($technician));
+        self::assertSame(self::DEFAULT_STATUS, $this->machineStatus($authHeaders));
     }
 
     /**
-     * @param array<string, string> $technician
+     * @param array<string, string> $authHeaders
      *
      * @return array<mixed>
      */
-    private function machineStatus(array $technician): array
+    private function machineStatus(array $authHeaders): array
     {
-        $this->client->request('GET', '/machine/status', server: $technician);
+        $this->client->request('GET', '/machine/status', server: $authHeaders);
 
         return $this->responseBody();
+    }
+
+    // Replaces the command bus of the client's kernel, so call it before the request.
+    private static function recordingCommandBus(): RecordingCommandBus
+    {
+        $recordingBus = new RecordingCommandBus(new MessengerCommandBus(self::getContainer()->get('command.bus')));
+        self::getContainer()->set(CommandBus::class, $recordingBus);
+
+        return $recordingBus;
     }
 
     /**
