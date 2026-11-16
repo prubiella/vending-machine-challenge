@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Shared\Infrastructure\Symfony\Messenger\Middlewa
 use App\Shared\Application\Bus\CommandBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
@@ -28,6 +29,7 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
             $container->get(Database::class),
             new VendingMachineMapper(),
             $container->get(DefaultVendingMachineFactory::class),
+            $container->get(MachineId::class),
         );
         $repository = new class($stored) implements VendingMachineRepository {
             public int $saves = 0;

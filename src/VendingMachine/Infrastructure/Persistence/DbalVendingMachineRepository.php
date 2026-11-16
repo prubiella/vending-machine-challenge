@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Infrastructure\Persistence;
 
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
 use Doctrine\DBAL\Connection;
@@ -15,7 +16,6 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
  */
 final readonly class DbalVendingMachineRepository implements VendingMachineRepository, StoredMachineResetter
 {
-    private const int MACHINE_ID = 1;
     private const int NOT_STORED = 0;
     private const string AGGREGATE = 'vending machine';
 
@@ -26,6 +26,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
         private Connection $connection,
         private VendingMachineMapper $mapper,
         private DefaultVendingMachineFactory $defaultMachineFactory,
+        private MachineId $machineId,
     ) {
         $this->versions = new \WeakMap();
     }
@@ -33,8 +34,8 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     public function get(): VendingMachine
     {
         $row = $this->connection->fetchAssociative(
-            'SELECT version, inventory, wallet_credit, wallet_stock, tray FROM vending_machine WHERE id = ?',
-            [self::MACHINE_ID],
+            'SELECT id, version, inventory, wallet_credit, wallet_stock, tray FROM vending_machine WHERE id = ?',
+            [$this->machineId->value()],
         );
 
         if (false === $row) {
@@ -60,7 +61,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
 
     public function reset(): void
     {
-        $this->connection->delete('vending_machine', ['id' => self::MACHINE_ID]);
+        $this->connection->delete('vending_machine', ['id' => $this->machineId->value()]);
     }
 
     /**
@@ -69,7 +70,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     private function insert(array $row): void
     {
         try {
-            $this->connection->insert('vending_machine', ['id' => self::MACHINE_ID, 'version' => 1, ...$row]);
+            $this->connection->insert('vending_machine', ['version' => 1, ...$row]);
         } catch (UniqueConstraintViolationException) {
             throw ConcurrentUpdateException::sinceLoaded(self::AGGREGATE, self::NOT_STORED);
         }
@@ -83,7 +84,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
         $updated = $this->connection->update(
             'vending_machine',
             ['version' => $loadedVersion + 1, ...$row],
-            ['id' => self::MACHINE_ID, 'version' => $loadedVersion],
+            ['id' => $row['id'], 'version' => $loadedVersion],
         );
 
         if (0 === $updated) {

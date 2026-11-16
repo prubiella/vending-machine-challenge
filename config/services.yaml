@@ -1,4 +1,9 @@
 parameters:
+    # The one machine this installation runs: the default machine gets this id, and the repository
+    # loads the machine stored under it. This is the only copy of the default: .env.dist leaves the
+    # variable commented, and setting it there overrides the default.
+    env(VENDING_MACHINE_ID): '01a1e2f0-aa80-70ea-832f-6110cbf86e31'
+    vending_machine.id: '%env(VENDING_MACHINE_ID)%'
     vending_machine.default_products:
         - { selector: WATER, name: Water, price_cents: 65, units: 10 }
         - { selector: JUICE, name: Juice, price_cents: 100, units: 10 }
@@ -46,6 +51,10 @@ services:
     MongoDB\Database:
         factory: ['@MongoDB\Client', 'getDatabase']
         arguments: ['%mongodb.database%']
+
+    App\VendingMachine\Domain\MachineId:
+        factory: ['App\VendingMachine\Domain\MachineId', fromString]
+        arguments: ['%vending_machine.id%']
 
     App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:

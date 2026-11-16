@@ -101,10 +101,16 @@ make mongo-shell
 db.vending_machines.findOne()
 ```
 
-It is the document `_id: 1`: its `version` (optimistic locking, ADR 11), `inventory`, the credit and
-the change in `wallet_credit` and `wallet_stock` (the count of each coin by its cents) and the
-`tray`. The application reaches it through `MONGODB_URL` and `MONGODB_DATABASE`; the test
+Its `_id` is the machine's UUID, `VENDING_MACHINE_ID` (ADR 17), and it holds its `version`
+(optimistic locking, ADR 11), `inventory`, the credit and the change in `wallet_credit` and
+`wallet_stock` (the count of each coin by its cents) and the `tray`. The application reaches it through `MONGODB_URL` and `MONGODB_DATABASE`; the test
 environment adds `_test` to the database name.
+
+`VENDING_MACHINE_ID` names the one machine: the default machine gets that id, and the repository
+loads the machine stored under it. `config/services.yaml` gives it a fixed default UUID, and `.env.dist` keeps the variable commented:
+uncomment it in `.env` to run the machine under another id. The machine stored under
+`_id: 1` before machines had a UUID is no longer loaded; `make run -- vending:reset` deletes it, or
+`db.vending_machines.deleteOne({_id: 1})` in `make mongo-shell`.
 
 The machine's store is the alias of `VendingMachineRepository` and `StoredMachineResetter` in
 `config/services.yaml`. Pointing both at `DbalVendingMachineRepository` stores it in the MySQL
@@ -390,7 +396,8 @@ downloads the driver the first time):
 | Authentication database | | `admin` |
 | Database | `app`, and `app_test` for the tests | `app`, and `app_test` for the tests |
 
-MongoDB holds the machine, as the document `_id: 1` of `vending_machines`. MySQL holds the
+MongoDB holds the machine, as the document of `vending_machines` whose `_id` is
+`VENDING_MACHINE_ID`. MySQL holds the
 migrations table and the `vending_machine` table of the DBAL adapter, empty while the machine lives
 in MongoDB. The same settings work in any other client (DBeaver, MongoDB
 Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a

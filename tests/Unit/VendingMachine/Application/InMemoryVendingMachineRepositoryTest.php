@@ -6,6 +6,7 @@ namespace App\Tests\Unit\VendingMachine\Application;
 
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\Coin;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -15,6 +16,8 @@ use PHPUnit\Framework\TestCase;
 
 final class InMemoryVendingMachineRepositoryTest extends TestCase
 {
+    private const string MACHINE_ID = '01a1e2f0-aa80-70ea-832f-6110cbf86e31';
+
     public function testGivesTheDefaultMachineUntilOneIsSaved(): void
     {
         $defaultMachineFactory = self::defaultMachineFactory();
@@ -49,7 +52,7 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
     public function testGivesBackTheMachineItSaved(): void
     {
         $repository = self::repository();
-        $saved = VendingMachine::install(Product::of(Selector::fromString('JUICE'), ProductName::fromString('Juice'), Money::fromCents(100)));
+        $saved = VendingMachine::install(MachineId::fromString(self::MACHINE_ID), Product::of(Selector::fromString('JUICE'), ProductName::fromString('Juice'), Money::fromCents(100)));
 
         $repository->save($saved);
 
@@ -64,6 +67,7 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
     private static function defaultMachineFactory(): DefaultVendingMachineFactory
     {
         return new DefaultVendingMachineFactory(
+            MachineId::fromString(self::MACHINE_ID),
             [['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 3]],
             [5 => 2, 25 => 1],
         );

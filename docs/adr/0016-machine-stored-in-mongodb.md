@@ -6,7 +6,8 @@ Accepted. Built and merged: `MongoVendingMachineRepository` stores the machine, 
 `DbalVendingMachineRepository` stays as a second adapter of the port. The embedded outbox and the
 history in MySQL are planned. Supersedes ADR 12, whose mapper and DBAL adapter this record keeps.
 `InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as a test double is
-planned polish.
+planned polish. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
+machine's UUID.
 
 ## Context
 
@@ -28,7 +29,8 @@ atomic write as the machine's state, and a document can hold both.
   same arrays into its columns, so there is one mapping.
 - Optimistic locking as in ADR 11: a new machine is an `insertOne`, and a duplicate key there is a
   conflict; a stored one is an `updateOne` with the loaded `version` in its filter that sets the
-  parts and the next version, and a matched count of 0 is a conflict. Both throw
+  parts and the next version (so a field the machine does not own, such as the outbox, survives a
+  save), and a matched count of 0 is a conflict. Both throw
   `ConcurrentUpdateException`, so the retry middleware works unchanged, and the versions live in the
   same kind of `WeakMap`.
 - The store is not configurable: `config/services.yaml` aliases `VendingMachineRepository` and

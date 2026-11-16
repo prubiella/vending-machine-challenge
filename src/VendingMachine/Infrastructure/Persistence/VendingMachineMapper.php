@@ -8,6 +8,7 @@ use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -19,8 +20,9 @@ use App\VendingMachine\Domain\Wallet\Wallet;
  * @phpstan-type ProductRow array{selector: string, name: string, price_cents: int}
  * @phpstan-type SlotRow array{selector: string, name: string, price_cents: int, units: int}
  * @phpstan-type TrayRow array{products: list<ProductRow>, coins: array<int, int>}
- * @phpstan-type MachineDocument array{inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, tray: TrayRow}
- * @phpstan-type MachineRow array{inventory: string, wallet_credit: string, wallet_stock: string, tray: string}
+ * @phpstan-type MachineParts array{inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, tray: TrayRow}
+ * @phpstan-type MachineDocument array{_id: string, inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, tray: TrayRow}
+ * @phpstan-type MachineRow array{id: string, inventory: string, wallet_credit: string, wallet_stock: string, tray: string}
  */
 final readonly class VendingMachineMapper
 {
@@ -31,12 +33,7 @@ final readonly class VendingMachineMapper
      */
     public function toDocument(VendingMachine $machine): array
     {
-        return [
-            'inventory' => array_map(self::slotRow(...), $machine->inventory()->slots()),
-            'wallet_credit' => $machine->wallet()->credit()->countsByCents(),
-            'wallet_stock' => $machine->wallet()->stock()->countsByCents(),
-            'tray' => self::trayRow($machine->tray()),
-        ];
+        return ['_id' => $machine->id()->value(), ...self::parts($machine)];
     }
 
     /**
@@ -44,23 +41,20 @@ final readonly class VendingMachineMapper
      */
     public function fromDocument(array $document): VendingMachine
     {
+        $id = self::storedId($document, '_id');
         self::assertEveryPartIsPresent($document);
 
-        return VendingMachine::restore(
-            self::inventory($document['inventory']),
-            Wallet::of(CoinCollection::fromCounts($document['wallet_credit']), CoinCollection::fromCounts($document['wallet_stock'])),
-            self::tray($document['tray']),
-        );
+        return self::restore($id, $document);
     }
 
     /**
-     * Each part of the document as a JSON column of the vending_machine row.
+     * The id and each part of the document as a JSON column of the vending_machine row.
      *
      * @return MachineRow
      */
     public function toRow(VendingMachine $machine): array
     {
-        return array_map(self::encode(...), $this->toDocument($machine));
+        return ['id' => $machine->id()->value(), ...array_map(self::encode(...), self::parts($machine))];
     }
 
     /**
@@ -68,26 +62,66 @@ final readonly class VendingMachineMapper
      */
     public function fromRow(array $row): VendingMachine
     {
-        $document = [];
+        $id = self::storedId($row, 'id');
+        $parts = [];
         foreach (self::PARTS as $part) {
-            $document[$part] = self::decode($row[$part] ?? null);
+            $parts[$part] = self::decode($row[$part] ?? null);
         }
+        self::assertEveryPartIsPresent($parts);
 
-        return $this->fromDocument($document);
+        return self::restore($id, $parts);
     }
 
     /**
-     * @param array<string, mixed> $document
-     *
-     * @phpstan-assert MachineDocument $document
+     * @param MachineParts $parts
      */
-    private static function assertEveryPartIsPresent(array $document): void
+    private static function restore(string $id, array $parts): VendingMachine
+    {
+        return VendingMachine::restore(
+            MachineId::fromString($id),
+            self::inventory($parts['inventory']),
+            Wallet::of(CoinCollection::fromCounts($parts['wallet_credit']), CoinCollection::fromCounts($parts['wallet_stock'])),
+            self::tray($parts['tray']),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $stored
+     */
+    private static function storedId(array $stored, string $key): string
+    {
+        if (!\is_string($stored[$key] ?? null)) {
+            throw new \UnexpectedValueException(\sprintf('The stored vending machine has no "%s".', $key));
+        }
+
+        return $stored[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $stored
+     *
+     * @phpstan-assert MachineParts $stored
+     */
+    private static function assertEveryPartIsPresent(array $stored): void
     {
         foreach (self::PARTS as $part) {
-            if (!\is_array($document[$part] ?? null)) {
+            if (!\is_array($stored[$part] ?? null)) {
                 throw new \UnexpectedValueException(\sprintf('The stored vending machine has no "%s".', $part));
             }
         }
+    }
+
+    /**
+     * @return MachineParts
+     */
+    private static function parts(VendingMachine $machine): array
+    {
+        return [
+            'inventory' => array_map(self::slotRow(...), $machine->inventory()->slots()),
+            'wallet_credit' => $machine->wallet()->credit()->countsByCents(),
+            'wallet_stock' => $machine->wallet()->stock()->countsByCents(),
+            'tray' => self::trayRow($machine->tray()),
+        ];
     }
 
     /**

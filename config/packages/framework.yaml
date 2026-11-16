@@ -7,6 +7,7 @@ parameters:
     app.domain_exceptions_answering_500:
         - App\Shared\Domain\Money\InsufficientMoneyException
         - App\Shared\Domain\Money\NegativeMoneyException
+        - App\Shared\Domain\Uuid\InvalidUuidException
         - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
         - App\VendingMachine\Domain\Coin\NegativeCoinCountException
         - App\VendingMachine\Domain\Coin\UnknownCoinException

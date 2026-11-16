@@ -44,7 +44,7 @@ Goals:
 
 Non-goals, for now:
 
-- Fleets of machines: there is exactly one, stored with id 1.
+- Fleets of machines: there is exactly one, stored under the id in `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)).
 - Card payments or any payment other than coins.
 - Domain events and the sales history built on them: planned, see [section 11](#11-future-work).
 
@@ -124,6 +124,7 @@ them, and `config/services.yaml` wires the choice.
 | `StoredMachineResetter` | VendingMachine Infrastructure | the Mongo repository (and the DBAL one), used only by `vending:reset` |
 | `ChangeMaker` | VendingMachine Domain | `FewestCoinsChangeMaker`, decorated by `LoggingChangeMaker` |
 | `CommandBus`, `QueryBus` | Shared Application | `MessengerCommandBus`, `MessengerQueryBus` |
+| `UuidGenerator` | Shared Application | `SymfonyUuidGenerator` (UUID v7) |
 | `DatabaseProbe`, `DocumentStoreProbe` | Shared Application | `DbalDatabaseProbe`, `MongoDocumentStoreProbe` |
 
 A request goes from the controller (or the console command) to a bus, then to a handler, which only
@@ -376,8 +377,9 @@ vend twice: the second fails on credit. When the retries run out, the request an
 
 ## 6. Persistence
 
-The machine is one MongoDB document, the document `_id: 1` of the `vending_machines` collection
-([ADR 16](adr/0016-machine-stored-in-mongodb.md)). The aggregate is the consistency boundary, so
+The machine is one MongoDB document of the `vending_machines` collection
+([ADR 16](adr/0016-machine-stored-in-mongodb.md)), whose `_id` is the machine's UUID: the
+`vending_machine.id` parameter, `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)). The aggregate is the consistency boundary, so
 one document is one atomic write. It holds a `version`, the `inventory`, the credit and the change
 in `wallet_credit` and `wallet_stock` (the count of each coin by its cents), and the `tray`.
 
@@ -500,6 +502,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | A logging middleware and decorators | Logger calls inside the domain | [ADR 14](adr/0014-logging.md) |
 | TLS at Traefik, re-encrypted to nginx | Plain HTTP inside the network | [ADR 15](adr/0015-https-with-traefik.md) |
 | The machine as one MongoDB document | A MySQL row, as before | [ADR 16](adr/0016-machine-stored-in-mongodb.md) |
+| UUID v7 identities behind a shared base, the machine's id from configuration | Auto-increment ids, or UUID v4 | [ADR 17](adr/0017-uuid-identities.md) |
 
 Trade-offs worth saying out loud:
 
@@ -520,8 +523,13 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it.
 - **Technician authentication.** The `Maintenance` context, described in
   [section 7](#7-security), with service and status over HTTP.
-- **Several machines.** The machine id becomes a UUID instead of the constant 1, routes carry it
-  (`/machines/{id}/...`), and the repository takes it. Most of the work is in Infrastructure, since
+- **Several machines.** The machine already has a UUID, taken from configuration
+  ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
+  repository would take it. Most of the work is in Infrastructure, since
   the aggregate does not know its own storage.
+- **MongoDB migrations.** There are none on purpose: the one document is rebuilt from
+  configuration by `vending:reset` ([ADR 17](adr/0017-uuid-identities.md)). When more documents or
+  data that cannot be regenerated appear, a lazy migration in the mapper (read the old and the new
+  shape, always write the new one) or a migration command run by `make migrate` comes next.
 - **Web database clients.** A browser tool for MongoDB and MySQL next to Swagger UI, for people who
   do not want a desktop client.

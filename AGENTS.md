@@ -36,10 +36,12 @@ to run it.
 `src/Kernel.php` lives outside a context. A folder exists once it holds code, never empty.
 
 - `Shared`: a small, stable shared kernel that every context may use and that uses no context.
-  `Shared/Domain` holds `Money` and `DomainException`, the abstract base that every domain
-  exception of every context extends; `Shared/Application/Bus` holds the `Command` and `Query`
-  interfaces and the `CommandBus` and `QueryBus` ports; `Shared/Infrastructure` holds their
-  Messenger implementations (`MessengerCommandBus`, `MessengerQueryBus`),
+  `Shared/Domain` holds `Money`, `Uuid` (the base of every identifier) with its
+  `InvalidUuidException`, and `DomainException`, the abstract base that every domain exception of
+  every context extends; `Shared/Application/Bus` holds the `Command` and `Query` interfaces and
+  the `CommandBus` and `QueryBus` ports, and `Shared/Application/Uuid` the `UuidGenerator` port;
+  `Shared/Infrastructure` holds their Messenger implementations (`MessengerCommandBus`,
+  `MessengerQueryBus`), `SymfonyUuidGenerator`,
   `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
   (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
@@ -142,6 +144,8 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   their results, request payloads) are data without behaviour: `final readonly` classes with
   public promoted properties.
 - Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
+- An identifier is a `final readonly` class extending `Shared\Domain\Uuid\Uuid` (`MachineId`); a
+  new one comes from the `UuidGenerator` port, never from the domain (ADR 17).
 - A domain exception is a `final` class named after what went wrong and ending in `Exception`
   (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
   through a named constructor (`InsufficientMoneyException::toSubtract(...)`). That base is a

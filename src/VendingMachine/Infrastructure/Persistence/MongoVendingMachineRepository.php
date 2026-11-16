@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Infrastructure\Persistence;
 
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
 use MongoDB\Collection;
@@ -12,16 +13,17 @@ use MongoDB\Database;
 use MongoDB\Driver\Exception\BulkWriteException;
 
 /**
- * The machine as one document of the vending_machines collection, with a version for optimistic
- * locking (ADR 11): a write only matches the document at the version it was loaded at.
+ * The machine as one document of the vending_machines collection, under its id, with a version for
+ * optimistic locking (ADR 11): a write only matches the document at the version it was loaded at.
  *
  * @phpstan-import-type MachineDocument from VendingMachineMapper
  */
 final readonly class MongoVendingMachineRepository implements VendingMachineRepository, StoredMachineResetter
 {
     private const string COLLECTION = 'vending_machines';
-    private const int MACHINE_ID = 1;
     private const int NOT_STORED = 0;
+    // The _id the machine was stored under before it had a UUID, removed on reset.
+    private const int LEGACY_MACHINE_ID = 1;
     private const int DUPLICATE_KEY = 11000;
     private const string AGGREGATE = 'vending machine';
     private const array AS_ARRAYS = ['typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']];
@@ -35,6 +37,7 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
         Database $database,
         private VendingMachineMapper $mapper,
         private DefaultVendingMachineFactory $defaultMachineFactory,
+        private MachineId $machineId,
     ) {
         $this->machines = $database->getCollection(self::COLLECTION);
         $this->versions = new \WeakMap();
@@ -43,7 +46,7 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
     public function get(): VendingMachine
     {
         /** @var array<string, mixed>|null $document */
-        $document = $this->machines->findOne(['_id' => self::MACHINE_ID], self::AS_ARRAYS);
+        $document = $this->machines->findOne(['_id' => $this->machineId->value()], self::AS_ARRAYS);
 
         if (null === $document) {
             return $this->tracked($this->defaultMachineFactory->create(), self::NOT_STORED);
@@ -68,7 +71,7 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
 
     public function reset(): void
     {
-        $this->machines->deleteOne(['_id' => self::MACHINE_ID]);
+        $this->machines->deleteMany(['_id' => ['$in' => [$this->machineId->value(), self::LEGACY_MACHINE_ID]]]);
     }
 
     /**
@@ -77,7 +80,7 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
     private function insert(array $document): void
     {
         try {
-            $this->machines->insertOne(['_id' => self::MACHINE_ID, 'version' => 1, ...$document]);
+            $this->machines->insertOne(['version' => 1, ...$document]);
         } catch (BulkWriteException $exception) {
             if (self::DUPLICATE_KEY !== $exception->getCode()) {
                 throw $exception;
@@ -92,9 +95,10 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
      */
     private function update(array $document, int $loadedVersion): void
     {
+        $fields = ['version' => $loadedVersion + 1, ...array_diff_key($document, ['_id' => true])];
         $result = $this->machines->updateOne(
-            ['_id' => self::MACHINE_ID, 'version' => $loadedVersion],
-            ['$set' => ['version' => $loadedVersion + 1, ...$document]],
+            ['_id' => $document['_id'], 'version' => $loadedVersion],
+            ['$set' => $fields],
         );
 
         if (0 === $result->getMatchedCount()) {
