@@ -12,7 +12,7 @@ Work in progress: the project is being built in small pull requests, infrastruct
 
 - PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
 - MySQL 8.4
-- MongoDB 9.0, in an optional compose profile (see below)
+- MongoDB 9.0
 - nginx behind Traefik 3.7, HTTPS end to end
 - PHPUnit 13, PHPStan 2 (max level), deptrac, php-cs-fixer
 
@@ -73,7 +73,7 @@ new migration).
 | API documentation (Swagger UI) | <https://docs.vending-machine.test> |
 | Traefik dashboard | <http://127.0.0.1:8080> |
 | MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
-| MongoDB (profile `mongo`) | `127.0.0.1:27018`, database `app`, user `root` and password `root` as set in `.env` |
+| MongoDB | `127.0.0.1:27018`, databases `app` and `app_test`, user `root` and password `root` as set in `.env` |
 
 All ports bind to localhost only. The PHP container runs as your user, so files it writes through
 the bind mount stay yours.
@@ -81,16 +81,9 @@ the bind mount stay yours.
 ### MongoDB
 
 MongoDB will hold the vending machine aggregate and its outbox, while MySQL keeps the technicians
-and the history. Its repository adapter is not written yet, so the `mongo` service sits in the
-compose profile `mongo` and `make start` does not start it. Start it on demand:
-
-```bash
-docker compose --profile mongo up -d mongo
-```
-
-`make stop` and `make down` leave it alone, since they do not enable the profile: stop it with
-`docker compose --profile mongo stop mongo`. Its data lives in the `mongo-data` volume. Copy the
-`MONGO_*` variables from `.env.dist` into an existing `.env`.
+and the history. `make start` starts it with the rest of the stack, and the PHP container waits
+until it is healthy. Its data lives in the `mongo-data` volume. Copy the `MONGO_*` and `MONGODB_*`
+variables from `.env.dist` into an existing `.env`.
 
 `make start` builds the PHP image with the `mongodb` extension, installed through PECL like
 Xdebug, so the first start after pulling this change takes a few minutes longer.
