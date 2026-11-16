@@ -44,19 +44,12 @@ final readonly class VendingMachineMapper
      */
     public function fromDocument(array $document): VendingMachine
     {
-        foreach (self::PARTS as $part) {
-            if (!\is_array($document[$part] ?? null)) {
-                throw new \UnexpectedValueException(\sprintf('The stored vending machine has no "%s".', $part));
-            }
-        }
-
-        /** @var MachineDocument $machine */
-        $machine = $document;
+        self::assertEveryPartIsPresent($document);
 
         return VendingMachine::restore(
-            self::inventory($machine['inventory']),
-            Wallet::of(CoinCollection::fromCounts($machine['wallet_credit']), CoinCollection::fromCounts($machine['wallet_stock'])),
-            self::tray($machine['tray']),
+            self::inventory($document['inventory']),
+            Wallet::of(CoinCollection::fromCounts($document['wallet_credit']), CoinCollection::fromCounts($document['wallet_stock'])),
+            self::tray($document['tray']),
         );
     }
 
@@ -81,6 +74,20 @@ final readonly class VendingMachineMapper
         }
 
         return $this->fromDocument($document);
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     *
+     * @phpstan-assert MachineDocument $document
+     */
+    private static function assertEveryPartIsPresent(array $document): void
+    {
+        foreach (self::PARTS as $part) {
+            if (!\is_array($document[$part] ?? null)) {
+                throw new \UnexpectedValueException(\sprintf('The stored vending machine has no "%s".', $part));
+            }
+        }
     }
 
     /**

@@ -30,8 +30,10 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
 {
     abstract protected static function repository(): VendingMachineRepository&StoredMachineResetter;
 
+    // Not the StartsWithNoStoredMachine trait: that one resets the container's store, and this case
+    // resets the adapter under test.
     #[Before]
-    protected function startWithNoStoredMachine(): void
+    protected function forgetTheStoredMachine(): void
     {
         static::repository()->reset();
     }
