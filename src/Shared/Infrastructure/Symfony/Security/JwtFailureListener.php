@@ -12,9 +12,6 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Answers a missing, invalid or expired token in the API's error format rather than the bundle's.
- */
 final readonly class JwtFailureListener
 {
     #[AsEventListener(event: Events::JWT_NOT_FOUND)]
