@@ -56,3 +56,13 @@ and a second database would add an extension and an image to build for no behavi
 repository is a port, the decision is cheap to revisit. A MongoDB read model fed by domain events
 (sales, stock and service history) is the more interesting place for it, and belongs with the
 events work.
+
+### Next step: a MongoDB adapter
+
+Planned as a later iteration, after the MySQL adapter: a `mongo` service in Docker Compose and
+`ext-mongodb` in the PHP image; a `MongoVendingMachineRepository` storing the machine as one
+document, the same array the DBAL mapper already builds, so the mapper is shared; the `version`
+field in the `updateOne` filter, raising the same concurrency exception, so the retry middleware
+works unchanged; the adapter chosen by configuration (for example `VENDING_MACHINE_STORE=mysql` or
+`mongo` deciding the port's alias); and one contract test run against both adapters, which shows
+they are interchangeable.
