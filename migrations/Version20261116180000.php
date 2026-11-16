@@ -14,6 +14,12 @@ final class Version20261116180000 extends AbstractMigration
         return 'The technicians table: one row per technician, with a unique username, a unique email and the hash of its password.';
     }
 
+    // MySQL commits a CREATE TABLE on its own, so a transaction around it could not roll it back.
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
