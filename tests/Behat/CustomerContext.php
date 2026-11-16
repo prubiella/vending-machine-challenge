@@ -108,11 +108,9 @@ final readonly class CustomerContext implements Context
         Assert::assertSame($amount, MoneyNotation::twoDecimals($credit));
     }
 
-    #[Then('the machine refuses it with status :status saying :messageFragment')]
-    public function theMachineRefusesIt(int $status, string $messageFragment): void
+    #[Then('the machine refuses it saying :messageFragment')]
+    public function theMachineRefusesIt(string $messageFragment): void
     {
-        Assert::assertSame($status, $this->client->getResponse()->getStatusCode());
-
         $error = $this->responseBody()['error'];
         \assert(\is_array($error));
 

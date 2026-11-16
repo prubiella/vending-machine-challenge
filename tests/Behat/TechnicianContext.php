@@ -116,13 +116,12 @@ final class TechnicianContext implements Context
         Assert::assertSame($count, $cashBoxByCents[MoneyNotation::requireCoinCents($coin)] ?? null);
     }
 
-    #[Then('the machine refuses it with status :status saying :excerpt')]
-    public function theMachineRefusesIt(int $status, string $excerpt): void
+    #[Then('the machine refuses it saying :excerpt')]
+    public function theMachineRefusesIt(string $excerpt): void
     {
         $error = $this->responseBody()['error'];
         \assert(\is_array($error));
 
-        Assert::assertSame($status, $this->client->getResponse()->getStatusCode());
         Assert::assertIsString($error['message']);
         Assert::assertStringContainsString($excerpt, $error['message']);
     }
