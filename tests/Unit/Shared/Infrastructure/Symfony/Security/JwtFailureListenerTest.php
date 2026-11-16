@@ -10,47 +10,45 @@ use Lcobucci\JWT\Token\InvalidTokenStructure;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTInvalidEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\InvalidTokenException;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\JWTDecodeFailureException;
-use Monolog\Handler\TestHandler;
-use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 
 final class JwtFailureListenerTest extends TestCase
 {
-    public function testAnswersAServerKeyThatCannotBeReadWith500AndLogsItAsCritical(): void
+    public function testThrowsAServerKeyThatCannotBeReadSoTheJsonListenerAnswers500(): void
     {
-        $logs = new TestHandler();
-        $event = self::invalidTokenEvent(FileCouldNotBeRead::onPath('/var/www/config/jwt/public.pem'));
+        $keyFailure = FileCouldNotBeRead::onPath('/var/www/config/jwt/public.pem');
+        $event = self::invalidTokenEvent($keyFailure);
 
-        new JwtFailureListener(new Logger('test', [$logs]))->onInvalid($event);
+        try {
+            new JwtFailureListener()->onInvalid($event);
+            self::fail('Expected the server failure to be thrown.');
+        } catch (\RuntimeException $thrown) {
+            self::assertStringStartsWith('The token could not be checked', $thrown->getMessage());
+            self::assertSame($keyFailure, $thrown->getPrevious());
+        }
 
-        self::assertSame(500, $event->getResponse()?->getStatusCode());
-        self::assertSame('{"error":{"code":500,"message":"Internal server error"}}', $event->getResponse()->getContent());
-        self::assertTrue($logs->hasCriticalThatContains('The token could not be checked'));
+        self::assertNull($event->getResponse());
     }
 
     public function testAnswersAMalformedTokenWith401(): void
     {
-        $logs = new TestHandler();
         $event = self::invalidTokenEvent(InvalidTokenStructure::missingOrNotEnoughSeparators());
 
-        new JwtFailureListener(new Logger('test', [$logs]))->onInvalid($event);
+        new JwtFailureListener()->onInvalid($event);
 
         self::assertSame(401, $event->getResponse()?->getStatusCode());
-        self::assertFalse($logs->hasCriticalRecords());
     }
 
     public function testAnswersATokenWithAWrongSignatureWith401(): void
     {
-        $logs = new TestHandler();
         $event = new JWTInvalidEvent(
             new InvalidTokenException('Invalid JWT Token', 0, new JWTDecodeFailureException(JWTDecodeFailureException::UNVERIFIED_TOKEN, 'Unable to verify the given JWT')),
             null,
         );
 
-        new JwtFailureListener(new Logger('test', [$logs]))->onInvalid($event);
+        new JwtFailureListener()->onInvalid($event);
 
         self::assertSame(401, $event->getResponse()?->getStatusCode());
-        self::assertFalse($logs->hasCriticalRecords());
     }
 
     private static function invalidTokenEvent(\Throwable $cause): JWTInvalidEvent

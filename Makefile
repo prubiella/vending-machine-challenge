@@ -93,8 +93,8 @@ migrate: ## Run the database migrations on the dev and test databases
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
 
-jwt-keys: ## Create the key pair that signs the technicians' tokens, in config/jwt (git ignores it), unless both keys exist
-	@$(DOCKER_COMPOSE) exec php-fpm sh -c 'test -f config/jwt/private.pem -a -f config/jwt/public.pem || bin/console lexik:jwt:generate-keypair --overwrite --no-interaction'
+jwt-keys: ## Create the key pair that signs the technicians' tokens, at the paths in .env (config/jwt, git ignores it), unless both keys exist
+	@$(DOCKER_COMPOSE) exec php-fpm php etc/jwt/ensure-key-pair.php
 
 hooks: ## Use the project's git hooks (they run inside the PHP image)
 	@git config core.hooksPath etc/git/hooks-docker

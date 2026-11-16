@@ -153,10 +153,10 @@ when a `MachineServiced` event goes to the outbox and the history. `QUIT` or Ctr
 session; Ctrl+D in the middle of `SERVICE` leaves the machine as it was.
 
 `vending:service` services the machine outside a session. `--username` and `--password` give the
-credentials of a technician (see [Technicians](#technicians)) (it asks what they leave out, the password hidden; with `-n` both are
-required), `--units SELECTOR:UNITS` and `--coins COIN:COUNT` give the new values, each repeated as
-needed, and it asks the rest with the current values as defaults; with `-n` it keeps the current
-value of what the options leave out.
+credentials of a technician (see [Technicians](#technicians)); it asks what they leave out, the
+password hidden, and with `-n` both are required. `--units SELECTOR:UNITS` and `--coins COIN:COUNT`
+give the new values, each repeated as needed, and it asks the rest with the current values as
+defaults; with `-n` it keeps the current value of what the options leave out.
 Servicing returns the credit left in the machine, so it first prints those coins as `vending:run`
 prints the tray:
 

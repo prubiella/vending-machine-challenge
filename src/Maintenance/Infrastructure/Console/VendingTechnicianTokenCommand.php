@@ -38,10 +38,7 @@ final readonly class VendingTechnicianTokenCommand
         // The prompts and the refusals go to stderr, so `token=$(...)` captures the token alone.
         $stderr = $io->getErrorStyle();
         try {
-            $technician = $this->queryBus->query(new AuthenticateTechnicianQuery(
-                self::givenOrAsked($username, 'username', static fn (): mixed => $stderr->ask('Username')),
-                self::givenOrAsked($password, 'password', static fn (): mixed => $stderr->askQuestion(PasswordQuestion::hidden('Password'))),
-            ));
+            $technician = $this->queryBus->query(self::credentialsFrom($username, $password, $stderr));
             \assert($technician instanceof AuthenticatedTechnicianResponse);
             $token = $this->tokenIssuer->issueFor($technician);
         } catch (DomainException|MissingValueException $refusal) {
@@ -53,6 +50,18 @@ final readonly class VendingTechnicianTokenCommand
         $io->writeln($token);
 
         return Command::SUCCESS;
+    }
+
+    private static function credentialsFrom(
+        ?string $username,
+        #[\SensitiveParameter]
+        ?string $password,
+        SymfonyStyle $stderr,
+    ): AuthenticateTechnicianQuery {
+        return new AuthenticateTechnicianQuery(
+            self::givenOrAsked($username, 'username', static fn (): mixed => $stderr->ask('Username')),
+            self::givenOrAsked($password, 'password', static fn (): mixed => $stderr->askQuestion(PasswordQuestion::hidden('Password'))),
+        );
     }
 
     /**

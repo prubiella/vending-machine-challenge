@@ -8,8 +8,7 @@ use App\Maintenance\Application\Query\AuthenticateTechnician\AuthenticatedTechni
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 
-// Signs the token of a technician that AuthenticateTechnicianQuery let in, for the login route and
-// the console alike: it carries the technician's id and the role that security.yaml requires.
+// Shared by the login route and the console, so both sign the same claims.
 final readonly class TechnicianTokenIssuer
 {
     public const string TECHNICIAN_ROLE = 'ROLE_TECHNICIAN';
