@@ -11,7 +11,7 @@ final class Version20261116004138 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'The vending_machine table: one row per machine, its parts as JSON and a version for optimistic locking.';
+        return 'The vending_machine table: one row per machine, its parts as JSON and a version that every save counts up.';
     }
 
     public function up(Schema $schema): void
