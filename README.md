@@ -140,7 +140,9 @@ logger.
 
 In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
 warnings and errors also reach stderr, so the console shows the machine's output and its refusals
-alone. Symfony's logs and every log in prod go to stderr as JSON (`make logs php-fpm`).
+alone. Symfony's own logs go to stderr as JSON, all but the noisy `event`, `messenger`, `console`
+and `doctrine` channels. In prod the application's logs and Symfony's go to stderr as JSON from
+info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation` channels.
 
 ## What the setup changes on your machine
 
