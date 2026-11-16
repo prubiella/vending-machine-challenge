@@ -72,7 +72,9 @@ final readonly class VendingServiceCommand
     {
         $countsByCents = [];
         foreach (self::countsByKey('coins', $coins) as $coinToken => $count) {
-            $countsByCents[TokenParser::coinCents((string) $coinToken)] = $count;
+            $cents = MoneyNotation::coinCents((string) $coinToken)
+                ?? throw new InvalidOptionException(\sprintf('Give --coins a coin the machine takes, such as 0.25:10, got %s.', $coinToken));
+            $countsByCents[$cents] = $count;
         }
 
         return $countsByCents;

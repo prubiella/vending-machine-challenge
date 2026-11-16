@@ -12,7 +12,6 @@ use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
-use App\VendingMachine\Infrastructure\Console\RejectedTokenException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -128,7 +127,8 @@ final class VendingServiceCommandTest extends KernelTestCase
 
     public function testRejectsAForeignCoin(): void
     {
-        $this->expectException(RejectedTokenException::class);
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage('Give --coins a coin the machine takes, such as 0.25:10, got 0.50.');
 
         self::tester()->execute(['--coins' => ['0.50:3']], ['interactive' => false]);
     }
