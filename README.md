@@ -31,18 +31,26 @@ make first-run
 ```
 
 It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers, installs the Composer dependencies and enables the git
-hooks. Then:
+below), builds and starts the containers, installs the Composer dependencies, runs the database
+migrations and enables the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok"}
+# {"status":"ok","checks":{"database":"ok"}}
 make run -- app:health-check
-# {"status":"ok"}
+# {"status":"ok","checks":{"database":"ok"}}
 ```
 
-The same use case has two entry points: the controller behind `/health-check` and the
-`app:health-check` console command both send a `HealthCheckQuery` to the query bus.
+The same use case has two entry points: the controllers behind `/health-check` and
+`/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
+the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
+its dependencies, `ok` or `ko`, under `checks`. A `ko` database logs a warning with the reason it
+did not answer.
+
+- Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
+  `ko`, so a database that does not answer never marks the application itself as down.
+- Readiness: `/health-check/ready` answers 503 and `app:health-check --ready` exits 1 when any
+  dependency is `ko`, so a Docker healthcheck can wait for the database.
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
 `make run -- <command> <options>` runs a Symfony console command, for example
@@ -51,7 +59,10 @@ Give an option its value after a space: make takes a word with `=` (`--format=js
 and drops it.
 
 A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
-message until the certificate files exist in `etc/infrastructure/certs/`.
+message until the certificate files exist in `etc/infrastructure/certs/`. A checkout from before the
+database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`, then
+`make migrate`, which creates the tables in the dev and test databases (run it again after pulling a
+new migration).
 
 | Service | Where |
 |---|---|
@@ -66,9 +77,10 @@ the bind mount stay yours.
 
 `vending:run` takes a sequence of actions separated by commas, runs them on the machine and prints
 what drops into the tray: the products first, then the coins from the largest. The statement's
-examples:
+examples, from the default machine:
 
 ```bash
+make run -- vending:reset
 make run -- vending:run "1, 0.25, 0.25, GET-SODA"
 # SODA
 make run -- vending:run "0.10, 0.10, RETURN-COIN"
@@ -89,17 +101,48 @@ in the prompt. `SERVICE` asks the units of each product and the count of each co
 the current value) and services the machine. `QUIT` or Ctrl+D ends the session; Ctrl+D in the
 middle of `SERVICE` leaves the machine as it was.
 
+`vending:service` services the machine outside a session. `--units SELECTOR:UNITS` and
+`--coins COIN:COUNT` give the new values, each repeated as needed, and it asks the rest with the
+current values as defaults; with `-n` it keeps the current value of what the options leave out.
+Servicing returns the credit left in the machine, so it first prints those coins as `vending:run`
+prints the tray:
+
+```bash
+make run -- vending:service --units WATER:20 --coins 0.25:15 --coins 1:0 -n
+# The machine is serviced.
+```
+
+Both `SERVICE` and `vending:service` read the current values once, before asking, and set every
+value, the kept ones included. A sale that another session saves in between is therefore undone
+by the service: service the machine while nobody else is using it.
+
 The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
 exits with 1, the only case besides an unexpected error where it does not exit with 0.
 
-The machine lives in memory: each run starts from the default machine in `config/services.yaml`
-(the statement's products, ten units of each and ten coins of 0.05, 0.10 and 0.25 for change).
-Credit left at the end of a sequence stays in the machine until `RETURN-COIN` gives it back, as on
-a real one; since the machine is not persisted yet, that credit is lost when the process ends.
+The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
+the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
+the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
+coins of 0.05, 0.10 and 0.25 for change). Credit left at the end of a sequence stays in the machine
+until `RETURN-COIN` gives it back, as on a real one, also from a later run.
 
 Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
+
+## Logs
+
+The command bus logs every command with its name and data: at info when it is handled, at notice
+when the domain refuses it and at error when it fails for any other reason. Each retry after a
+concurrent update is logged at notice, and so is each coin or action that `vending:run` rejects.
+The change given in a sale is logged at info, and a sale refused for want of exact change at notice,
+by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs no
+logger.
+
+In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
+warnings and errors also reach stderr, so the console shows the machine's output and its refusals
+alone. Symfony's own logs go to stderr as JSON, all but the noisy `event`, `messenger`, `console`
+and `doctrine` channels. In prod the application's logs and Symfony's go to stderr as JSON from
+info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation` channels.
 
 ## What the setup changes on your machine
 
@@ -149,7 +192,8 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
-the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
+the tests. The hooks join the containers' network when it exists, so the tests that use MySQL need
+the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
 skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
 with the same refusal. `commit-msg` accepts
@@ -225,6 +269,10 @@ Commands and queries go through two synchronous Messenger buses, behind the `Com
 `QueryBus` ports of `Shared/Application/Bus`. Command and query handlers of every context are
 registered on `command.bus` and `query.bus` by their `CommandHandler` and `QueryHandler` suffixes
 in `config/services.yaml`, so the Application layer needs no framework attributes.
+
+The machine is saved with optimistic locking: its row has a version, and a save that finds another
+version than the one it loaded fails with a `ConcurrentUpdateException`. The command bus then runs
+the command again on the fresh machine, up to three more times, before it gives up.
 
 ### Adding a bounded context
 

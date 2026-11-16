@@ -10,10 +10,10 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\VendingMachine;
-use App\VendingMachine\Domain\VendingMachineRepository;
+use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-final class InMemoryVendingMachineRepositoryTest extends KernelTestCase
+final class DefaultVendingMachineFactoryTest extends KernelTestCase
 {
     public function testTheDefaultMachineSellsTheProductsOfTheStatement(): void
     {
@@ -41,6 +41,6 @@ final class InMemoryVendingMachineRepositoryTest extends KernelTestCase
 
     private static function defaultMachine(): VendingMachine
     {
-        return self::getContainer()->get(VendingMachineRepository::class)->get();
+        return self::getContainer()->get(DefaultVendingMachineFactory::class)->create();
     }
 }

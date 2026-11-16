@@ -23,7 +23,11 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 - Work on a branch rather than a git worktree: the containers bind-mount the main checkout, so `make`
   targets run its code, not the worktree's. The git hooks do work from a worktree: `post-checkout`
   installs its `vendor/` when git creates it (by hand:
-  `./etc/git/hooks-docker/run-in-php-image.sh composer install`).
+  `./etc/git/hooks-docker/run-in-php-image.sh composer install`). `run-in-php-image.sh` joins
+  `vending_machine_network` when it exists, so the checks it runs, the pre-commit hook's included,
+  reach the mysql service: start the containers before committing, or the database tests fail. A
+  worktree has no `.env`, so Symfony reads `.env.dist`; a Flex recipe run there writes a `.env` of
+  its own that hides `.env.dist`: delete it.
 
 ## Bounded contexts
 
@@ -35,7 +39,9 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   exception of every context extends; `Shared/Application/Bus` holds the `Command` and `Query`
   interfaces and the `CommandBus` and `QueryBus` ports; `Shared/Infrastructure` holds their
   Messenger implementations (`MessengerCommandBus`, `MessengerQueryBus`),
-  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check.
+  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
+  (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
+  a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
 - `Maintenance` (planned): technicians and their login, with technician authentication.
@@ -46,7 +52,8 @@ Every context has the same three layers:
 
 - `Domain`: entities, aggregates, value objects, domain services, repository interfaces and
   domain exceptions. Plain PHP: no Symfony, no Doctrine, no attributes. Depends only on
-  `Shared/Domain`.
+  `Shared/Domain`. To log what a domain service does, decorate it in Infrastructure, as
+  `LoggingChangeMaker` decorates `ChangeMaker` in `config/services.yaml`.
 - `Application`: one folder per use case. `Command/<UseCase>/<UseCase>Command` plus its
   `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on its
   own Domain, `Shared/Domain` and `Shared/Application`. Handlers are registered on their bus by
@@ -84,6 +91,14 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   Messenger classes that implement them.
 - Commands return nothing. What a command produces is state that a query reads.
 - `UnpackExceptionMiddleware` rethrows the handler's original exception.
+- `LoggingCommandMiddleware` logs every command: info when handled, notice for a
+  `DomainException`, error for anything else. It comes first on `command.bus`, so it sees the
+  unpacked exception and logs a retried command once.
+- A repository saves with optimistic locking: it throws `ConcurrentUpdateException`
+  (`Shared/Application/Persistence`) when another save got in since the load.
+  `RetryOnConcurrentUpdateMiddleware` runs the command again, up to three more times, so a handler
+  loads what it changes inside `__invoke()`. It must stay right before `handle_message`, which is why
+  `command.bus` lists its middleware without the defaults.
 
 ## Adding a use case
 
@@ -91,7 +106,7 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 2. Application: the command or query and its handler, which only loads, calls the domain and saves.
 3. Infrastructure: the adapter (controller, console command, repository). `config/services.yaml`
    leaves `Domain` out of autowiring, so alias a domain port to its adapter there
-   (`VendingMachineRepository` to `InMemoryVendingMachineRepository`).
+   (`VendingMachineRepository` to `DbalVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
    `#[MapRequestPayload]`. Map each domain exception to an HTTP status in `JsonExceptionListener`
@@ -124,9 +139,13 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Checks
 
 `make test`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or `make code-check` for
-all of them. They must pass before committing. `make hooks` (part of `make first-run`) enables the
-git hooks: pre-commit runs the checks when code, configuration or tooling is staged, and refuses
-the commit when those staged files also have unstaged changes, since the checks read the disk.
+all of them. They must pass before committing. The integration tests use the `app_test` database:
+`make migrate` brings it up to date (from a worktree, `bin/console doctrine:migrations:migrate -n
+--env=test` through `run-in-php-image.sh`), and a kernel test that touches the machine uses
+`StartsWithNoStoredMachine`, so it starts from the default machine. `make hooks` (part of
+`make first-run`) enables the git hooks: pre-commit runs the checks when code, configuration or
+tooling is staged, and refuses the commit when those staged files also have unstaged changes, since
+the checks read the disk.
 
 `/vm-review [<pr-number>|<range>]` reviews a change in a headless `claude -p` session in the
 background and writes the report to `.audit/vm-review/`; the lenses live in

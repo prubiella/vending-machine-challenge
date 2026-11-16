@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\QueryBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\LogRecord;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -17,6 +22,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class VendingRunCommandTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     /**
      * @return iterable<string, array{string, string}>
      */
@@ -66,6 +73,21 @@ final class VendingRunCommandTest extends KernelTestCase
 
         self::assertSame("The machine does not accept a coin of 0.50: it takes 0.05, 0.10, 0.25 and 1.\n", $tester->getErrorOutput(true));
         self::assertSame("WATER, 0.25, 0.10\n", $tester->getDisplay(true));
+    }
+
+    public function testLogsTheRejectedCoinsAndActionsAtNotice(): void
+    {
+        $tester = self::tester();
+        $logs = new TestHandler();
+        self::getContainer()->get(LoggerInterface::class)->pushHandler($logs);
+
+        $tester->execute(['sequence' => ['0.50, GET-, RETURN-COIN']]);
+
+        $rejections = array_filter($logs->getRecords(), static fn (LogRecord $record): bool => str_starts_with($record->message, 'Rejected'));
+        self::assertSame([
+            [Level::Notice, 'Rejected "0.50": The machine does not accept a coin of 0.50: it takes 0.05, 0.10, 0.25 and 1.'],
+            [Level::Notice, 'Rejected "GET-": Unknown action "GET-": insert 0.05, 0.10, 0.25 or 1, GET-<SELECTOR> or RETURN-COIN.'],
+        ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message], $rejections)));
     }
 
     public function testCollectsTheTrayAfterPrintingIt(): void

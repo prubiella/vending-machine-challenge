@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Application\Command\ServiceMachine;
 
 use App\Shared\Application\Bus\CommandBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
@@ -14,6 +15,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class ServiceMachineCommandHandlerTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     public function testServicingThroughTheBusRestocksTheProductsAndTheCoins(): void
     {
         $container = self::getContainer();

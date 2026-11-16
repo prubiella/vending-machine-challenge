@@ -6,11 +6,14 @@ namespace App\Shared\Infrastructure\Console;
 
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
+use App\Shared\Application\Query\HealthCheck\HealthCheckResponse;
+use App\Shared\Infrastructure\HealthCheck\ReadinessRule;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'app:health-check', description: 'Check that the application is up')]
+#[AsCommand(name: 'app:health-check', description: 'Check that the application is up and report each of its dependencies')]
 final readonly class HealthCheckCommand
 {
     public function __construct(
@@ -18,10 +21,16 @@ final readonly class HealthCheckCommand
     ) {
     }
 
-    public function __invoke(OutputInterface $output): int
-    {
-        $output->writeln(json_encode($this->queryBus->query(new HealthCheckQuery()), \JSON_THROW_ON_ERROR));
+    public function __invoke(
+        OutputInterface $output,
+        #[Option('Fail when a dependency is ko, as a readiness check', name: 'ready')]
+        bool $failWhenNotReady = false,
+    ): int {
+        $health = $this->queryBus->query(new HealthCheckQuery());
+        \assert($health instanceof HealthCheckResponse);
 
-        return Command::SUCCESS;
+        $output->writeln(json_encode($health, \JSON_THROW_ON_ERROR));
+
+        return $failWhenNotReady && !ReadinessRule::isReady($health) ? Command::FAILURE : Command::SUCCESS;
     }
 }

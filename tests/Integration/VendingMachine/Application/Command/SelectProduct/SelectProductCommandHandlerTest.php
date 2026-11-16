@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Application\Command\SelectProduct;
 
 use App\Shared\Application\Bus\CommandBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Domain\Coin\Coin;
@@ -14,6 +15,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class SelectProductCommandHandlerTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     public function testASaleThroughTheBusDropsTheProductAndItsChangeInTheTray(): void
     {
         $container = self::getContainer();
