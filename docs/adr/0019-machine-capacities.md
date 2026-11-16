@@ -20,6 +20,8 @@ change.
   the HTTP API answers them with 422.
 - They are checked when the machine is restocked, by SERVICE in the console and by
   `PUT /machine/service`, before anything changes.
+- The number of products is bounded too, by `Inventory::CAPACITY` (40), since a service can install
+  products (ADR 22).
 - A sale is not refused for a full tube. The customer's coins join the stock (ADR 8), except the
   ones that do not fit their tube, which go to the cash box (`Wallet::cashBox()`), as the overflow of
   a real machine does. Coins of 1 are never given as change, so they have no tube to fill and always go

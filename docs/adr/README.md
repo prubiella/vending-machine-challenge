@@ -26,6 +26,7 @@ alternatives considered. All are accepted and built, except where a record says 
 19. [Machine capacities and the cash box](0019-machine-capacities.md): 200 units a slot and 500 coins a tube bound a service; a sale sends what does not fit to a cash box.
 20. [Domain events and the outbox](0020-domain-events-and-outbox.md): events recorded by the aggregate, saved in the machine's document, relayed at least once to an idempotent history.
 21. [The machine lives only in MongoDB](0021-machine-lives-only-in-mongodb.md): one store per aggregate, the DBAL adapter and its tables removed, the port kept swappable by its contract test.
+22. [A technician changes the catalog](0022-technician-manages-the-catalog.md): a service installs, retires and reprices products, explicitly, refusing contradictions, unpayable prices and more than 40 products.
 
 A new record takes the next number and is never renumbered. A decision that changes gets a new
 record that supersedes the old one, and the old status becomes "Superseded by N".

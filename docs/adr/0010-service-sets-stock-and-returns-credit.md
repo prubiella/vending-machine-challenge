@@ -24,6 +24,8 @@ customer in the middle of an operation?
 - A freshly installed machine has its products and no stock until the first SERVICE
   (`VendingMachine::install()`); the default machine of the console is built by installing and
   servicing it with ten units of each product and ten coins of 0.05, 0.10 and 0.25.
+- A service can also install and retire products, and change a price, with the same rule: it sets
+  what the machine sells, so the same service twice gives the same machine (ADR 22).
 
 ## Consequences
 
