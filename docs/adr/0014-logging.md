@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted. Implementation in progress, with the persistence work: the middleware and the decorator
-are not on `master` yet; domain events come later.
+Accepted. Built and merged: `LoggingCommandMiddleware`, the retry log and `LoggingChangeMaker`.
+Domain events come later.
 
 ## Context
 
@@ -14,12 +14,36 @@ business (a sale, the change given).
 
 ## Decision
 
-- Use cases: one command bus middleware logs every command with its data and its outcome: info on
-  success, notice on a domain refusal (sold out, no exact change), error on anything else and on
-  exhausted retries (ADR 11). One piece covers every use case, and handlers log nothing.
+- Use cases: `LoggingCommandMiddleware` logs every command with its name and data and its outcome:
+  info when it is handled, notice on a `DomainException` (sold out, no exact change), error on
+  anything else, which includes retries that ran out (ADR 11). It is the first middleware of
+  `command.bus`, so it sees the exception that `UnpackExceptionMiddleware` has already unpacked, and
+  a command that was retried is logged once. One piece covers every use case, and handlers log
+  nothing.
+- Retries: `RetryOnConcurrentUpdateMiddleware` logs each retry at notice, with the same context as
+  the command log (the command class), because only it knows that an attempt happened.
+- Entry points: `vending:run` logs each rejected token (a bad coin or action) at notice. A token is
+  rejected before any command exists, so no middleware sees it.
 - Domain services: a decorator in Infrastructure, `LoggingChangeMaker`, implements `ChangeMaker`,
-  wraps `FewestCoinsChangeMaker` and is wired with `decorates:` in `services.yaml`. The handler
-  receives it without knowing. This is one more reason for the interface (ADR 8).
+  wraps `FewestCoinsChangeMaker` and is wired with `decorates:` in `services.yaml`. It logs the
+  change at info and a refusal for want of exact change at notice. The handler receives it without
+  knowing. This is one more reason for the interface (ADR 8). One decorator per domain service. The
+  message says the change was computed, not given: the decorator logs before the save and once per
+  retry.
+- Where it goes: the application's own channel (`app`) writes JSON to `var/log/dev.log` in dev, and
+  only its warnings and errors also reach stderr, so the console shows the machine's output and its
+  refusals alone. Symfony's own logs go to stderr as JSON, without the noisy `event`, `messenger`,
+  `console` and `doctrine` channels. In prod everything goes to stderr as JSON from info up (a
+  container writes to its stdout and stderr, not to files).
+- No query logging. There is no `LoggingQueryMiddleware`: queries change nothing, there are many of
+  them, and their unexpected failures are already logged by Symfony. The SQL statements are not
+  logged either: the `doctrine` channel is left out of stderr, and a failing statement surfaces as
+  an exception that the command middleware logs at error. The readiness probe logs a failed
+  database connection at warning.
+- Sensitive data: the middleware logs every field of a command, which is fine while commands hold
+  only product selectors and coins. Before technician login exists, fields such as a password or a
+  token must be masked: the polish pull request adds a way for a command to list its sensitive
+  fields, which are logged as `***`. This is required before the `Maintenance` context.
 - The domain never depends on a logger and has no `DomainLogger` port.
 - Business facts are better as domain events published after the commit. A subscriber can then log
   them, send them to a queue or build a sales history. That work comes later.

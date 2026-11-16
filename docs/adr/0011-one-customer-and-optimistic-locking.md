@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted. Implementation in progress, with the persistence work: the version column and the retry
-are not on `master` yet.
+Accepted. Built and merged: the version in `DbalVendingMachineRepository` and
+`RetryOnConcurrentUpdateMiddleware`.
 
 ## Context
 
@@ -17,11 +17,31 @@ or vend twice on the same credit.
 - One customer per machine. The API is the machine's own panel: no customer sessions, no customer
   ids.
 - The machine is saved with a `version` that the save checks: the update succeeds only if the stored
-  version is the one that was loaded, and it increments it.
-- On a version conflict a command bus middleware reloads and runs the command again. The domain
-  decides again on fresh state: a second purchase made on the same credit fails on credit, so there
-  is no double vend.
-- Retries are limited; when they run out the error is logged (ADR 14) and reported.
+  version is the one that was loaded, and it increments it (`UPDATE ... WHERE id = ? AND version = ?`).
+  The first save is an `INSERT`, and a duplicate key there counts as a conflict too.
+- The repository keeps the version it loaded in a `WeakMap` keyed by the aggregate object, so
+  `VendingMachine` carries no version and knows nothing about persistence. The entry goes away with
+  the object, and `save()` moves it to the new version, so a machine saved twice in one use case
+  stays consistent.
+- A failed check throws `ConcurrentUpdateException`, in `Shared/Application/Persistence`. It is not
+  a `DomainException`: no business rule refused anything, another save got in first, and the same
+  command on fresh data may succeed. It is also not in Domain, which does not know about
+  concurrency.
+- `RetryOnConcurrentUpdateMiddleware` on `command.bus` catches the `HandlerFailedException` that
+  wraps a `ConcurrentUpdateException` and sends the command to the handler again, up to 3 more times
+  (`$maxRetries`, set in `services.yaml`), with no backoff: a conflict on one machine clears as soon
+  as the other save has committed. A handler loads the machine inside `__invoke()`, so every
+  attempt decides again on fresh state: a second purchase made on the same credit fails on credit,
+  so there is no double vend.
+- Each retry is logged at notice and, when the retries run out, the last attempt's exception is
+  rethrown and `LoggingCommandMiddleware` logs it at error (ADR 14).
+- The middleware must sit right before `handle_message`: every attempt goes to the same next
+  middleware, because the first one uses up the rest of the stack. That is why `command.bus` lists
+  its middleware by hand with `default_middleware: false`. That setting is under review: with it, a
+  command routed to a transport would run synchronously without a warning, and the polish pull
+  request checks whether the retry works with Symfony's default middleware so it can go.
+- There is no `RetryableException` marker interface. Only one failure is retried today, and the
+  middleware names it. A marker earns its place when a second failure is worth retrying.
 
 ## Consequences
 

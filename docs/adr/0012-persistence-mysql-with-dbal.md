@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. Implementation in progress: today the repository is in memory
-(`InMemoryVendingMachineRepository`); the MySQL adapter is being built in the persistence work.
+Accepted. Built and merged: `DbalVendingMachineRepository` and `VendingMachineMapper` are the
+adapter in use. `InMemoryVendingMachineRepository` stays for now, and moves to `tests/` as a test
+double in the polish pull request.
 
 ## Context
 
@@ -22,7 +23,16 @@ parts, enums and value objects, and Domain may not use Doctrine (ADR 1). The sta
   credit, tray) and a `version` column for optimistic locking (ADR 11). The aggregate is written
   with one statement, so its consistency boundary is the row.
 - The mapper rebuilds the object through the domain's named constructors, so loading cannot produce
-  a state that the domain would refuse.
+  a state that the domain would refuse. Rehydration has its own: `VendingMachine::restore()` takes
+  the parts of a stored machine (inventory, wallet and tray) and `Wallet::of()` takes its credit and
+  stock. They are the only way in that does not start from a fresh machine, they are plain domain
+  code with no persistence in them, and the tests of the mapper cover the round trip.
+- The row has the columns `version`, `inventory`, `wallet_credit`, `wallet_stock` and `tray`, the
+  last four as JSON, and the machine always has id 1: there is one machine (ADR 11).
+- When no row exists, `get()` returns the default machine, built by `DefaultVendingMachineFactory`
+  from `vending_machine.default_products` and the coin stock in `config/services.yaml`, and the
+  first `save()` inserts it. Once a machine is stored it wins over those defaults. `vending:reset`
+  deletes the row, which brings the defaults back.
 
 ## Consequences
 
