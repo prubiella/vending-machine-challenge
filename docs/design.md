@@ -430,7 +430,10 @@ sequenceDiagram
     Note over Relay,Outbox: a crash before remove() relays them again, and the history ignores them
 ```
 
-`remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
+The `outbox-relay` container runs it with `--watch`: a pass every two seconds, without a broker. On
+SIGTERM it finishes the pass in progress and exits; the compose service sets that signal, since the
+PHP-FPM image would stop it with SIGQUIT. A pass that dies anyway is the crash above, and the next
+pass repeats it. `remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
 the pass stay for the next one, and a save of the machine never conflicts with the relay.
 
 ## 6. Persistence

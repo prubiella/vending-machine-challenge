@@ -271,9 +271,11 @@ db.vending_machines.findOne()
 ```
 
 The document also holds the `outbox`: the events of what happened to the machine (a sale, the credit
-returned, a service) waiting to be copied to MySQL. `make run -- vending:outbox:relay` copies them
-to the `machine_history` table and empties the outbox
-([ADR 20](docs/adr/0020-domain-events-and-outbox.md)).
+returned, a service) waiting to be copied to MySQL. The `outbox-relay` container runs
+`vending:outbox:relay --watch`, which copies them to the `machine_history` table every two seconds
+and empties the outbox ([ADR 20](docs/adr/0020-domain-events-and-outbox.md)); `make logs outbox-relay`
+shows each pass that relayed something, and `make relay` makes one pass by hand. On a first run it
+restarts until the dependencies are installed and the databases migrated.
 
 MySQL holds the technicians, the migrations table, `machine_history`, and the `vending_machine` and
 `vending_machine_outbox` tables of `DbalVendingMachineRepository`, a second adapter that passes the
