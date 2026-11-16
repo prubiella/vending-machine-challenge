@@ -320,8 +320,9 @@ paths:
                 error: { code: 415, message: 'Unsupported format, "txt" must be explicitly listed in "acceptFormat".' }
         '422':
           description: |
-            The body has no `units` or no `coins`, a count is negative or not an integer, or a coin
-            is not one the machine takes.
+            The body has no `units` or no `coins`, a count is negative or not an integer, a coin is
+            not one the machine takes, or more is given than a slot (200 units) or a coin tube (500
+            coins) holds.
           content:
             application/json:
               schema:
