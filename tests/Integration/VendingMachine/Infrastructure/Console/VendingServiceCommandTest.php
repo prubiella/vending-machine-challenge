@@ -7,7 +7,11 @@ namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
+use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
+use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
+use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
+use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
@@ -71,6 +75,25 @@ final class VendingServiceCommandTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStatus(['WATER' => 10, 'JUICE' => 10, 'SODA' => 4], self::DEFAULT_COINS);
+    }
+
+    public function testWithoutInteractionOrOptionsServicesTheMachineWithItsCurrentValues(): void
+    {
+        $tester = self::tester();
+        $commandBus = self::getContainer()->get(CommandBus::class);
+        $commandBus->dispatch(new InsertCoinCommand(100));
+        $commandBus->dispatch(new SelectProductCommand('WATER'));
+        $commandBus->dispatch(new CollectTrayCommand());
+        $commandBus->dispatch(new InsertCoinCommand(25));
+
+        $exitCode = $tester->execute([], ['interactive' => false]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("0.25\nThe machine is serviced.\n", $tester->getDisplay(true));
+        self::assertStatus(['WATER' => 9, 'JUICE' => 10, 'SODA' => 10], [5 => 10, 10 => 9, 25 => 9, 100 => 1]);
+        $machine = self::getContainer()->get(QueryBus::class)->query(new GetMachineQuery());
+        self::assertInstanceOf(MachineResponse::class, $machine);
+        self::assertSame(0, $machine->creditCents);
     }
 
     public function testPrintsAndCollectsTheCreditTheServiceReturns(): void
