@@ -46,7 +46,7 @@ framework:
         App\VendingMachine\Infrastructure\Notation\ForeignCoinException:
             status_code: 422
             log_level: info
-        # Not a business refusal: the retry middleware already logged it as an error once its
+        # Not a business refusal: LoggingCommandMiddleware already logged it as an error once the
         # retries ran out, and the request can simply be sent again.
         App\Shared\Application\Persistence\ConcurrentUpdateException:
             status_code: 409
