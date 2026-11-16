@@ -47,7 +47,7 @@ Non-goals, for now:
 
 - Fleets of machines: there is exactly one, stored under the id in `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)).
 - Card payments or any payment other than coins.
-- Domain events and the sales history built on them: planned, see [section 11](#11-future-work).
+- Reports over the sales history and a broker for the events: see [section 11](#11-future-work).
 
 ## 3. Architecture
 
@@ -56,7 +56,9 @@ Non-goals, for now:
 Everything runs in Docker. Traefik terminates TLS and opens a new TLS connection to nginx, so
 traffic is encrypted inside the Docker network too
 ([ADR 15](adr/0015-https-with-traefik.md)). Swagger UI is static, so Traefik reaches it over plain
-HTTP. The console is not a server: it runs inside the PHP container through `make run`.
+HTTP. The console is not a server: it runs inside the PHP container through `make run`, and so
+does the `outbox-relay` container, which runs `vending:outbox:relay --watch`. `make quick-start`
+leaves Traefik and Swagger UI out and publishes nginx over plain HTTP on localhost instead.
 
 ```mermaid
 flowchart LR
@@ -66,8 +68,10 @@ flowchart LR
     Traefik -->|"HTTP, docs.host"| Swagger["Swagger UI"]
     Swagger -.->|"reads docs/openapi.yaml"| Spec[("docs/openapi.yaml")]
     Console["Console<br/>make run"] --> Php
-    Php --> Mongo[("MongoDB<br/>the machine")]
-    Php --> MySql[("MySQL<br/>migrations")]
+    Php --> Mongo[("MongoDB<br/>the machine<br/>and its outbox")]
+    Php --> MySql[("MySQL<br/>technicians,<br/>history")]
+    Relay["outbox-relay<br/>vending:outbox:relay"] --> Mongo
+    Relay --> MySql
 ```
 
 ### Bounded contexts and layers
@@ -126,10 +130,16 @@ them, and `config/services.yaml` wires the choice.
 |---|---|---|
 | `VendingMachineRepository` | VendingMachine Domain | `MongoVendingMachineRepository` |
 | `StoredMachineResetter` | VendingMachine Infrastructure | the Mongo repository, used only by `vending:reset` |
+| `MachineOutbox` | VendingMachine Infrastructure | the Mongo repository, read and emptied by the relay |
+| `LowStockNotifier` | VendingMachine Infrastructure | `LoggingLowStockNotifier` |
 | `ChangeMaker` | VendingMachine Domain | `FewestCoinsChangeMaker`, decorated by `LoggingChangeMaker` |
+| `CashBoxCollectionLog` | VendingMachine Application | `LoggerCashBoxCollectionLog`, wrapped by `RememberingCashBoxCollectionLog` so the console can print what was collected |
+| `TechnicianRepository` | Maintenance Domain | `DbalTechnicianRepository` |
+| `PasswordHasher` | Maintenance Domain | `SymfonyPasswordHasher` (bcrypt) |
+| `TechnicianAuthenticator` | Shared Application | `QueryBusTechnicianAuthenticator`, in Maintenance |
 | `CommandBus`, `QueryBus` | Shared Application | `MessengerCommandBus`, `MessengerQueryBus` |
 | `UuidGenerator` | Shared Application | `SymfonyUuidGenerator` (UUID v7) |
-| `DatabaseProbe`, `DocumentStoreProbe` | Shared Application | `DbalDatabaseProbe`, `MongoDocumentStoreProbe` |
+| `DatabaseProbe`, `DocumentStoreProbe`, `TokenKeysProbe` | Shared Application | `DbalDatabaseProbe`, `MongoDocumentStoreProbe`, `LexikTokenKeysProbe` |
 
 A request goes from the controller (or the console command) to a bus, then to a handler, which only
 loads the machine, asks the aggregate to act and saves it:
@@ -143,9 +153,15 @@ flowchart LR
     C -->|query| QB[Query bus] --> QH[Query handler] --> R
 ```
 
-Commands return nothing, and what a command produces is state that a query reads
-([ADR 7](adr/0007-tray-and-strict-cqrs.md)). That is why the drop of a purchase is a `Tray` that a
-query reads and a command empties.
+Commands and queries go through two buses, and commands return nothing: what a command produces is
+state that a query reads ([ADR 7](adr/0007-tray-and-strict-cqrs.md)). That is why the drop of a
+purchase is a `Tray` that a query reads and a command empties. It is command and query separation
+over one model, not CQRS with a read model: the query handlers load the same `VendingMachine`
+aggregate through `VendingMachineRepository`. A read model, a projection that the events keep up to
+date and that queries read without loading the aggregate, earns its place when reads outnumber
+writes enough to matter, or when a query needs a shape the aggregate lacks, such as sales per
+product and day. The events and `machine_history` ([ADR 20](adr/0020-domain-events-and-outbox.md))
+are where it would start. For one machine and one customer, a query is one document read.
 
 ## 4. Domain model
 
@@ -484,8 +500,18 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
   and the time from the clock. MongoDB pushes them into the document's `outbox` array in the same
   `updateOne` that sets the state, the version still in the filter, so a conflict writes neither;
   `MachineOutbox::pending()` reads them back, oldest first.
-- **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
-  `vending:reset` deletes the stored document.
+- **No machine stored means the default machine, a known trade-off.** When no document exists,
+  `get()` returns the machine `DefaultVendingMachineFactory` builds from `config/services.yaml`, and
+  the first `save()` inserts it. So a read can return an aggregate that was never saved, and the
+  rule of what an uninstalled machine is lives in the adapters: the Mongo repository and the
+  in-memory fake each repeat it. It lets the statement's examples run on an empty database with no
+  setup step. The alternative is a use case that installs the machine explicitly, run once by
+  `make first-run` or a technician, with `get()` refusing when nothing is stored: one place for the
+  rule, at the cost of a step before the first coin. `vending:reset` deletes the stored document.
+- **A reset loses the events not yet relayed, a known trade-off.** `vending:reset` deletes the whole
+  document, outbox included, so what happened since the relay's last pass never reaches
+  `machine_history`. It is a development tool; a reset that kept the history would relay the outbox
+  first.
 - **One store for the machine.** It lives only in MongoDB ([ADR 21](adr/0021-machine-lives-only-in-mongodb.md)).
   A MySQL adapter existed ([ADR 12](adr/0012-persistence-mysql-with-dbal.md)) and was removed because
   nothing ran it; git keeps it. The port stays swappable: an adapter extends
@@ -507,7 +533,9 @@ username, a unique email and the bcrypt hash of the password, never the password
 console, or takes a technician's token over HTTP (see [SERVICE](#service)): the console checks them
 through the `TechnicianAuthenticator` port of `Shared`, since no context uses another, and an
 unknown username and a wrong password are refused with the same message and the same work (one
-password verification), so neither the message nor the response time tells which usernames exist.
+password verification), so neither the message nor the response time tells which usernames exist. Not
+built: a limit on login attempts. Nothing slows down or locks out repeated guesses, on
+`POST /auth/login` or in the console; bcrypt makes each guess cost a hash, and nothing more.
 
 **Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
 `AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)
@@ -607,7 +635,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | `Selector` as a value object | An enum, which would make products code | [ADR 4](adr/0004-selector-as-a-value-object.md) |
 | One shared exception base that is a `\RuntimeException` | A `\LogicException`, or no base | [ADR 5](adr/0005-domain-exceptions.md) |
 | One aggregate with immutable parts, compute then apply | A `SaleService` that mutates parts | [ADR 6](adr/0006-vending-machine-aggregate.md) |
-| A tray read by a query and strict CQRS | Commands that return what they dispensed | [ADR 7](adr/0007-tray-and-strict-cqrs.md) |
+| Commands that return nothing, a tray read by a query, two buses over one model | Commands that return what they dispensed | [ADR 7](adr/0007-tray-and-strict-cqrs.md) |
 | A bounded search behind `ChangeMaker` | Greedy, which fails with finite stock | [ADR 8](adr/0008-change-making.md) |
 | The change maker passed to `select()` | A service held by the aggregate | [ADR 9](adr/0009-change-maker-as-an-argument.md) |
 | `SERVICE` sets the counts and returns the credit | Adding to the stock | [ADR 10](adr/0010-service-sets-stock-and-returns-credit.md) |
@@ -619,6 +647,9 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | The machine as one MongoDB document | A MySQL row, as before | [ADR 16](adr/0016-machine-stored-in-mongodb.md) |
 | The machine only in MongoDB, the DBAL adapter removed | A second adapter nothing runs | [ADR 21](adr/0021-machine-lives-only-in-mongodb.md) |
 | UUID v7 identities behind a shared base, the machine's id from configuration | Auto-increment ids, or UUID v4 | [ADR 17](adr/0017-uuid-identities.md) |
+| A `Maintenance` context, one credentials query, stateless RS256 tokens | Sessions, `json_login` with a user provider, or FOSUserBundle | [ADR 18](adr/0018-technician-authentication.md) |
+| Capacities that bound a service, a cash box for what a sale cannot fit | Refusing a sale when a tube is full | [ADR 19](adr/0019-machine-capacities.md) |
+| Domain events in an outbox inside the machine's document, relayed to an idempotent history | Publishing after the commit, or a broker from the start | [ADR 20](adr/0020-domain-events-and-outbox.md) |
 | A technician installs, retires and reprices products in a service | Editing the configuration and resetting the machine, or a declarative catalog | [ADR 22](adr/0022-technician-manages-the-catalog.md) |
 
 Trade-offs worth saying out loud:
@@ -631,8 +662,10 @@ Trade-offs worth saying out loud:
   while nobody else uses it.
 - Every technician may change the catalog and the prices: there is one role. A real operator would
   often keep pricing apart from restocking ([ADR 22](adr/0022-technician-manages-the-catalog.md)).
-- Two storage engines in one project is extra weight. It is kept on purpose, to show that the port
-  defines the behaviour and that an engine can change behind it.
+- Two databases in one project is extra weight. Each holds what fits it: MongoDB the machine and its
+  outbox, written together in one atomic update, and MySQL the technicians and the history, where a
+  report is a plain `GROUP BY` ([ADR 16](adr/0016-machine-stored-in-mongodb.md),
+  [ADR 21](adr/0021-machine-lives-only-in-mongodb.md)).
 
 ## 11. Future work
 
@@ -640,13 +673,16 @@ Trade-offs worth saying out loud:
   transport, and the history and the low stock alert would become consumers with their own retries
   ([ADR 20](adr/0020-domain-events-and-outbox.md)). Reports over `machine_history` (sales per
   product and day) and an endpoint to read it come with them.
-- **Several machines.** The machine already has a UUID, taken from configuration
-  ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
-  repository would take it. Most of the work is in Infrastructure, since
-  the aggregate does not know its own storage.
-- **MongoDB migrations.** There are none on purpose: the one document is rebuilt from
-  configuration by `vending:reset` ([ADR 17](adr/0017-uuid-identities.md)). When more documents or
-  data that cannot be regenerated appear, a lazy migration in the mapper (read the old and the new
-  shape, always write the new one) or a migration command run by `make migrate` comes next.
-- **Web database clients.** A browser tool for MongoDB and MySQL next to Swagger UI, for people who
-  do not want a desktop client.
+- **Several machines.** The machine already has a UUID, from configuration
+  ([ADR 17](adr/0017-uuid-identities.md)), and the aggregate carries it, but nothing above the
+  adapter asks for it: `VendingMachineRepository::get()` takes no id. Several machines change every
+  layer but the rules: the port (`get(MachineId)`), every command and query (a machine id), every
+  handler, every route (`/machines/{id}/...`) and console command (a `--machine` option), the OpenAPI
+  document and Postman, and the default machine ([section 6](#6-persistence)). The history already
+  stores `machine_id`. Tokens change too if a technician may service only some machines.
+- **MongoDB migrations.** There is no migration command. One change of shape is handled lazily: the
+  mapper reads a document stored before the cash box as one with an empty cash box. The document
+  now holds what configuration cannot rebuild (the products a technician installed, the events not
+  yet relayed), which `vending:reset` loses, so the next change of shape gets a lazy migration in
+  the mapper (read the old and the new shape, always write the new one) or a migration command run
+  by `make migrate` ([ADR 17](adr/0017-uuid-identities.md)).

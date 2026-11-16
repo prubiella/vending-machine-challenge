@@ -3,7 +3,9 @@
 ## Status
 
 Accepted. Built and merged: `LoggingCommandMiddleware`, the retry log and `LoggingChangeMaker`.
-Domain events come later.
+The domain events that this record leaves for later are built, with an outbox
+([ADR 20](0020-domain-events-and-outbox.md)): the relay copies them to the `machine_history` table and
+logs the low stock warning.
 
 ## Context
 
@@ -30,7 +32,7 @@ business (a sale, the change given).
   knowing. This is one more reason for the interface (ADR 8). One decorator per domain service.
   Known issue: the message reads "Change of N cents made", but the decorator logs before the save
   and once per retry, so it does not mean the change was given. Planned polish: reword it to say the
-  change was computed.
+  change was computed. Done: it reads "Change of N cents computed".
 - Where it goes: the application's own channel (`app`) writes JSON to `var/log/dev.log` in dev, and
   only its warnings and errors also reach stderr, so the console shows the machine's output and its
   refusals alone. Symfony's own logs go to stderr as JSON, without the noisy `event`, `messenger`,

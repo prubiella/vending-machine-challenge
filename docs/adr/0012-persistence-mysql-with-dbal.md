@@ -4,6 +4,12 @@
 
 Superseded by [ADR 16](0016-machine-stored-in-mongodb.md) and [ADR 21](0021-machine-lives-only-in-mongodb.md).
 
+The next step at the end of this record was built, except the store chosen by configuration, which
+ADR 16 rejected: the MongoDB adapter (ADR 16), the outbox in the machine's document and the history
+in MySQL ([ADR 20](0020-domain-events-and-outbox.md)), and the technicians in MySQL
+([ADR 18](0018-technician-authentication.md)). The MySQL outbox table of its last paragraph existed
+while the DBAL adapter did, and went with it (ADR 21).
+
 ## Context
 
 The machine must survive between runs. The aggregate is small and always loaded and saved whole:

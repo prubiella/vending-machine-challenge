@@ -5,6 +5,12 @@
 Accepted. Built and merged: the version in `MongoVendingMachineRepository`
 (and in the DBAL adapter that [ADR 21](0021-machine-lives-only-in-mongodb.md) later removed), and `RetryOnConcurrentUpdateMiddleware`.
 
+The polish planned under Decision was checked: with Symfony's default middleware, `send_message`
+sits between the retry and `handle_message`, so a retried command passes as handled without running
+again, and the retry integration test fails (`config/packages/messenger.yaml`).
+`default_middleware: false` stays, and the trade-off is accepted: a command routed to a transport
+would run synchronously without a warning. Nothing routes commands to a transport.
+
 ## Context
 
 A physical machine serves one customer at a time, so the credit is state of the machine, not of a

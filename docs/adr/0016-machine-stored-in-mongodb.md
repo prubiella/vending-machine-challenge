@@ -5,8 +5,9 @@
 Accepted. Built and merged: `MongoVendingMachineRepository` stores the machine. The record kept
 `DbalVendingMachineRepository` as a second adapter of the port; [ADR 21](0021-machine-lives-only-in-mongodb.md)
 removed it, and the passages below that describe it say how it was when this record was written.
-The embedded outbox is built ([ADR 20](0020-domain-events-and-outbox.md)). The history in MySQL is
-planned. Supersedes ADR 12. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
+Everything under "Still planned" is built: the embedded outbox and the history in MySQL
+([ADR 20](0020-domain-events-and-outbox.md)), and the technicians in MySQL
+([ADR 18](0018-technician-authentication.md)). Supersedes ADR 12. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
 machine's UUID.
 
 ## Context
@@ -44,7 +45,7 @@ atomic write as the machine's state, and a document can hold both.
   healthy. The health check reports it as `document_store`, next to MySQL's `database`, so
   readiness fails while it is down.
 
-### Still planned
+### Still planned (all built since, see the status)
 
 - The machine's outbox in MongoDB. Domain events waiting to be published (a sale, the change given,
   a service) are saved inside the machine's document, in the same atomic `updateOne` as its state,
@@ -55,7 +56,8 @@ atomic write as the machine's state, and a document can hold both.
   history can live wherever it is easiest to query.
 - Technicians and their login in MySQL, in their own `Maintenance` context.
 
-The outbox and the history wait for domain events, which do not exist yet.
+The outbox and the history waited for domain events, which did not exist yet when this record was
+written.
 
 ## Consequences
 

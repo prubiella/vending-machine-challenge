@@ -2,12 +2,13 @@
 
 [![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
 
-A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, CQRS and a hexagonal architecture.
-It accepts coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50 to
-start with), gives change, returns the inserted coins on request and lets a technician service it by
-setting the available change and the stock of each product, and by adding, retiring or repricing
-products. A console command and a JSON API drive the same
-machine, which is stored in MongoDB. Everything runs in Docker: the host needs no PHP or Composer.
+A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, a hexagonal architecture, and
+commands and queries on two buses over one model (CQRS without a separate read model). It accepts
+coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50 to start with),
+gives change, returns the inserted coins on request and lets a technician service it by setting the
+available change and the stock of each product, and by adding, retiring or repricing products. A
+console command and a JSON API drive the same machine, which is stored in MongoDB. Everything runs
+in Docker: the host needs no PHP or Composer.
 
 - [Design document](docs/design.md): architecture, domain model and main flows, with diagrams.
 - [Architecture decision records](docs/adr/README.md): one short record per decision.
@@ -15,6 +16,23 @@ machine, which is stored in MongoDB. Everything runs in Docker: the host needs n
 - [`docs/openapi.yaml`](docs/openapi.yaml): the HTTP API, also in Swagger UI at
   <https://docs.vending-machine.test> once it runs.
 - [Postman collection](etc/postman/vending-machine.postman_collection.json), see [Postman](#postman).
+
+Where to look first:
+
+- [`VendingMachine`](src/VendingMachine/Domain/VendingMachine.php), the aggregate that holds every
+  rule of the machine.
+- [`FewestCoinsChangeMaker`](src/VendingMachine/Domain/Change/FewestCoinsChangeMaker.php), change
+  making as a bounded search over finite coins.
+- [`SelectProductCommandHandler`](src/VendingMachine/Application/Command/SelectProduct/SelectProductCommandHandler.php),
+  a use case that only loads, calls the domain and saves.
+- [`VendingMachineRepositoryContractTestCase`](tests/Integration/VendingMachine/Infrastructure/Persistence/VendingMachineRepositoryContractTestCase.php),
+  the behaviour any store of the machine must have.
+- The ADRs that carry the design: [6](docs/adr/0006-vending-machine-aggregate.md) (the aggregate),
+  [7](docs/adr/0007-tray-and-strict-cqrs.md) (commands return nothing),
+  [8](docs/adr/0008-change-making.md) (change making),
+  [11](docs/adr/0011-one-customer-and-optimistic-locking.md) (optimistic locking),
+  [20](docs/adr/0020-domain-events-and-outbox.md) (events and the outbox) and
+  [22](docs/adr/0022-technician-manages-the-catalog.md) (adding and retiring products).
 
 ## Contents
 
@@ -218,6 +236,9 @@ How the machine behaves between runs:
   for change. That configuration only describes the machine as first installed: products are
   added, retired and repriced by a technician's service, which keeps the stock, the credit and the
   tray, while editing `vending_machine.default_products` only shows after `vending:reset` wipes them.
+- `vending:reset` is a development tool and deletes the whole document, its outbox included: events
+  that the relay has not copied yet never reach `machine_history`. Wait for the relay's next pass,
+  or run `make relay`, before a reset whose history matters.
 - Change is made only from coins of 0.05, 0.10 and 0.25 ([ADR 8](docs/adr/0008-change-making.md)).
   Coins of 1 are never given as change: a sale puts them in the cash box.
 - A slot holds at most 200 units and a coin tube at most 500 coins: servicing refuses more and
@@ -225,7 +246,7 @@ How the machine behaves between runs:
   the cash box too, which is never used for change. `SERVICE` empties the cash box and says what the
   technician collected (`Collected from the cash box: 3 x 1, 2 x 0.25 (3.50).`), and the log records it
   ([ADR 19](docs/adr/0019-machine-capacities.md)). `PUT /machine/service` empties it too but answers
-  `204` without the amount, which is only in the log: read `GET /machine/status` first to see it.
+  `204` without the amount, which the log and the history record: read `GET /machine/status` first to see it.
 
 ## HTTP API
 
@@ -256,14 +277,15 @@ A technician logs in for a token and sends it as a bearer token to these routes:
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product, the count of each coin in its tube and in the cash box, by cents | `200`, `401` without a valid token, `403` without the technician's role |
-| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray; it also empties the cash box, and the amount collected is only in the log. Optional `"install": [{"selector": "TEA", "name": "Tea", "priceCents": 120, "units": 12}]` and `"retire": ["JUICE"]` change the products | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, more than a slot or a coin tube holds, or a catalog change the machine refuses |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray; it also empties the cash box, and what it collected is not in the answer: the log and the `MachineServiced` event in `machine_history` record it. Optional `"install": [{"selector": "TEA", "name": "Tea", "priceCents": 120, "units": 12}]` and `"retire": ["JUICE"]` change the products | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, more than a slot or a coin tube holds, or a catalog change the machine refuses |
 
 ```bash
-token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
+base=http://localhost:8000 # https://vending-machine.test in the full environment
+token=$(curl -s -X POST $base/auth/login -H 'Content-Type: application/json' \
   -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
-curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
+curl $base/machine/status -H "Authorization: Bearer $token"
 # {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0},"cashBoxByCents":{"5":0,"10":0,"25":0,"100":0}}
-curl -X PUT https://vending-machine.test/machine/service -H "Authorization: Bearer $token" \
+curl -X PUT $base/machine/service -H "Authorization: Bearer $token" \
   -H 'Content-Type: application/json' -d '{"units": {"WATER": 20}, "coins": {"0.05": 10, "0.10": 10, "0.25": 15, "1": 0}}'
 ```
 
@@ -301,8 +323,10 @@ history and shows in `ps`: prefer the prompt.
 
 Servicing, in the console or over HTTP, needs a technician. An unknown username and a wrong password
 are refused with the same message and the same work (one password verification), so a refusal does
-not tell which usernames exist, and the service command carries the technician's id, which the
-command bus logs: that log tells who serviced the machine. The password is never stored or logged in clear ([Logs](#logs)).
+not tell which usernames exist. There is no limit on login attempts: repeated guesses are neither
+slowed down nor locked out. The service command carries the technician's id, and the machine
+records it in the `MachineServiced` event that the relay copies to `machine_history`: the history
+tells who serviced the machine. The password is never stored or logged in clear ([Logs](#logs)).
 
 ## Where the machine lives
 

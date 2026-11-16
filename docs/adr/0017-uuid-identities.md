@@ -3,9 +3,12 @@
 ## Status
 
 Accepted. Built: `Uuid`, `MachineId`, `UuidGenerator` and `SymfonyUuidGenerator`, and the machine
-stored under its UUID by both adapters. `TechnicianId` extends `Uuid` too, and
+stored under its UUID by both adapters of the time (only the MongoDB one remains since
+[ADR 21](0021-machine-lives-only-in-mongodb.md)). `TechnicianId` extends `Uuid` too, and
 `vending:technician:create` takes the new technician's id from `UuidGenerator`. Changes the stored
-`_id: 1` of [ADR 16](0016-machine-stored-in-mongodb.md).
+`_id: 1` of [ADR 16](0016-machine-stored-in-mongodb.md). The lazy migration in the mapper named
+under Consequences exists for one change: a document stored before the cash box
+([ADR 19](0019-machine-capacities.md)) is read as one with an empty cash box.
 
 ## Context
 
