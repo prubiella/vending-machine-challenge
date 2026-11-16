@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\VendingMachine\Infrastructure\Controller\CollectTrayController;
 use App\VendingMachine\Infrastructure\Controller\GetMachineController;
 use App\VendingMachine\Infrastructure\Controller\GetTrayContentsController;
 use App\VendingMachine\Infrastructure\Controller\InsertCoinController;
@@ -33,5 +34,10 @@ return static function (RoutingConfigurator $routes): void {
     $routes->add('get-tray-contents', '/machine/tray')
         ->controller(GetTrayContentsController::class)
         ->methods(['GET'])
+    ;
+
+    $routes->add('collect-tray', '/machine/tray/collect')
+        ->controller(CollectTrayController::class)
+        ->methods(['POST'])
     ;
 };
