@@ -8,6 +8,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
+use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -26,6 +27,7 @@ final readonly class ServiceForm
     {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
+        self::rejectUnknownSelectors($status, $givenUnits);
 
         $service = new ServiceMachineCommand(
             self::unitsBySelector($io, $status, $givenUnits),
@@ -45,6 +47,18 @@ final readonly class ServiceForm
 
     /**
      * @param array<string, int> $givenUnits
+     */
+    private static function rejectUnknownSelectors(MachineStatusResponse $status, array $givenUnits): void
+    {
+        foreach (array_keys($givenUnits) as $selector) {
+            if (!\array_key_exists($selector, $status->unitsBySelector)) {
+                throw new InvalidOptionException(\sprintf('Give --units a product the machine has, such as WATER:5, got %s.', $selector));
+            }
+        }
+    }
+
+    /**
+     * @param array<string, int> $givenUnits
      *
      * @return array<int|string, int>
      */
@@ -55,8 +69,7 @@ final readonly class ServiceForm
             $newUnits[$selector] = $givenUnits[$selector] ?? self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
         }
 
-        // A given selector the machine lacks is kept, so the service refuses it instead of ignoring it.
-        return $newUnits + $givenUnits;
+        return $newUnits;
     }
 
     /**

@@ -121,14 +121,19 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
-    public function testReportsAnUnknownSelectorAndLeavesTheMachineUnserviced(): void
+    public function testRejectsAnUnknownSelectorBeforeAskingAnything(): void
     {
         $tester = self::tester();
+        $tester->setInputs(array_fill(0, 7, ''));
 
-        $exitCode = $tester->execute(['--units' => ['CHIPS:3']], ['interactive' => false, 'capture_stderr_separately' => true]);
+        try {
+            $tester->execute(['--units' => ['WATER:2', 'CHIPS:3']]);
+            self::fail('Expected an InvalidOptionException.');
+        } catch (InvalidOptionException $e) {
+            self::assertSame('Give --units a product the machine has, such as WATER:5, got CHIPS.', $e->getMessage());
+        }
 
-        self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame("There is no product with selector CHIPS.\n", $tester->getErrorOutput(true));
+        self::assertStringNotContainsString('Units of', $tester->getDisplay(true));
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
