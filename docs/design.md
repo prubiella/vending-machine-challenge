@@ -2,7 +2,8 @@
 
 How the vending machine is built and why, in about ten minutes. It describes what is on `master`.
 The decisions behind it are one short record each in [docs/adr](adr/README.md); this document links
-them where they matter. How to run the project is in the [README](../README.md).
+them where they matter. How to run the project is in the [README](../README.md), and how it was
+built, with Claude Code sessions, reviews and CI, is in [development.md](development.md).
 
 ## 1. Context and problem
 
