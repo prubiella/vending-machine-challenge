@@ -20,6 +20,45 @@ use PHPUnit\Framework\TestCase;
 
 final class VendingMachineMapperTest extends TestCase
 {
+    public function testWritesEachPartOfTheMachineAsADocument(): void
+    {
+        $document = new VendingMachineMapper()->toDocument(self::machine());
+
+        self::assertSame([
+            'inventory' => [
+                ['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 3],
+                ['selector' => 'SODA', 'name' => 'Soda', 'price_cents' => 150, 'units' => 0],
+            ],
+            'wallet_credit' => [5 => 0, 10 => 0, 25 => 1, 100 => 1],
+            'wallet_stock' => [5 => 2, 10 => 1, 25 => 0, 100 => 0],
+            'tray' => [
+                'products' => [
+                    ['selector' => 'SODA', 'name' => 'Soda', 'price_cents' => 150],
+                    ['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65],
+                ],
+                'coins' => [5 => 0, 10 => 2, 25 => 0, 100 => 0],
+            ],
+        ], $document);
+    }
+
+    public function testReadsBackTheMachineFromItsDocument(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $machine = self::machine();
+
+        self::assertEquals($machine, $mapper->fromDocument($mapper->toDocument($machine)));
+    }
+
+    public function testRefusesADocumentWithoutAPart(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = array_diff_key($mapper->toDocument(self::machine()), ['wallet_stock' => true]);
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromDocument($document);
+    }
+
     public function testWritesEachPartOfTheMachineAsJson(): void
     {
         $row = new VendingMachineMapper()->toRow(self::machine());
