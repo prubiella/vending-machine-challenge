@@ -124,8 +124,8 @@ them, and `config/services.yaml` wires the choice.
 
 | Port | Lives in | Adapters |
 |---|---|---|
-| `VendingMachineRepository` | VendingMachine Domain | `MongoVendingMachineRepository` (wired), `DbalVendingMachineRepository` (MySQL, kept) |
-| `StoredMachineResetter` | VendingMachine Infrastructure | the Mongo repository (and the DBAL one), used only by `vending:reset` |
+| `VendingMachineRepository` | VendingMachine Domain | `MongoVendingMachineRepository` |
+| `StoredMachineResetter` | VendingMachine Infrastructure | the Mongo repository, used only by `vending:reset` |
 | `ChangeMaker` | VendingMachine Domain | `FewestCoinsChangeMaker`, decorated by `LoggingChangeMaker` |
 | `CommandBus`, `QueryBus` | Shared Application | `MessengerCommandBus`, `MessengerQueryBus` |
 | `UuidGenerator` | Shared Application | `SymfonyUuidGenerator` (UUID v7) |
@@ -463,16 +463,15 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
   On save, `OutboxEventFactory` takes the machine's events and gives each an id from `UuidGenerator`
   and the time from the clock. MongoDB pushes them into the document's `outbox` array in the same
   `updateOne` that sets the state, the version still in the filter, so a conflict writes neither;
-  the DBAL adapter inserts them into `vending_machine_outbox` in the transaction of its row.
   `MachineOutbox::pending()` reads them back, oldest first.
 - **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
   `vending:reset` deletes the stored document.
-- **A second adapter under the same contract.** `DbalVendingMachineRepository` stores the same
-  machine as a row of the MySQL table `vending_machine`, with JSON columns
-  ([ADR 12](adr/0012-persistence-mysql-with-dbal.md), superseded by ADR 16 as the default). Both
-  adapters pass `VendingMachineRepositoryContractTestCase`, so the port, not an engine, defines the
-  behaviour. Swapping them is changing three aliases in `config/services.yaml`.
-- **MySQL** holds the technicians, the migrations table, the DBAL adapter's tables and
+- **One store for the machine.** It lives only in MongoDB ([ADR 21](adr/0021-machine-lives-only-in-mongodb.md)).
+  A MySQL adapter existed ([ADR 12](adr/0012-persistence-mysql-with-dbal.md)) and was removed because
+  nothing ran it; git keeps it. The port stays swappable: an adapter extends
+  `VendingMachineRepositoryContractTestCase`, as the Mongo one does, and the unit tests use an
+  in-memory implementation of the port.
+- **MySQL** holds the technicians, the migrations table and
   `machine_history`, where reports such as sales per product and day are a plain `GROUP BY`.
 
 ## 7. Security
@@ -557,7 +556,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 |---|---|---|
 | Unit | Every domain rule, every handler with logic of its own, the mapper, the middleware, the console parser | `tests/Unit/<Context>/`, mirroring `src/` |
 | Integration | Wiring that only the kernel can prove: bus and middleware, handlers on the buses, adapters on real MySQL and MongoDB, console commands, HTTP | `tests/Integration/<Context>/` |
-| Contract | Any adapter of `VendingMachineRepository` | `VendingMachineRepositoryContractTestCase`, extended by the Mongo and DBAL tests |
+| Contract | Any adapter of `VendingMachineRepository` | `VendingMachineRepositoryContractTestCase`, extended by the Mongo adapter's test |
 | Scenarios | The customer's and the technician's stories, in their words | `features/customer/` and `features/technician/`, run by Behat |
 
 - **Hand-written fakes instead of mocks.** Handler unit tests use `InMemoryVendingMachineRepository`,
@@ -593,11 +592,12 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | The change maker passed to `select()` | A service held by the aggregate | [ADR 9](adr/0009-change-maker-as-an-argument.md) |
 | `SERVICE` sets the counts and returns the credit | Adding to the stock | [ADR 10](adr/0010-service-sets-stock-and-returns-credit.md) |
 | One customer, optimistic locking and a retry | Sessions, or pessimistic locks | [ADR 11](adr/0011-one-customer-and-optimistic-locking.md) |
-| MySQL through DBAL, kept as a second adapter | The Doctrine ORM | [ADR 12](adr/0012-persistence-mysql-with-dbal.md) |
+| MySQL through DBAL, a first adapter later removed | The Doctrine ORM | [ADR 12](adr/0012-persistence-mysql-with-dbal.md) |
 | Console refusals never stop the machine | Exiting with an error on a refusal | [ADR 13](adr/0013-console-behaviour.md) |
 | A logging middleware and decorators | Logger calls inside the domain | [ADR 14](adr/0014-logging.md) |
 | TLS at Traefik, re-encrypted to nginx | Plain HTTP inside the network | [ADR 15](adr/0015-https-with-traefik.md) |
 | The machine as one MongoDB document | A MySQL row, as before | [ADR 16](adr/0016-machine-stored-in-mongodb.md) |
+| The machine only in MongoDB, the DBAL adapter removed | A second adapter nothing runs | [ADR 21](adr/0021-machine-lives-only-in-mongodb.md) |
 | UUID v7 identities behind a shared base, the machine's id from configuration | Auto-increment ids, or UUID v4 | [ADR 17](adr/0017-uuid-identities.md) |
 
 Trade-offs worth saying out loud:
