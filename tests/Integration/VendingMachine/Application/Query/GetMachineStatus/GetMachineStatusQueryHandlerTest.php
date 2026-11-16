@@ -22,7 +22,7 @@ final class GetMachineStatusQueryHandlerTest extends KernelTestCase
     {
         $container = self::getContainer();
         $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand(
-            'a-technician-id',
+            '0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61',
             ['WATER' => 1, 'JUICE' => 2, 'SODA' => 3],
             [5 => 4, 10 => 5, 25 => 6, 100 => 7],
         ));
@@ -39,7 +39,7 @@ final class GetMachineStatusQueryHandlerTest extends KernelTestCase
     {
         $container = self::getContainer();
         $commandBus = $container->get(CommandBus::class);
-        $commandBus->dispatch(new ServiceMachineCommand('a-technician-id', ['WATER' => 1], [5 => 4, 10 => 5, 25 => 6]));
+        $commandBus->dispatch(new ServiceMachineCommand('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61', ['WATER' => 1], [5 => 4, 10 => 5, 25 => 6]));
         $commandBus->dispatch(new InsertCoinCommand(100));
         $commandBus->dispatch(new SelectProductCommand('WATER'));
 

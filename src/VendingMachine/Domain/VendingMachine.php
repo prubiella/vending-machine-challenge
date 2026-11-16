@@ -8,6 +8,7 @@ use App\VendingMachine\Domain\Change\ChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
+use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Event\VendingMachineEvent;
 use App\VendingMachine\Domain\Inventory\Inventory;
@@ -35,6 +36,20 @@ final class VendingMachine
         $emptySlots = array_map(static fn (Product $product): Slot => Slot::of($product, 0), $products);
 
         return new self($id, Inventory::of(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+    }
+
+    /**
+     * A machine stocked from its configuration when it is first installed: no technician serviced it,
+     * so it records no event. The capacities bound it as they bound a service.
+     *
+     * @param array<int|string, int> $unitsBySelector
+     */
+    public static function installStocked(MachineId $id, array $unitsBySelector, CoinCollection $coins, Product ...$products): self
+    {
+        $machine = self::install($id, ...$products);
+        $machine->replaceParts($machine->inventory->restockAll($unitsBySelector), $machine->wallet->restock($coins), $machine->tray);
+
+        return $machine;
     }
 
     public static function restore(MachineId $id, Inventory $inventory, Wallet $wallet, Tray $tray): self
@@ -75,14 +90,16 @@ final class VendingMachine
     /**
      * @param array<int|string, int> $unitsBySelector
      */
-    public function service(array $unitsBySelector, CoinCollection $coins): void
+    public function service(TechnicianId $technicianId, array $unitsBySelector, CoinCollection $coins): void
     {
+        $collectedFromCashBox = $this->wallet->cashBox();
         $inventory = $this->inventory->restockAll($unitsBySelector);
         $refund = $this->wallet->returnCredit();
         $wallet = $refund->wallet()->restock($coins);
         $tray = $this->tray->addCoins($refund->coins());
 
         $this->replaceParts($inventory, $wallet, $tray);
+        $this->record(new MachineServiced($technicianId, $unitsBySelector, $coins, $collectedFromCashBox));
         $this->recordCreditReturned($refund->coins());
     }
 

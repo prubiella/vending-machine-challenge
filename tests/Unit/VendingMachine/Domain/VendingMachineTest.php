@@ -11,6 +11,7 @@ use App\VendingMachine\Domain\Change\NoExactChangeException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
+use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
@@ -20,6 +21,7 @@ use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
+use App\VendingMachine\Domain\TechnicianId;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\Wallet\CoinTubeCapacityExceededException;
@@ -30,6 +32,7 @@ use PHPUnit\Framework\TestCase;
 final class VendingMachineTest extends TestCase
 {
     private const string MACHINE_ID = '01a1e2f0-aa80-70ea-832f-6110cbf86e31';
+    private const string TECHNICIAN_ID = '0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61';
 
     public function testAnInstalledMachineHasTheIdItWasInstalledWith(): void
     {
@@ -163,7 +166,7 @@ final class VendingMachineTest extends TestCase
     public function testASoldOutProductKeepsTheCreditAndChangesNothing(): void
     {
         $machine = self::serviced();
-        $machine->service(['WATER' => 0], $machine->wallet()->stock());
+        $machine->service(self::technician(), ['WATER' => 0], $machine->wallet()->stock());
         $machine->insertCoin(Coin::OneHundredCents);
 
         self::assertSelectionRefused($machine, 'WATER', SoldOutException::class);
@@ -181,7 +184,7 @@ final class VendingMachineTest extends TestCase
     public function testNoExactChangeKeepsTheCreditAndChangesNothing(): void
     {
         $machine = self::serviced();
-        $machine->service([], CoinCollection::empty());
+        $machine->service(self::technician(), [], CoinCollection::empty());
         $machine->insertCoin(Coin::OneHundredCents);
 
         self::assertSelectionRefused($machine, 'WATER', NoExactChangeException::class);
@@ -199,7 +202,7 @@ final class VendingMachineTest extends TestCase
     {
         $machine = self::installed();
 
-        $machine->service(['WATER' => 3, 'SODA' => 1], CoinCollection::of(Coin::TenCents, Coin::FiveCents));
+        $machine->service(self::technician(), ['WATER' => 3, 'SODA' => 1], CoinCollection::of(Coin::TenCents, Coin::FiveCents));
 
         self::assertSame(3, self::unitsOf($machine, 'WATER'));
         self::assertSame(0, self::unitsOf($machine, 'JUICE'));
@@ -211,7 +214,7 @@ final class VendingMachineTest extends TestCase
     {
         $machine = self::serviced();
 
-        $machine->service(['WATER' => 2, 'JUICE' => 0], CoinCollection::of(Coin::TwentyFiveCents));
+        $machine->service(self::technician(), ['WATER' => 2, 'JUICE' => 0], CoinCollection::of(Coin::TwentyFiveCents));
 
         self::assertSame(2, self::unitsOf($machine, 'WATER'));
         self::assertSame(0, self::unitsOf($machine, 'JUICE'));
@@ -225,7 +228,7 @@ final class VendingMachineTest extends TestCase
         $machine->insertCoin(Coin::OneHundredCents);
         $machine->insertCoin(Coin::FiveCents);
 
-        $machine->service(['WATER' => 8], CoinCollection::of(Coin::TwentyFiveCents));
+        $machine->service(self::technician(), ['WATER' => 8], CoinCollection::of(Coin::TwentyFiveCents));
 
         self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::OneHundredCents, Coin::FiveCents)));
         self::assertTrue($machine->wallet()->credit()->isEmpty());
@@ -240,7 +243,7 @@ final class VendingMachineTest extends TestCase
         $before = self::snapshot($machine);
 
         try {
-            $machine->service(['WATER' => 1, 'COFFEE' => 4], CoinCollection::empty());
+            $machine->service(self::technician(), ['WATER' => 1, 'COFFEE' => 4], CoinCollection::empty());
             self::fail('Expected UnknownSelectorException.');
         } catch (UnknownSelectorException) {
             self::assertSame($before, self::snapshot($machine));
@@ -254,7 +257,7 @@ final class VendingMachineTest extends TestCase
         $before = self::snapshot($machine);
 
         try {
-            $machine->service(['WATER' => 1], CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY + 1]));
+            $machine->service(self::technician(), ['WATER' => 1], CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY + 1]));
             self::fail('Expected CoinTubeCapacityExceededException.');
         } catch (CoinTubeCapacityExceededException) {
             self::assertSame($before, self::snapshot($machine));
@@ -264,7 +267,7 @@ final class VendingMachineTest extends TestCase
     public function testASaleSendsTheCreditOfAFullTubeToTheCashBox(): void
     {
         $machine = self::installed();
-        $machine->service(['WATER' => 1], CoinCollection::fromCounts([5 => 10, 10 => 10, 25 => Wallet::TUBE_CAPACITY]));
+        $machine->service(self::technician(), ['WATER' => 1], CoinCollection::fromCounts([5 => 10, 10 => 10, 25 => Wallet::TUBE_CAPACITY]));
         $machine->insertCoin(Coin::TwentyFiveCents);
         $machine->insertCoin(Coin::TwentyFiveCents);
         $machine->insertCoin(Coin::TwentyFiveCents);
@@ -283,7 +286,7 @@ final class VendingMachineTest extends TestCase
         $machine->select(Selector::fromString('WATER'), self::changeMaker());
         self::assertFalse($machine->wallet()->cashBox()->isEmpty());
 
-        $machine->service(['WATER' => 1], CoinCollection::empty());
+        $machine->service(self::technician(), ['WATER' => 1], CoinCollection::empty());
 
         self::assertTrue($machine->wallet()->cashBox()->isEmpty());
     }
@@ -307,9 +310,26 @@ final class VendingMachineTest extends TestCase
     public function testAnInstalledOrRestoredMachineHasNoEvents(): void
     {
         $restored = VendingMachine::restore(MachineId::fromString(self::MACHINE_ID), Inventory::of(), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+        $stocked = VendingMachine::installStocked(MachineId::fromString(self::MACHINE_ID), ['WATER' => 2], CoinCollection::of(Coin::TenCents), self::product('WATER', 'Water', 65));
 
         self::assertSame([], self::installed()->releaseEvents());
         self::assertSame([], $restored->releaseEvents());
+        self::assertSame([], $stocked->releaseEvents());
+    }
+
+    public function testAMachineInstalledStockedHoldsTheUnitsAndCoinsItWasGiven(): void
+    {
+        $machine = VendingMachine::installStocked(MachineId::fromString(self::MACHINE_ID), ['WATER' => 2], CoinCollection::of(Coin::TenCents), self::product('WATER', 'Water', 65));
+
+        self::assertSame(2, self::unitsOf($machine, 'WATER'));
+        self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::TenCents)));
+    }
+
+    public function testAMachineInstalledStockedIsBoundedByItsCapacities(): void
+    {
+        $this->expectException(CoinTubeCapacityExceededException::class);
+
+        VendingMachine::installStocked(MachineId::fromString(self::MACHINE_ID), [], CoinCollection::fromCounts([10 => Wallet::TUBE_CAPACITY + 1]));
     }
 
     public function testASaleRecordsTheProductSoldAndTheChangeGiven(): void
@@ -367,18 +387,49 @@ final class VendingMachineTest extends TestCase
         self::assertSame([], $machine->releaseEvents());
     }
 
+    public function testServiceRecordsWhoServicedTheMachineAndWhatTheySet(): void
+    {
+        $machine = self::installed();
+
+        $machine->service(self::technician(), ['WATER' => 3, 'SODA' => 1], CoinCollection::of(Coin::TenCents));
+
+        $events = $machine->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(MachineServiced::class, $events[0]);
+        self::assertTrue($events[0]->technicianId()->equals(self::technician()));
+        self::assertSame(['WATER' => 3, 'SODA' => 1], $events[0]->unitsBySelector());
+        self::assertTrue($events[0]->coins()->equals(CoinCollection::of(Coin::TenCents)));
+        self::assertTrue($events[0]->collectedFromCashBox()->isEmpty());
+    }
+
+    public function testServiceRecordsWhatTheTechnicianCollectedFromTheCashBox(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $machine->releaseEvents();
+
+        $machine->service(self::technician(), [], CoinCollection::empty());
+
+        $events = $machine->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(MachineServiced::class, $events[0]);
+        self::assertTrue($events[0]->collectedFromCashBox()->equals(CoinCollection::of(Coin::OneHundredCents)));
+    }
+
     public function testServiceRecordsTheCreditItReturns(): void
     {
         $machine = self::serviced();
         $machine->releaseEvents();
         $machine->insertCoin(Coin::OneHundredCents);
 
-        $machine->service([], CoinCollection::empty());
+        $machine->service(self::technician(), [], CoinCollection::empty());
 
         $events = $machine->releaseEvents();
-        self::assertCount(1, $events);
-        self::assertInstanceOf(CreditReturned::class, $events[0]);
-        self::assertTrue($events[0]->coins()->equals(CoinCollection::of(Coin::OneHundredCents)));
+        self::assertCount(2, $events);
+        self::assertInstanceOf(MachineServiced::class, $events[0]);
+        self::assertInstanceOf(CreditReturned::class, $events[1]);
+        self::assertTrue($events[1]->coins()->equals(CoinCollection::of(Coin::OneHundredCents)));
     }
 
     public function testARefusedServiceRecordsNothing(): void
@@ -387,7 +438,7 @@ final class VendingMachineTest extends TestCase
         $machine->releaseEvents();
 
         try {
-            $machine->service(['COFFEE' => 1], CoinCollection::empty());
+            $machine->service(self::technician(), ['COFFEE' => 1], CoinCollection::empty());
         } catch (UnknownSelectorException) {
         }
 
@@ -399,14 +450,12 @@ final class VendingMachineTest extends TestCase
         $machine = self::serviced();
         $machine->insertCoin(Coin::OneHundredCents);
         $machine->select(Selector::fromString('WATER'), self::changeMaker());
-        $machine->insertCoin(Coin::TenCents);
-        $machine->returnCoins();
 
         $events = $machine->releaseEvents();
 
         self::assertCount(2, $events);
-        self::assertInstanceOf(ProductSold::class, $events[0]);
-        self::assertInstanceOf(CreditReturned::class, $events[1]);
+        self::assertInstanceOf(MachineServiced::class, $events[0]);
+        self::assertInstanceOf(ProductSold::class, $events[1]);
         self::assertSame([], $machine->releaseEvents());
     }
 
@@ -440,11 +489,17 @@ final class VendingMachineTest extends TestCase
     {
         $machine = self::installed();
         $machine->service(
+            self::technician(),
             ['WATER' => 5, 'JUICE' => 5, 'SODA' => 5],
             CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::TenCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents),
         );
 
         return $machine;
+    }
+
+    private static function technician(): TechnicianId
+    {
+        return TechnicianId::fromString(self::TECHNICIAN_ID);
     }
 
     private static function unitsOf(VendingMachine $machine, string $selector): int

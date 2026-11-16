@@ -22,9 +22,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class CustomerContext implements Context
 {
-    // The scenario's setup services the machine as no stored technician: the command only carries the
-    // id to the log.
-    private const string SETUP_TECHNICIAN_ID = 'behat-setup';
+    // The scenario's setup services the machine as a technician who is not stored: the machine only
+    // records the id, which must be a UUID.
+    private const string SETUP_TECHNICIAN_ID = '0196f1d2-0000-7000-8000-00000000be4a';
 
     public function __construct(
         #[Autowire(service: 'test.client')]
