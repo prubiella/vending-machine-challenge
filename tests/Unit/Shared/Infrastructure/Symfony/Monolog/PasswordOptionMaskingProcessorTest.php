@@ -20,6 +20,8 @@ final class PasswordOptionMaskingProcessorTest extends TestCase
         yield 'a plain value' => ['vending:technician:token --username=ana --password=correct-horse -n', 'vending:technician:token --username=ana --password=*** -n'];
         yield 'a quoted value with spaces' => ["vending:service --password='correct horse' --units=WATER:2", 'vending:service --password=*** --units=WATER:2'];
         yield 'a quoted value with an escaped quote' => ["vending:service --password='it'\\''s' -n", 'vending:service --password=*** -n'];
+        yield 'a double-quoted value with escaped quotes' => ['vending:service --password="a \\"b\\" c" -n', 'vending:service --password=*** -n'];
+        yield 'a value at the end of the command' => ['vending:technician:token --username=ana --password=secret', 'vending:technician:token --username=ana --password=***'];
         yield 'a value after a space' => ['vending:service --password correct-horse -n', 'vending:service --password=*** -n'];
         yield 'no password' => ['vending:run 1,GET-WATER', 'vending:run 1,GET-WATER'];
     }
