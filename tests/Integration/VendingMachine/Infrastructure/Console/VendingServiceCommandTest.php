@@ -44,8 +44,16 @@ final class VendingServiceCommandTest extends KernelTestCase
         $tester = self::tester();
         $juiceAfterARejectedCount = ['many', '4'];
         $sodaKeptAtItsCurrentUnits = [''];
-        $coinsFromTheSmallestButTheOne = ['6', '', '8'];
-        $tester->setInputs([...$juiceAfterARejectedCount, ...$sodaKeptAtItsCurrentUnits, ...$coinsFromTheSmallestButTheOne]);
+        $coinsOf5Cents = ['6'];
+        $coinsOf10CentsKeptAtTheirCurrentCount = [''];
+        $coinsOf25Cents = ['8'];
+        $tester->setInputs([
+            ...$juiceAfterARejectedCount,
+            ...$sodaKeptAtItsCurrentUnits,
+            ...$coinsOf5Cents,
+            ...$coinsOf10CentsKeptAtTheirCurrentCount,
+            ...$coinsOf25Cents,
+        ]);
 
         $exitCode = $tester->execute(['--units' => ['WATER:1'], '--coins' => ['1:3']]);
 
