@@ -789,6 +789,7 @@
 									"    const status = pm.response.json();",
 									"    pm.expect(status.unitsBySelector).to.have.all.keys('WATER', 'JUICE', 'SODA');",
 									"    pm.expect(status.coinStockByCents).to.have.all.keys('5', '10', '25', '100');",
+									"    pm.expect(status.cashBoxByCents).to.have.all.keys('5', '10', '25', '100');",
 									"});"
 								]
 							}
@@ -837,7 +838,7 @@
 									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine/status'), header: { Accept: 'application/json', Authorization: pm.variables.replaceIn('Bearer {{technicianToken}}') } }, (error, response) => {",
 									"    pm.test('sets the units and the change', () => {",
 									"        pm.expect(error).to.equal(null);",
-									"        pm.expect(response.json()).to.eql({ unitsBySelector: { WATER: 10, JUICE: 10, SODA: 10 }, coinStockByCents: { 5: 10, 10: 10, 25: 10, 100: 0 } });",
+									"        pm.expect(response.json()).to.eql({ unitsBySelector: { WATER: 10, JUICE: 10, SODA: 10 }, coinStockByCents: { 5: 10, 10: 10, 25: 10, 100: 0 }, cashBoxByCents: { 5: 0, 10: 0, 25: 0, 100: 0 } });",
 									"    });",
 									"});"
 								]

@@ -171,10 +171,11 @@ How the machine behaves between runs:
   for change. A stored machine wins over a change to `vending_machine.default_products` until
   `vending:reset` removes it.
 - Change is made only from coins of 0.05, 0.10 and 0.25 ([ADR 8](docs/adr/0008-change-making.md)).
-  Coins of 1 stay in the machine as takings and are never given as change; `SERVICE` asks their count
-  so the technician can empty the cash box.
+  Coins of 1 are never given as change: a sale puts them in the cash box.
 - A slot holds at most 200 units and a coin tube at most 500 coins: servicing refuses more and
-  changes nothing. A sale is not bounded, so the customer's coins may take a tube past 500
+  changes nothing. A sale is not bounded: the coins of a sale that do not fit their full tube go to
+  the cash box too, which is never used for change. `SERVICE` empties the cash box and says what the
+  technician collected (`Collected from the cash box: 3 x 1, 2 x 0.25 (3.50).`), and the log records it
   ([ADR 19](docs/adr/0019-machine-capacities.md)).
 
 ## HTTP API
@@ -205,14 +206,14 @@ A technician logs in for a token and sends it as a bearer token to these routes:
 | Request | What it does | Answer |
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
-| `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
+| `GET /machine/status` | The units of each product, the count of each coin in its tube and in the cash box, by cents | `200`, `401` without a valid token, `403` without the technician's role |
 | `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot or a coin tube holds |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
   -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
 curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
-# {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
+# {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0},"cashBoxByCents":{"5":0,"10":0,"25":0,"100":0}}
 curl -X PUT https://vending-machine.test/machine/service -H "Authorization: Bearer $token" \
   -H 'Content-Type: application/json' -d '{"units": {"WATER": 20}, "coins": {"0.05": 10, "0.10": 10, "0.25": 15, "1": 0}}'
 ```
