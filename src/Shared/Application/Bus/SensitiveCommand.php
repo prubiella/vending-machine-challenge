@@ -7,7 +7,7 @@ namespace App\Shared\Application\Bus;
 interface SensitiveCommand extends Command
 {
     /**
-     * @return list<string> the names of the fields that are never logged as they are
+     * @return array<string, Masking> how each field that is never logged as it is gets masked, by its name
      */
     public function sensitiveFields(): array;
 }

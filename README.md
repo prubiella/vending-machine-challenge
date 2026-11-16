@@ -133,8 +133,11 @@ as change; `SERVICE` asks their count on purpose, so the technician can empty th
 
 The command bus logs every command with its name and data: at info when it is handled, at notice
 when the domain refuses it and at error when it fails for any other reason. A command that
-implements `SensitiveCommand` lists the fields it carries that must not be logged, such as a
-password, and the log shows `***` in their place. Each retry after a concurrent update is logged
+implements `SensitiveCommand` lists the fields it carries that must not be logged as they are,
+each with a `Masking` rule: `Hide` logs a secret such as a password or a token as `***`, and
+`KeepFirstThree` logs personal data such as a technician's email with its first three characters
+and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
+hidden whole. Each retry after a concurrent update is logged
 at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
 notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs

@@ -94,7 +94,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 - `LoggingCommandMiddleware` logs every command: info when handled, notice for a
   `DomainException`, error for anything else. It comes first on `command.bus`, so it sees the
   unpacked exception and logs a retried command once. It logs the command's public fields: a
-  command carrying a secret implements `SensitiveCommand` and names those fields, logged as `***`.
+  command carrying a secret or personal data implements `SensitiveCommand` and maps each such
+  field to a `Masking` rule, `Hide` for secrets (`***`) and `KeepFirstThree` for personal data
+  (`pau***`).
 - A repository saves with optimistic locking: it throws `ConcurrentUpdateException`
   (`Shared/Application/Persistence`) when another save got in since the load.
   `RetryOnConcurrentUpdateMiddleware` runs the command again, up to three more times, so a handler
