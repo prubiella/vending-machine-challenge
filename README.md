@@ -288,8 +288,8 @@ curl https://vending-machine.test/machine/status -H "Authorization: Bearer $toke
 ```
 
 From a shell, `vending:technician:token` gives the same token without the login request: it checks
-the credentials with the same query, makes the token with the same `TechnicianTokenIssuer` as
-`POST /auth/login`, and prints the token alone on stdout. It asks what `--username` and
+the credentials with the same `AuthenticateTechnicianQuery` on the query bus and signs the token with
+the same `TechnicianTokenIssuer` as `POST /auth/login`, and prints the token alone on stdout. It asks what `--username` and
 `--password` leave out, the password hidden, on stderr; a wrong or missing credential goes to stderr
 with exit code 1.
 

@@ -431,7 +431,7 @@ exist.
 **Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
 `AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)
 whose `sub` claim is the technician's id and whose role is `ROLE_TECHNICIAN`; `TechnicianTokenIssuer`
-makes it, and `vending:technician:token` prints the same token from a shell, its prompts on stderr so
+signs it for the technician that the query let in, and `vending:technician:token` prints the same token from a shell, its prompts on stderr so
 `token=$(...)` keeps the token alone. The `machine` firewall is stateless: it builds the user from
 the token, so a request needs no database, and its `access_control` lists the technician's routes
 (`GET /machine/status`), the customer's routes staying open. A missing, malformed, badly signed or

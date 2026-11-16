@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Maintenance\Infrastructure\Console;
 
+use App\Maintenance\Application\Query\AuthenticateTechnician\AuthenticatedTechnicianResponse;
+use App\Maintenance\Application\Query\AuthenticateTechnician\AuthenticateTechnicianQuery;
 use App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer;
+use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Domain\DomainException;
 use App\Shared\Infrastructure\Console\PasswordQuestion;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -19,6 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final readonly class VendingTechnicianTokenCommand
 {
     public function __construct(
+        private QueryBus $queryBus,
         private TechnicianTokenIssuer $tokenIssuer,
     ) {
     }
@@ -34,10 +38,12 @@ final readonly class VendingTechnicianTokenCommand
         // The prompts and the refusals go to stderr, so `token=$(...)` captures the token alone.
         $stderr = $io->getErrorStyle();
         try {
-            $token = $this->tokenIssuer->issue(
+            $technician = $this->queryBus->query(new AuthenticateTechnicianQuery(
                 self::givenOrAsked($username, 'username', static fn (): mixed => $stderr->ask('Username')),
                 self::givenOrAsked($password, 'password', static fn (): mixed => $stderr->askQuestion(PasswordQuestion::hidden('Password'))),
-            );
+            ));
+            \assert($technician instanceof AuthenticatedTechnicianResponse);
+            $token = $this->tokenIssuer->issueFor($technician);
         } catch (DomainException|MissingValueException $refusal) {
             $stderr->writeln($refusal->getMessage());
 

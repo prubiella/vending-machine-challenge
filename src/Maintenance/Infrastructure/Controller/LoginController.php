@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Maintenance\Infrastructure\Controller;
 
+use App\Maintenance\Application\Query\AuthenticateTechnician\AuthenticatedTechnicianResponse;
+use App\Maintenance\Application\Query\AuthenticateTechnician\AuthenticateTechnicianQuery;
 use App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -23,6 +25,9 @@ final class LoginController extends BaseController
 
     public function __invoke(#[MapRequestPayload] LoginRequest $request): Response
     {
-        return $this->json(['token' => $this->tokenIssuer->issue($request->username, $request->password)]);
+        $technician = $this->query(new AuthenticateTechnicianQuery($request->username, $request->password));
+        \assert($technician instanceof AuthenticatedTechnicianResponse);
+
+        return $this->json(['token' => $this->tokenIssuer->issueFor($technician)]);
     }
 }
