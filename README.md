@@ -8,6 +8,12 @@ a technician service it by setting the available change and the stock of each pr
 
 Work in progress: the project is being built in small pull requests, infrastructure first.
 
+## Design
+
+The code is split by bounded context and then by layer, and the layers may only depend inwards
+(deptrac enforces it). [docs/design.md](docs/design.md) explains the architecture, the domain
+model and the main flows with diagrams; [docs/adr](docs/adr/README.md) has one record per decision.
+
 ## Stack
 
 - PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
