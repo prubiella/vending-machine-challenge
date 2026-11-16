@@ -10,7 +10,21 @@ when@dev:
                 path: "php://stderr"
                 level: debug
                 formatter: 'monolog.formatter.json'
-                channels: [ "!event", "!messenger", "!console", "!doctrine" ]
+                channels: [ "!event", "!messenger", "!console", "!doctrine", "!app" ]
+            # The console prints the machine's output and its refusals on stdout and stderr, so the
+            # application's own logs go to a file and only its warnings and errors join stderr.
+            app_stderr:
+                type: stream
+                path: "php://stderr"
+                level: warning
+                formatter: 'monolog.formatter.json'
+                channels: [ "app" ]
+            app_file:
+                type: stream
+                path: "%kernel.logs_dir%/%kernel.environment%.log"
+                level: debug
+                formatter: 'monolog.formatter.json'
+                channels: [ "app" ]
 
 when@test:
     monolog:

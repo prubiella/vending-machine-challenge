@@ -129,6 +129,15 @@ Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
+## Logs
+
+The command bus logs every command with its name and data: at info when it is handled, at notice
+when the domain refuses it and at error when it fails for any other reason.
+
+In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
+warnings and errors also reach stderr, so the console shows the machine's output and its refusals
+alone. Symfony's logs and every log in prod go to stderr as JSON (`make logs php-fpm`).
+
 ## What the setup changes on your machine
 
 `make setup-host` (part of `make first-run`) does two things, both idempotent:

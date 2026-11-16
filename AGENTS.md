@@ -90,6 +90,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   Messenger classes that implement them.
 - Commands return nothing. What a command produces is state that a query reads.
 - `UnpackExceptionMiddleware` rethrows the handler's original exception.
+- `LoggingCommandMiddleware` logs every command: info when handled, notice for a
+  `DomainException`, error for anything else. It comes first on `command.bus`, so it sees the
+  unpacked exception and logs a retried command once.
 - A repository saves with optimistic locking: it throws `ConcurrentUpdateException`
   (`Shared/Application/Persistence`) when another save got in since the load.
   `RetryOnConcurrentUpdateMiddleware` runs the command again, up to three more times, so a handler
