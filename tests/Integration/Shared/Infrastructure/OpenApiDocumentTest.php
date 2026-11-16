@@ -45,17 +45,25 @@ final class OpenApiDocumentTest extends KernelTestCase
     public function testGivesEveryBodyASchemaAndAnExample(): void
     {
         foreach (self::operations() as $operation => $definition) {
-            $bodies = [$operation.' request' => self::at($definition, 'requestBody', 'content')];
-            foreach (self::at($definition, 'responses') as $status => $response) {
-                $bodies[$operation.' '.$status] = self::at(self::resolve(self::node($response)), 'content');
-            }
-
-            foreach ($bodies as $where => $mediaTypes) {
+            foreach (self::mediaTypesByBody($operation, $definition) as $body => $mediaTypes) {
                 foreach ($mediaTypes as $mediaType) {
-                    $mediaType = self::node($mediaType);
-                    self::assertArrayHasKey('schema', $mediaType, $where.' has no schema');
-                    self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $where.' has no example');
+                    self::assertHasSchemaAndExample($body, self::node($mediaType));
                 }
+            }
+        }
+    }
+
+    public function testEveryOperationOfTheMachineDocumentsTheStatusesAnyOfThemCanAnswer(): void
+    {
+        foreach (self::operations() as $operation => $definition) {
+            if (!str_contains($operation, ' /machine')) {
+                continue;
+            }
+            $statuses = array_map('strval', array_keys(self::at($definition, 'responses')));
+
+            self::assertContains('500', $statuses, $operation.' documents no 500');
+            if (str_starts_with($operation, 'POST ')) {
+                self::assertContains('409', $statuses, $operation.' changes the machine and documents no 409 for a concurrent update');
             }
         }
     }
@@ -105,15 +113,48 @@ final class OpenApiDocumentTest extends KernelTestCase
     private static function operations(): array
     {
         $operations = [];
-        foreach (self::at(self::document(), 'paths') as $path => $item) {
-            foreach (self::node($item) as $method => $definition) {
-                if (\in_array($method, self::HTTP_METHODS, true)) {
-                    $operations[strtoupper((string) $method).' '.$path] = self::node($definition);
-                }
+        foreach (self::at(self::document(), 'paths') as $path => $pathItem) {
+            foreach (self::httpOperationsOf(self::node($pathItem)) as $method => $definition) {
+                $operations[strtoupper($method).' '.$path] = $definition;
             }
         }
 
         return $operations;
+    }
+
+    /**
+     * @param array<mixed> $pathItem
+     *
+     * @return array<string, array<mixed>> the operations by method; a path item also holds keys that are not
+     *                                     operations, such as `parameters` and `summary`
+     */
+    private static function httpOperationsOf(array $pathItem): array
+    {
+        return array_map(self::node(...), array_intersect_key($pathItem, array_flip(self::HTTP_METHODS)));
+    }
+
+    /**
+     * @param array<mixed> $operation
+     *
+     * @return array<string, array<mixed>> the media types of the request and of each response, by where they are
+     */
+    private static function mediaTypesByBody(string $name, array $operation): array
+    {
+        $bodies = [$name.' request' => self::at($operation, 'requestBody', 'content')];
+        foreach (self::at($operation, 'responses') as $status => $response) {
+            $bodies[$name.' '.$status] = self::at(self::resolve(self::node($response)), 'content');
+        }
+
+        return $bodies;
+    }
+
+    /**
+     * @param array<mixed> $mediaType
+     */
+    private static function assertHasSchemaAndExample(string $body, array $mediaType): void
+    {
+        self::assertArrayHasKey('schema', $mediaType, $body.' has no schema');
+        self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $body.' has no example');
     }
 
     /**
