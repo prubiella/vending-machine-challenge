@@ -40,6 +40,23 @@ final readonly class Inventory
         return self::withinCapacity(self::of(...$slots)->slotsBySelector);
     }
 
+    /**
+     * Retires first and installs after, so a full machine can swap one product for another.
+     */
+    public function applying(CatalogChange $change): self
+    {
+        $slotsBySelector = $this->slotsBySelector;
+        foreach ($change->retires() as $selector) {
+            $this->slotFor($selector);
+            unset($slotsBySelector[$selector->value()]);
+        }
+        foreach ($change->installs() as $slot) {
+            $slotsBySelector[$slot->product()->selector()->value()] = $slot;
+        }
+
+        return self::withinCapacity($slotsBySelector);
+    }
+
     public function slotFor(Selector $selector): Slot
     {
         return $this->slotsBySelector[$selector->value()] ?? throw UnknownSelectorException::forSelector($selector);

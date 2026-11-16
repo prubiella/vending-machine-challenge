@@ -16,6 +16,7 @@ parameters:
         - App\Shared\Domain\Uuid\InvalidUuidException
         - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
         - App\VendingMachine\Domain\Coin\UnknownCoinException
+        - App\VendingMachine\Domain\Inventory\ContradictoryCatalogChangeException
         - App\VendingMachine\Domain\Inventory\DuplicateSelectorException
         - App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException
         - App\VendingMachine\Domain\Product\EmptyProductNameException

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Domain\Inventory;
 
 use App\Shared\Domain\Money\Money;
+use App\VendingMachine\Domain\Inventory\CatalogChange;
 use App\VendingMachine\Domain\Inventory\DuplicateSelectorException;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException;
@@ -165,6 +166,72 @@ final class InventoryTest extends TestCase
         $inventory->restockAll(['WATER' => 1, 'COFFEE' => 4]);
     }
 
+    public function testAChangeOfCatalogAddsTheSlotOfANewProductAfterTheOthers(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $changed = $inventory->applying(CatalogChange::of([Slot::installed(self::product('TEA', 120), 4)], []));
+
+        self::assertSame(['WATER', 'TEA'], self::selectorsOf($changed));
+        self::assertSame(4, $changed->slotFor(Selector::fromString('TEA'))->units());
+        self::assertSame(['WATER'], self::selectorsOf($inventory));
+    }
+
+    public function testInstallingASelectorItHasRedefinesItsProductInPlace(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5), Slot::of(self::product('SODA', 150), 2));
+
+        $changed = $inventory->applying(CatalogChange::of([Slot::installed(self::product('WATER', 70), 9)], []));
+
+        self::assertSame(['WATER', 'SODA'], self::selectorsOf($changed));
+        self::assertSame(70, $changed->slotFor(Selector::fromString('WATER'))->product()->price()->cents());
+        self::assertSame(9, $changed->slotFor(Selector::fromString('WATER'))->units());
+    }
+
+    public function testRetiringAProductTakesItsSlotAndItsUnitsAway(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5), Slot::of(self::product('SODA', 150), 2));
+
+        $changed = $inventory->applying(CatalogChange::of([], [Selector::fromString('WATER')]));
+
+        self::assertSame(['SODA'], self::selectorsOf($changed));
+    }
+
+    public function testCannotRetireAnUnknownSelector(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 65), 5));
+
+        $this->expectException(UnknownSelectorException::class);
+
+        $inventory->applying(CatalogChange::of([], [Selector::fromString('COFFEE')]));
+    }
+
+    public function testHoldsAsManyProductsAsItsCapacity(): void
+    {
+        $changed = Inventory::of()->applying(CatalogChange::of(self::slots(Inventory::CAPACITY), []));
+
+        self::assertCount(Inventory::CAPACITY, $changed->slots());
+    }
+
+    public function testRefusesAChangeOfCatalogThatLeavesMoreProductsThanItsCapacity(): void
+    {
+        $full = Inventory::of(...self::slots(Inventory::CAPACITY));
+
+        $this->expectException(InventoryCapacityExceededException::class);
+
+        $full->applying(CatalogChange::of([Slot::installed(self::product('TEA', 120), 1)], []));
+    }
+
+    public function testCountsItsCapacityAfterTheRetiredProductsLeave(): void
+    {
+        $full = Inventory::of(...self::slots(Inventory::CAPACITY));
+
+        $changed = $full->applying(CatalogChange::of([Slot::installed(self::product('TEA', 120), 1)], [Selector::fromString('P1')]));
+
+        self::assertCount(Inventory::CAPACITY, $changed->slots());
+        self::assertSame(1, $changed->slotFor(Selector::fromString('TEA'))->units());
+    }
+
     public function testInstallingRefusesMoreProductsThanItsCapacity(): void
     {
         $this->expectException(InventoryCapacityExceededException::class);
@@ -183,6 +250,14 @@ final class InventoryTest extends TestCase
     private static function slots(int $count): array
     {
         return array_map(static fn (int $number): Slot => Slot::of(self::product('P'.$number, 100), 0), range(1, $count));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function selectorsOf(Inventory $inventory): array
+    {
+        return array_map(static fn (Slot $slot): string => $slot->product()->selector()->value(), $inventory->slots());
     }
 
     private static function product(string $selector, int $cents): Product
