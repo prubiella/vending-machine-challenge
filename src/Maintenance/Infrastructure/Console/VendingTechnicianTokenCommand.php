@@ -34,9 +34,10 @@ final readonly class VendingTechnicianTokenCommand
         // The prompts and the refusals go to stderr, so `token=$(...)` captures the token alone.
         $stderr = $io->getErrorStyle();
         try {
-            $username = self::givenOrAsked($username, 'username', static fn (): mixed => $stderr->ask('Username'));
-            $password = self::givenOrAsked($password, 'password', static fn (): mixed => $stderr->askQuestion(PasswordQuestion::hidden('Password')));
-            $token = $this->tokenIssuer->issue($username, $password);
+            $token = $this->tokenIssuer->issue(
+                self::givenOrAsked($username, 'username', static fn (): mixed => $stderr->ask('Username')),
+                self::givenOrAsked($password, 'password', static fn (): mixed => $stderr->askQuestion(PasswordQuestion::hidden('Password'))),
+            );
         } catch (DomainException|MissingValueException $refusal) {
             $stderr->writeln($refusal->getMessage());
 
@@ -49,13 +50,13 @@ final readonly class VendingTechnicianTokenCommand
     }
 
     /**
-     * @param \Closure(): mixed $ask
+     * @param \Closure(): mixed $askTheTechnician
      */
-    private static function givenOrAsked(?string $option, string $optionName, \Closure $ask): string
+    private static function givenOrAsked(?string $givenValue, string $option, \Closure $askTheTechnician): string
     {
-        $value = $option ?? $ask();
+        $value = $givenValue ?? $askTheTechnician();
         if (!\is_string($value) || '' === $value) {
-            throw MissingValueException::forOption($optionName);
+            throw MissingValueException::forOption($option);
         }
 
         return $value;
