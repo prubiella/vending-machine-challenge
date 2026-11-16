@@ -35,7 +35,7 @@ final class GetMachineStatusControllerTest extends VendingMachineApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
         self::assertResponseHeaderSame('WWW-Authenticate', 'Bearer');
         self::assertSame(
-            ['error' => ['code' => 401, 'message' => 'Log in as a technician with POST /auth/login and send the token as "Authorization: Bearer <token>".']],
+            ['error' => ['code' => 401, 'message' => 'Send a technician\'s token as "Authorization: Bearer <token>".']],
             $this->responseBody(),
         );
     }

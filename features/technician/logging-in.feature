@@ -19,7 +19,7 @@ Feature: Logging in as a technician
 
   Scenario: The stock and the change are not shown without logging in
     When I ask for the stock and the change
-    Then the machine refuses it with status 401 saying "Log in as a technician"
+    Then the machine refuses it with status 401 saying "Send a technician's token"
 
   Scenario: A technician reads the stock and the change
     Given I am logged in as "ana.tech" with the password "correct-horse"

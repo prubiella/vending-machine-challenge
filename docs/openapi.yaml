@@ -520,7 +520,7 @@ components:
 
   responses:
     Unauthorized:
-      description: No token, or one that is invalid or has expired.
+      description: No token, or one that is invalid or has expired. A technician gets a token from `POST /auth/login`.
       headers:
         WWW-Authenticate:
           schema:
@@ -534,7 +534,7 @@ components:
             noToken:
               summary: No Authorization header
               value:
-                error: { code: 401, message: 'Log in as a technician with POST /auth/login and send the token as "Authorization: Bearer <token>".' }
+                error: { code: 401, message: 'Send a technician''s token as "Authorization: Bearer <token>".' }
             invalidToken:
               summary: A token that is not valid
               value:

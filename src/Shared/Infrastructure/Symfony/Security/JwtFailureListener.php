@@ -24,7 +24,7 @@ final readonly class JwtFailureListener
     #[AsEventListener(event: Events::JWT_NOT_FOUND)]
     public function onNotFound(JWTNotFoundEvent $event): void
     {
-        $event->setResponse(self::unauthorized('Log in as a technician with POST /auth/login and send the token as "Authorization: Bearer <token>".'));
+        $event->setResponse(self::unauthorized('Send a technician\'s token as "Authorization: Bearer <token>".'));
     }
 
     #[AsEventListener(event: Events::JWT_INVALID)]
