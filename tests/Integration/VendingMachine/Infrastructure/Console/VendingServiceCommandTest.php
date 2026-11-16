@@ -17,12 +17,14 @@ use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
+use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use Monolog\Handler\TestHandler;
 use Monolog\LogRecord;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -340,6 +342,102 @@ final class VendingServiceCommandTest extends KernelTestCase
         $this->expectExceptionMessage('Give --coins a coin the machine takes, such as 0.25:10, got 0.50.');
 
         self::tester()->execute([...self::CREDENTIALS, '--coins' => ['0.50:3']], ['interactive' => false]);
+    }
+
+    public function testInstallsAndRetiresTheGivenProductsWithoutAsking(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute([
+            ...self::CREDENTIALS,
+            '--install' => ['TEA:1.20:12:Green tea: two bags', 'WATER:0.70:8:Still water'],
+            '--retire' => ['JUICE'],
+        ], ['interactive' => false]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStatus(['WATER' => 8, 'SODA' => 10, 'TEA' => 12], self::DEFAULT_COINS);
+        $machine = self::getContainer()->get(QueryBus::class)->query(new GetMachineQuery());
+        self::assertInstanceOf(MachineResponse::class, $machine);
+        self::assertSame(
+            [['WATER', 'Still water', 70], ['SODA', 'Soda', 150], ['TEA', 'Green tea: two bags', 120]],
+            array_map(static fn (ProductResponse $product): array => [$product->selector, $product->name, $product->priceCents], $machine->products),
+        );
+    }
+
+    public function testDoesNotAskTheUnitsOfTheProductsItInstallsOrRetires(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['3']);
+
+        $exitCode = $tester->execute([
+            ...self::CREDENTIALS,
+            '--install' => ['WATER:0.70:8:Water'],
+            '--retire' => ['JUICE'],
+            '--coins' => ['0.05:10', '0.10:10', '0.25:10', '1:0'],
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStringContainsString('Units of SODA', $tester->getDisplay(true));
+        self::assertStringNotContainsString('Units of WATER', $tester->getDisplay(true));
+        self::assertStringNotContainsString('Units of JUICE', $tester->getDisplay(true));
+        self::assertStatus(['WATER' => 8, 'SODA' => 3], self::DEFAULT_COINS);
+    }
+
+    public function testReportsARefusedCatalogChangeAndFails(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(
+            [...self::CREDENTIALS, '--install' => ['TEA:0.67:12:Tea']],
+            ['interactive' => false, 'capture_stderr_separately' => true],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("The price of TEA, 67 cents, is not a multiple of the smallest coin, 5 cents.\n", $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function malformedInstalls(): iterable
+    {
+        yield 'no name' => ['TEA:1.20:12'];
+        yield 'a price with one decimal' => ['TEA:1.2:12:Tea'];
+        yield 'units that are not a count' => ['TEA:1.20:many:Tea'];
+        yield 'no selector' => [':1.20:12:Tea'];
+    }
+
+    #[DataProvider('malformedInstalls')]
+    public function testRejectsAnInstallThatIsNotSelectorPriceUnitsAndName(string $install): void
+    {
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage(\sprintf('Give --install as SELECTOR:PRICE:UNITS:NAME, such as TEA:1.20:12:Green tea, got "%s".', $install));
+
+        self::tester()->execute([...self::CREDENTIALS, '--install' => [$install]], ['interactive' => false]);
+    }
+
+    public function testRejectsAProductInstalledTwice(): void
+    {
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage('Give --install once for each product, got TEA twice.');
+
+        self::tester()->execute([...self::CREDENTIALS, '--install' => ['TEA:1.20:12:Tea', 'TEA:1.00:2:Tea']], ['interactive' => false]);
+    }
+
+    public function testRejectsRetiringAProductTheMachineLacksBeforeAskingAnything(): void
+    {
+        $tester = self::tester();
+
+        try {
+            $tester->execute(['--retire' => ['CHIPS']]);
+            self::fail('Expected an InvalidOptionException.');
+        } catch (InvalidOptionException $e) {
+            self::assertSame('Give --retire a product the machine has, such as WATER, got CHIPS.', $e->getMessage());
+        }
+
+        self::assertStringNotContainsString('Username', $tester->getDisplay(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
     /**

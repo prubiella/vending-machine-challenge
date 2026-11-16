@@ -28,8 +28,10 @@ final readonly class MachineServicer
     }
 
     /**
-     * @param array<string, int> $givenUnits the units of each selector
-     * @param array<int, int>    $givenCoins the count of each coin, by its cents
+     * @param array<string, int>                                                       $givenUnits the units of each selector
+     * @param array<int, int>                                                          $givenCoins the count of each coin, by its cents
+     * @param list<array{selector: string, name: string, priceCents: int, units: int}> $install    the products to install, with their units
+     * @param list<string>                                                             $retire     the selectors of the products to retire
      */
     public function service(
         InputInterface $input,
@@ -39,8 +41,10 @@ final readonly class MachineServicer
         ?string $username = null,
         #[\SensitiveParameter]
         ?string $password = null,
+        array $install = [],
+        array $retire = [],
     ): bool {
-        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins, $username, $password);
+        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins, $username, $password, $install, $retire);
         if (null === $service) {
             return false;
         }
@@ -77,8 +81,10 @@ final readonly class MachineServicer
     }
 
     /**
-     * @param array<string, int> $givenUnits
-     * @param array<int, int>    $givenCoins
+     * @param array<string, int>                                                       $givenUnits
+     * @param array<int, int>                                                          $givenCoins
+     * @param list<array{selector: string, name: string, priceCents: int, units: int}> $install
+     * @param list<string>                                                             $retire
      */
     private function askForCompleteService(
         InputInterface $input,
@@ -88,10 +94,13 @@ final readonly class MachineServicer
         ?string $username,
         #[\SensitiveParameter]
         ?string $password,
+        array $install,
+        array $retire,
     ): ?ServiceMachineCommand {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
         self::rejectUnknownSelectors($status, $givenUnits);
+        self::rejectUnknownRetirements($status, $retire);
 
         try {
             $technicianId = $this->technicianLogin->logIn($input, $io, $username, $password);
@@ -102,10 +111,13 @@ final readonly class MachineServicer
             return null;
         }
 
+        $productsWithTheirOwnUnits = [...array_column($install, 'selector'), ...$retire];
         $service = new ServiceMachineCommand(
             $technicianId,
-            self::unitsBySelector($io, $status, $givenUnits),
+            self::unitsBySelector($io, $status, $givenUnits, $productsWithTheirOwnUnits),
             self::coinStockByCents($io, $status, $givenCoins),
+            $install,
+            $retire,
         );
 
         return InputEnd::reachedSince($startedInteractive, $input) ? self::refuseInputEnded($io) : $service;
@@ -131,14 +143,32 @@ final readonly class MachineServicer
     }
 
     /**
+     * @param list<string> $retire
+     */
+    private static function rejectUnknownRetirements(MachineStatusResponse $status, array $retire): void
+    {
+        foreach ($retire as $selector) {
+            if (!\array_key_exists($selector, $status->unitsBySelector)) {
+                throw new InvalidOptionException(\sprintf('Give --retire a product the machine has, such as WATER, got %s.', $selector));
+            }
+        }
+    }
+
+    /**
+     * A product installed or retired is left out: it comes with its own units, or has none left.
+     *
      * @param array<string, int> $givenUnits
+     * @param list<string>       $productsWithTheirOwnUnits
      *
      * @return array<int|string, int>
      */
-    private static function unitsBySelector(SymfonyStyle $io, MachineStatusResponse $status, array $givenUnits): array
+    private static function unitsBySelector(SymfonyStyle $io, MachineStatusResponse $status, array $givenUnits, array $productsWithTheirOwnUnits): array
     {
         $newUnits = [];
         foreach ($status->unitsBySelector as $selector => $currentUnits) {
+            if (\in_array((string) $selector, $productsWithTheirOwnUnits, true)) {
+                continue;
+            }
             $newUnits[$selector] = $givenUnits[$selector] ?? self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
         }
 
