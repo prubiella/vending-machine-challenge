@@ -240,6 +240,10 @@ Commands and queries go through two synchronous Messenger buses, behind the `Com
 registered on `command.bus` and `query.bus` by their `CommandHandler` and `QueryHandler` suffixes
 in `config/services.yaml`, so the Application layer needs no framework attributes.
 
+The machine is saved with optimistic locking: its row has a version, and a save that finds another
+version than the one it loaded fails with a `ConcurrentUpdateException`. The command bus then runs
+the command again on the fresh machine, up to three more times, before it gives up.
+
 ### Adding a bounded context
 
 1. Create `src/<Context>/` with the layers that have code, and its tests under

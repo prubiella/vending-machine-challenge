@@ -32,6 +32,10 @@ services:
         tags: [ { name: messenger.message_handler, bus: query.bus } ]
         autoconfigure: false
 
+    App\Shared\Infrastructure\Symfony\Messenger\Middleware\RetryOnConcurrentUpdateMiddleware:
+        arguments:
+            $maxRetries: 3
+
     App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:
             $products: '%vending_machine.default_products%'
