@@ -20,8 +20,8 @@ final readonly class LoggingCommandMiddleware implements MiddlewareInterface
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
         $command = $envelope->getMessage();
-        $name = new \ReflectionClass($command)->getShortName();
-        $context = ['command' => $command::class, 'data' => get_object_vars($command)];
+        $name = LoggedCommand::name($command);
+        $context = [...LoggedCommand::context($command), 'data' => get_object_vars($command)];
 
         try {
             $handled = $stack->next()->handle($envelope, $stack);

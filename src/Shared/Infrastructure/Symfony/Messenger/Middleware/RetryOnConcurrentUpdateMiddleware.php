@@ -49,9 +49,10 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
     private function logRetry(Envelope $envelope, int $retriesDone): void
     {
         $command = $envelope->getMessage();
+        $name = LoggedCommand::name($command);
         $this->logger->notice(
-            \sprintf('Command %s met a concurrent update: retry %d of %d.', new \ReflectionClass($command)->getShortName(), $retriesDone, $this->maxRetries),
-            ['command' => $command::class],
+            \sprintf('Command %s met a concurrent update: retry %d of %d.', $name, $retriesDone, $this->maxRetries),
+            LoggedCommand::context($command),
         );
     }
 }
