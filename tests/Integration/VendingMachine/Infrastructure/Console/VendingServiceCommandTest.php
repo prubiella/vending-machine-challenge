@@ -93,6 +93,22 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::tester()->execute(['--units' => ['WATER']], ['interactive' => false]);
     }
 
+    public function testRejectsAProductGivenTwice(): void
+    {
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage('Give --units once for each key, got WATER twice.');
+
+        self::tester()->execute(['--units' => ['WATER:2', 'WATER:5']], ['interactive' => false]);
+    }
+
+    public function testRejectsACoinGivenTwice(): void
+    {
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage('Give --coins once for each key, got 0.10 twice.');
+
+        self::tester()->execute(['--coins' => ['0.10:5', '0.10:8']], ['interactive' => false]);
+    }
+
     public function testRejectsAForeignCoin(): void
     {
         $this->expectException(RejectedTokenException::class);

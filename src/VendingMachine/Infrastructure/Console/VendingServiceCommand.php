@@ -98,6 +98,9 @@ final readonly class VendingServiceCommand
             if ('' === $key || !ctype_digit($count)) {
                 throw new InvalidOptionException(\sprintf('Give --%s as KEY:COUNT, such as WATER:5 or 0.25:10, got "%s".', $option, $pair));
             }
+            if (\array_key_exists($key, $countsByKey)) {
+                throw new InvalidOptionException(\sprintf('Give --%s once for each key, got %s twice.', $option, $key));
+            }
             $countsByKey[$key] = (int) $count;
         }
 
