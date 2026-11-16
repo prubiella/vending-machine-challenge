@@ -103,7 +103,7 @@ final class VendingServiceCommandTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertSame("0.25\nThe machine is serviced.\n", $tester->getDisplay(true));
-        self::assertStatus(['WATER' => 9, 'JUICE' => 10, 'SODA' => 10], [5 => 10, 10 => 9, 25 => 9, 100 => 1]);
+        self::assertStatus(['WATER' => 9, 'JUICE' => 10, 'SODA' => 10], [5 => 10, 10 => 9, 25 => 9, 100 => 0]);
         $machine = self::getContainer()->get(QueryBus::class)->query(new GetMachineQuery());
         self::assertInstanceOf(MachineResponse::class, $machine);
         self::assertSame(0, $machine->creditCents);

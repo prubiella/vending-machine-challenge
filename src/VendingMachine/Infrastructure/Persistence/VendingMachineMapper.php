@@ -21,13 +21,16 @@ use App\VendingMachine\Domain\Wallet\Wallet;
  * @phpstan-type ProductRow array{selector: string, name: string, price_cents: int}
  * @phpstan-type SlotRow array{selector: string, name: string, price_cents: int, units: int}
  * @phpstan-type TrayRow array{products: list<ProductRow>, coins: array<int, int>}
- * @phpstan-type MachineParts array{inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, tray: TrayRow}
- * @phpstan-type MachineDocument array{_id: string, inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, tray: TrayRow}
- * @phpstan-type MachineRow array{id: string, inventory: string, wallet_credit: string, wallet_stock: string, tray: string}
+ * @phpstan-type MachineParts array{inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, wallet_cash_box: array<int, int>, tray: TrayRow}
+ * @phpstan-type MachineDocument array{_id: string, inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, wallet_cash_box: array<int, int>, tray: TrayRow}
+ * @phpstan-type MachineRow array{id: string, inventory: string, wallet_credit: string, wallet_stock: string, wallet_cash_box: string, tray: string}
  */
 final readonly class VendingMachineMapper
 {
-    private const array PARTS = ['inventory', 'wallet_credit', 'wallet_stock', 'tray'];
+    private const array PARTS = ['inventory', 'wallet_credit', 'wallet_stock', 'wallet_cash_box', 'tray'];
+
+    // A machine stored before the cash box existed has none: it reads as an empty one.
+    private const string NO_CASH_BOX_ROW = '{}';
 
     /**
      * @return MachineDocument
@@ -43,6 +46,7 @@ final readonly class VendingMachineMapper
     public function fromDocument(array $document): VendingMachine
     {
         $id = self::storedId($document, '_id');
+        $document['wallet_cash_box'] ??= [];
         self::assertEveryPartIsPresent($document);
 
         return self::restore($id, $document);
@@ -66,7 +70,7 @@ final readonly class VendingMachineMapper
         $id = self::storedId($row, 'id');
         $parts = [];
         foreach (self::PARTS as $part) {
-            $parts[$part] = self::decode($row[$part] ?? null);
+            $parts[$part] = self::decode($row[$part] ?? ('wallet_cash_box' === $part ? self::NO_CASH_BOX_ROW : null));
         }
         self::assertEveryPartIsPresent($parts);
 
@@ -86,7 +90,11 @@ final readonly class VendingMachineMapper
             return VendingMachine::restore(
                 $machineId,
                 self::inventory($parts['inventory']),
-                Wallet::of(CoinCollection::fromCounts($parts['wallet_credit']), CoinCollection::fromCounts($parts['wallet_stock'])),
+                Wallet::of(
+                    CoinCollection::fromCounts($parts['wallet_credit']),
+                    CoinCollection::fromCounts($parts['wallet_stock']),
+                    CoinCollection::fromCounts($parts['wallet_cash_box']),
+                ),
                 self::tray($parts['tray']),
             );
         } catch (DomainException $brokenRule) {
@@ -129,6 +137,7 @@ final readonly class VendingMachineMapper
             'inventory' => array_map(self::slotRow(...), $machine->inventory()->slots()),
             'wallet_credit' => $machine->wallet()->credit()->countsByCents(),
             'wallet_stock' => $machine->wallet()->stock()->countsByCents(),
+            'wallet_cash_box' => $machine->wallet()->cashBox()->countsByCents(),
             'tray' => self::trayRow($machine->tray()),
         ];
     }

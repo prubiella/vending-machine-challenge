@@ -34,7 +34,7 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     public function get(): VendingMachine
     {
         $row = $this->connection->fetchAssociative(
-            'SELECT id, version, inventory, wallet_credit, wallet_stock, tray FROM vending_machine WHERE id = ?',
+            'SELECT id, version, inventory, wallet_credit, wallet_stock, wallet_cash_box, tray FROM vending_machine WHERE id = ?',
             [$this->machineId->value()],
         );
 

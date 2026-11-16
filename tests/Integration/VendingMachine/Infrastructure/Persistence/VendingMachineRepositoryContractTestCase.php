@@ -163,7 +163,7 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         return VendingMachine::restore(
             MachineId::fromString(self::configuredMachineId()),
             Inventory::of(Slot::of($water, 4), Slot::of($juice, 0)),
-            Wallet::of(CoinCollection::of(Coin::OneHundredCents, Coin::FiveCents), CoinCollection::of(Coin::TenCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents)),
+            Wallet::of(CoinCollection::of(Coin::OneHundredCents, Coin::FiveCents), CoinCollection::of(Coin::TenCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents), CoinCollection::of(Coin::OneHundredCents, Coin::OneHundredCents)),
             Tray::empty()->addProduct($juice)->addProduct($water)->addCoins(CoinCollection::of(Coin::TenCents, Coin::FiveCents)),
         );
     }

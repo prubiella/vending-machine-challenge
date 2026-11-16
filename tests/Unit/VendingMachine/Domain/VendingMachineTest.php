@@ -89,8 +89,9 @@ final class VendingMachineTest extends TestCase
 
         self::assertSame(['Water'], self::productsInTray($machine));
         self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
-        $stockLeft = CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents, Coin::OneHundredCents);
+        $stockLeft = CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);
         self::assertTrue($machine->wallet()->stock()->equals($stockLeft));
+        self::assertTrue($machine->wallet()->cashBox()->equals(CoinCollection::of(Coin::OneHundredCents)));
     }
 
     public function testReturningTheCoinsDropsTheInsertedCoinsInTheTray(): void
@@ -258,7 +259,7 @@ final class VendingMachineTest extends TestCase
         }
     }
 
-    public function testASaleTakesTheCreditIntoAFullTube(): void
+    public function testASaleSendsTheCreditOfAFullTubeToTheCashBox(): void
     {
         $machine = self::installed();
         $machine->service(['WATER' => 1], CoinCollection::fromCounts([5 => 10, 10 => 10, 25 => Wallet::TUBE_CAPACITY]));
@@ -269,7 +270,20 @@ final class VendingMachineTest extends TestCase
         $machine->select(Selector::fromString('WATER'), self::changeMaker());
 
         self::assertSame(['Water'], self::productsInTray($machine));
-        self::assertSame(Wallet::TUBE_CAPACITY + 3, $machine->wallet()->stock()->countsByCents()[25]);
+        self::assertSame(Wallet::TUBE_CAPACITY, $machine->wallet()->stock()->countOf(Coin::TwentyFiveCents));
+        self::assertSame(3, $machine->wallet()->cashBox()->countOf(Coin::TwentyFiveCents));
+    }
+
+    public function testServiceEmptiesTheCashBox(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        self::assertFalse($machine->wallet()->cashBox()->isEmpty());
+
+        $machine->service(['WATER' => 1], CoinCollection::empty());
+
+        self::assertTrue($machine->wallet()->cashBox()->isEmpty());
     }
 
     public function testARestoredMachineCarriesOnFromTheGivenParts(): void
@@ -284,7 +298,8 @@ final class VendingMachineTest extends TestCase
         self::assertSame(2, self::unitsOf($machine, 'WATER'));
         self::assertSame(['Soda', 'Water'], self::productsInTray($machine));
         self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
-        self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::OneHundredCents)));
+        self::assertTrue($machine->wallet()->stock()->isEmpty());
+        self::assertTrue($machine->wallet()->cashBox()->equals(CoinCollection::of(Coin::OneHundredCents)));
     }
 
     /**

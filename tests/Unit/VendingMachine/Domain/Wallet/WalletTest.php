@@ -82,14 +82,95 @@ final class WalletTest extends TestCase
         self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents)));
     }
 
-    public function testAnInsertedOneStaysInTheStockAfterCharging(): void
+    public function testAnInsertedOneGoesToTheCashBoxAfterCharging(): void
     {
         $wallet = Wallet::stocked(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents))->insert(Coin::OneHundredCents);
 
         $payout = $wallet->charge(Money::fromCents(65), self::changeMaker());
 
         self::assertTrue($payout->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
-        self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::OneHundredCents)));
+        self::assertTrue($payout->wallet()->stock()->isEmpty());
+        self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::OneHundredCents)));
+    }
+
+    public function testACoinThatFitsItsTubeStaysInTheStockAfterCharging(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY - 1]))->insert(Coin::TwentyFiveCents);
+
+        $payout = $wallet->charge(Money::fromCents(25), self::changeMaker());
+
+        self::assertSame(Wallet::TUBE_CAPACITY, $payout->wallet()->stock()->countOf(Coin::TwentyFiveCents));
+        self::assertTrue($payout->wallet()->cashBox()->isEmpty());
+    }
+
+    public function testTheCoinsThatDoNotFitTheirFullTubeGoToTheCashBox(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY - 1, 10 => 3]))
+            ->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents)->insert(Coin::TenCents);
+
+        $payout = $wallet->charge(Money::fromCents(85), self::changeMaker());
+
+        self::assertTrue($payout->coins()->isEmpty());
+        self::assertSame(Wallet::TUBE_CAPACITY, $payout->wallet()->stock()->countOf(Coin::TwentyFiveCents));
+        self::assertSame(4, $payout->wallet()->stock()->countOf(Coin::TenCents));
+        self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TwentyFiveCents)));
+    }
+
+    public function testATubeAlreadyPastItsCapacityTakesNoMoreCoins(): void
+    {
+        $wallet = Wallet::of(CoinCollection::of(Coin::FiveCents), CoinCollection::fromCounts([5 => Wallet::TUBE_CAPACITY + 7]));
+
+        $payout = $wallet->charge(Money::fromCents(5), self::changeMaker());
+
+        self::assertSame(Wallet::TUBE_CAPACITY + 7, $payout->wallet()->stock()->countOf(Coin::FiveCents));
+        self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::FiveCents)));
+    }
+
+    public function testChargingAddsToTheCoinsAlreadyInTheCashBox(): void
+    {
+        $cashBox = CoinCollection::of(Coin::OneHundredCents);
+        $wallet = Wallet::of(CoinCollection::empty(), CoinCollection::empty(), $cashBox)->insert(Coin::OneHundredCents);
+
+        $payout = $wallet->charge(Money::fromCents(100), self::changeMaker());
+
+        self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::OneHundredCents, Coin::OneHundredCents)));
+    }
+
+    public function testChangeNeverComesFromTheCashBox(): void
+    {
+        $wallet = Wallet::of(CoinCollection::of(Coin::TwentyFiveCents), CoinCollection::empty(), CoinCollection::fromCounts([5 => 10, 10 => 10]));
+
+        $this->expectException(NoExactChangeException::class);
+
+        $wallet->charge(Money::fromCents(10), self::changeMaker());
+    }
+
+    public function testReturningTheCreditLeavesTheCashBoxAlone(): void
+    {
+        $cashBox = CoinCollection::of(Coin::OneHundredCents);
+        $wallet = Wallet::of(CoinCollection::empty(), CoinCollection::empty(), $cashBox)->insert(Coin::TenCents);
+
+        self::assertTrue($wallet->returnCredit()->wallet()->cashBox()->equals($cashBox));
+    }
+
+    public function testRestockingEmptiesTheCashBox(): void
+    {
+        $wallet = Wallet::of(CoinCollection::empty(), CoinCollection::empty(), CoinCollection::of(Coin::OneHundredCents));
+
+        self::assertTrue($wallet->restock(CoinCollection::of(Coin::FiveCents))->cashBox()->isEmpty());
+    }
+
+    public function testRestockingStillSetsTheTubeOfTheOne(): void
+    {
+        $restocked = Wallet::stocked(CoinCollection::empty())->restock(CoinCollection::of(Coin::OneHundredCents));
+
+        self::assertSame(1, $restocked->stock()->countOf(Coin::OneHundredCents));
+    }
+
+    public function testAWalletWithoutACashBoxHasAnEmptyOne(): void
+    {
+        self::assertTrue(Wallet::stocked(CoinCollection::empty())->cashBox()->isEmpty());
+        self::assertTrue(Wallet::of(CoinCollection::empty(), CoinCollection::empty())->cashBox()->isEmpty());
     }
 
     /**
@@ -107,7 +188,7 @@ final class WalletTest extends TestCase
         $payout = $wallet->charge(Money::fromCents($priceInCents), self::changeMaker());
 
         $coinsBefore = $wallet->stock()->merge($wallet->credit());
-        $coinsAfter = $payout->wallet()->stock()->merge($payout->coins());
+        $coinsAfter = $payout->wallet()->stock()->merge($payout->coins())->merge($payout->wallet()->cashBox());
         self::assertTrue($coinsAfter->equals($coinsBefore));
         self::assertSame($wallet->credit()->total()->cents() - $priceInCents, $payout->coins()->total()->cents());
     }
