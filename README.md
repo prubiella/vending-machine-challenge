@@ -460,8 +460,8 @@ a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" servi
 scenarios use the test database, so `make migrate` must have run.
 
 `features/technician/` holds the technician's side, with the steps of
-`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token, and
-reading the stock and the change. Each scenario starts with no technician and the default machine,
+`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token,
+reading the stock and the change, and servicing the machine. Each scenario starts with no technician and the default machine,
 and a `Given` creates the technician it logs in as. Every login gives a token with the technician's
 role, so a 403 cannot be reached from a scenario: the kernel tests make a token without the role to
 cover it.
