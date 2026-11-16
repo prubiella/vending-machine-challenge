@@ -43,8 +43,10 @@ business (a sale, the change given).
   database connection at warning.
 - Sensitive data: the middleware logs every field of a command, which is fine while commands hold
   only product selectors and coins. Before technician login exists, fields such as a password or a
-  token must be masked. Nothing masks them yet. Planned polish: a way for a command to list its sensitive
-  fields, which would be logged as `***`. This is required before the `Maintenance` context.
+  token must be masked. Note, 2026-11-16: masking exists. A command that carries a secret or
+  personal data implements `SensitiveCommand` and maps each such field to a `Masking` rule (`Hide`
+  logs `***`, `KeepFirstThree` logs `pau***`), and `Maintenance` uses it: `CreateTechnicianCommand`
+  hides the password and keeps the first three characters of the username and the email.
 - The domain never depends on a logger and has no `DomainLogger` port.
 - Business facts are better as domain events published after the commit. A subscriber can then log
   them, send them to a queue or build a sales history. That work comes later.

@@ -180,6 +180,29 @@ Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
+## Technicians
+
+A technician is who services the machine. `vending:technician:create` stores one in the
+`technicians` table with a username (3 to 32 lowercase letters, digits, dots, hyphens or
+underscores, unique), an email (a valid address, stored lowercased, unique) and the bcrypt hash of a
+password of 8 characters to 4096 bytes, and prints the id it gives the technician. It asks what
+`--username`, `--email` and `--password` leave out, the password hidden; with `-n` the three options
+are required. An answer the domain refuses (a username or an email it does not take, a password too
+short or too long) is asked again with the domain's reason, up to three times; a value given as an
+option is refused at once. A username or an email that another technician already has is only found
+when the technician is stored, after every answer, so it ends the command. The technician will log
+in by username once a login exists; the email is only kept. A password is never trimmed, whether
+typed at the hidden prompt or given as an option, so spaces around it count. The password is never
+stored or logged in clear: the command bus logs only the first three characters of the username and
+of the email, the password as `***`, and the refusals (an invalid or taken username or email)
+without the value.
+
+```bash
+make run -- vending:technician:create --username ana --email ana@example.com
+# Password:
+# Technician ana created with id 019a8c5e-....
+```
+
 ## Using the machine over HTTP
 
 The customer's side of the machine is a JSON API. Commands answer `204 No Content` with no body:
@@ -270,7 +293,7 @@ The command bus logs every command with its name and data: at info when it is ha
 when the domain refuses it and at error when it fails for any other reason. A command that
 implements `SensitiveCommand` lists the fields it carries that must not be logged as they are,
 each with a `Masking` rule: `Hide` logs a secret such as a password or a token as `***`, and
-`KeepFirstThree` logs personal data such as a technician's email with its first three characters
+`KeepFirstThree` logs personal data such as a technician's username with its first three characters
 and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
 hidden whole. A rule for a field that is not a public property of the command stops its dispatch
 with a `LogicException`, so a misspelt or renamed field is never logged in clear. Each retry after
@@ -397,9 +420,9 @@ downloads the driver the first time):
 | Database | `app`, and `app_test` for the tests | `app`, and `app_test` for the tests |
 
 MongoDB holds the machine, as the document of `vending_machines` whose `_id` is
-`VENDING_MACHINE_ID`. MySQL holds the
-migrations table and the `vending_machine` table of the DBAL adapter, empty while the machine lives
-in MongoDB. The same settings work in any other client (DBeaver, MongoDB
+`VENDING_MACHINE_ID`. MySQL holds the migrations table, the `technicians` table and the
+`vending_machine` table of the DBAL adapter, empty while the machine lives in MongoDB. The same
+settings work in any other client (DBeaver, MongoDB
 Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a
 shell inside the containers without installing anything.
 
@@ -457,6 +480,10 @@ src/
     Domain/          Business rules. Plain PHP.
     Application/     Use cases: commands, queries and their handlers.
     Infrastructure/  Symfony, controllers, console commands, persistence.
+  Maintenance/       The technicians who service the machine.
+    Domain/          Technician, its username and password rules, the repository and hasher ports.
+    Application/     Use cases: creating a technician.
+    Infrastructure/  The technicians table, the Symfony password hasher, console commands.
 config/              Symfony configuration; routes in config/routes/<context>.php.
 tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).
@@ -466,8 +493,7 @@ etc/postman          Postman collection and environment.
 docs/                The OpenAPI document of the HTTP API.
 ```
 
-A second context, `Maintenance` (technicians and their login), will arrive with technician
-authentication. Folders exist only once they hold code.
+Folders exist only once they hold code.
 
 deptrac checks the rules between layers and contexts:
 

@@ -47,7 +47,8 @@ to run it.
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
-- `Maintenance` (planned): technicians and their login, with technician authentication.
+- `Maintenance`: the technicians who service the machine, their usernames, emails and hashed
+  passwords.
 
 ## Layers (checked by deptrac)
 
@@ -144,8 +145,8 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   their results, request payloads) are data without behaviour: `final readonly` classes with
   public promoted properties.
 - Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
-- An identifier is a `final readonly` class extending `Shared\Domain\Uuid\Uuid` (`MachineId`); a
-  new one comes from the `UuidGenerator` port, never from the domain (ADR 17).
+- An identifier is a `final readonly` class extending `Shared\Domain\Uuid\Uuid` (`MachineId`,
+  `TechnicianId`); a new one comes from the `UuidGenerator` port, never from the domain (ADR 17).
 - A domain exception is a `final` class named after what went wrong and ending in `Exception`
   (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
   through a named constructor (`InsufficientMoneyException::toSubtract(...)`). That base is a

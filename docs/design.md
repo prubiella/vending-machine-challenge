@@ -225,7 +225,9 @@ The `ChangeMaker` is an argument of `select()`, not a field, so the aggregate ho
 services ([ADR 9](adr/0009-change-maker-as-an-argument.md)). Money is integer cents, never a float
 ([ADR 2](adr/0002-money-as-integer-cents.md)). `Coin` is an enum because the set is closed
 ([ADR 3](adr/0003-coin-as-an-enum.md)), and `Selector` is a value object because products are data,
-not code ([ADR 4](adr/0004-selector-as-a-value-object.md)).
+not code ([ADR 4](adr/0004-selector-as-a-value-object.md)). Identifiers are UUIDs, each a class of
+its own over the shared `Uuid` base: `MachineId` for the machine, `TechnicianId` for a technician of
+the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 
 ### Invariants
 
