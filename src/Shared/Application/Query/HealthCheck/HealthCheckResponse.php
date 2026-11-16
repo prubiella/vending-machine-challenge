@@ -7,15 +7,15 @@ namespace App\Shared\Application\Query\HealthCheck;
 final readonly class HealthCheckResponse
 {
     public const string OK = 'ok';
-    public const string ERROR = 'error';
+    public const string KO = 'ko';
 
     /**
-     * @param self::OK|self::ERROR $status   ok only when every check is
-     * @param self::OK|self::ERROR $database
+     * @param self::OK                         $status the application itself, which answers whatever its dependencies do
+     * @param array<string, self::OK|self::KO> $checks each dependency by its name
      */
     public function __construct(
         public string $status,
-        public string $database,
+        public array $checks,
     ) {
     }
 }

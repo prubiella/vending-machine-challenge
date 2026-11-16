@@ -12,22 +12,22 @@ use PHPUnit\Framework\TestCase;
 
 final class HealthCheckQueryHandlerTest extends TestCase
 {
-    public function testReportsOkWhenTheDatabaseIsReachable(): void
+    public function testReportsEveryDependencyOkWhenTheDatabaseIsReachable(): void
     {
         $handler = new HealthCheckQueryHandler(self::probe(reachable: true));
 
         $health = $handler(new HealthCheckQuery());
 
-        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, HealthCheckResponse::OK), $health);
+        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, ['database' => HealthCheckResponse::OK]), $health);
     }
 
-    public function testReportsAnErrorWhenTheDatabaseIsNotReachable(): void
+    public function testReportsTheDatabaseKoWhileTheApplicationStaysOk(): void
     {
         $handler = new HealthCheckQueryHandler(self::probe(reachable: false));
 
         $health = $handler(new HealthCheckQuery());
 
-        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::ERROR, HealthCheckResponse::ERROR), $health);
+        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, ['database' => HealthCheckResponse::KO]), $health);
     }
 
     private static function probe(bool $reachable): DatabaseProbe

@@ -39,7 +39,9 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   exception of every context extends; `Shared/Application/Bus` holds the `Command` and `Query`
   interfaces and the `CommandBus` and `QueryBus` ports; `Shared/Infrastructure` holds their
   Messenger implementations (`MessengerCommandBus`, `MessengerQueryBus`),
-  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check.
+  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
+  (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
+  a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
 - `Maintenance` (planned): technicians and their login, with technician authentication.

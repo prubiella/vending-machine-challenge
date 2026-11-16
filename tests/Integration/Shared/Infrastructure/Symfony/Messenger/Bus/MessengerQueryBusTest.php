@@ -15,6 +15,6 @@ final class MessengerQueryBusTest extends KernelTestCase
     {
         $bus = self::getContainer()->get(QueryBus::class);
 
-        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, HealthCheckResponse::OK), $bus->query(new HealthCheckQuery()));
+        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, ['database' => HealthCheckResponse::OK]), $bus->query(new HealthCheckQuery()));
     }
 }

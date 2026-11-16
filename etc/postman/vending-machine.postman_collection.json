@@ -18,7 +18,7 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('responds 200', () => pm.response.to.have.status(200));",
-									"pm.test('reports the app and its database ok', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', database: 'ok' }));"
+									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok' } }));"
 								]
 							}
 						}
@@ -38,6 +38,41 @@
 							],
 							"path": [
 								"health-check"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Readiness check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200 when every dependency is ok', () => pm.response.to.have.status(200));",
+									"pm.test('reports the app ok and each dependency', () => pm.expect(pm.response.json()).to.eql({ status: 'ok', checks: { database: 'ok' } }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/health-check/ready",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health-check",
+								"ready"
 							]
 						}
 					},
