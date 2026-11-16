@@ -35,7 +35,7 @@ check. `VendingMachine` must not depend on whatever keeps the technicians
   one hour, whose `sub` claim is the technician's id and whose roles hold `ROLE_TECHNICIAN`. The
   `machine` firewall is stateless and builds the user from the token with the bundle's `lexik_jwt`
   provider, so a request costs no database read; `access_control` lists the technician's routes
-  (so far `GET /machine/status`) and reads the role from the issuer's constant. An
+  (`GET /machine/status`, `PUT /machine/service`) and reads the role from the issuer's constant. An
   API client keeps no cookie, and the console has no session to share. The key pair is created by
   `make jwt-keys`, ignored by git, and its paths and passphrase are in `.env.dist`.
 - **A hand-written login, not `json_login`.** `json_login` needs a Symfony user provider that loads
