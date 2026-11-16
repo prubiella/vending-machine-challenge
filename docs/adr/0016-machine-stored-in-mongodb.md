@@ -29,7 +29,8 @@ atomic write as the machine's state, and a document can hold both.
   same arrays into its columns, so there is one mapping.
 - Optimistic locking as in ADR 11: a new machine is an `insertOne`, and a duplicate key there is a
   conflict; a stored one is an `updateOne` with the loaded `version` in its filter that sets the
-  parts and the next version, and a matched count of 0 is a conflict. Both throw
+  parts and the next version (so a field the machine does not own, such as the outbox, survives a
+  save), and a matched count of 0 is a conflict. Both throw
   `ConcurrentUpdateException`, so the retry middleware works unchanged, and the versions live in the
   same kind of `WeakMap`.
 - The store is not configurable: `config/services.yaml` aliases `VendingMachineRepository` and

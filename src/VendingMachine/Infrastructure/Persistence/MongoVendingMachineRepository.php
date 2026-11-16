@@ -95,9 +95,10 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
      */
     private function update(array $document, int $loadedVersion): void
     {
-        $result = $this->machines->replaceOne(
+        $fields = ['version' => $loadedVersion + 1, ...array_diff_key($document, ['_id' => true])];
+        $result = $this->machines->updateOne(
             ['_id' => $document['_id'], 'version' => $loadedVersion],
-            ['version' => $loadedVersion + 1, ...$document],
+            ['$set' => $fields],
         );
 
         if (0 === $result->getMatchedCount()) {
