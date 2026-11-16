@@ -7,6 +7,7 @@ namespace App\VendingMachine\Infrastructure\Change;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Change\ChangeMaker;
 use App\VendingMachine\Domain\Change\NoExactChangeException;
+use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use Psr\Log\LoggerInterface;
 
@@ -16,6 +17,11 @@ final readonly class LoggingChangeMaker implements ChangeMaker
         private ChangeMaker $changeMaker,
         private LoggerInterface $logger,
     ) {
+    }
+
+    public function gives(Coin $coin): bool
+    {
+        return $this->changeMaker->gives($coin);
     }
 
     public function makeChange(Money $amount, CoinCollection $available): CoinCollection

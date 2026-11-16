@@ -13,10 +13,6 @@ final readonly class Wallet
 {
     public const int TUBE_CAPACITY = 500;
 
-    // The coin that is never given as change (ADR 8): it has no tube to fill, so a sale puts it in
-    // the cash box.
-    private const Coin TAKINGS_COIN = Coin::OneHundredCents;
-
     private function __construct(
         private CoinCollection $credit,
         private CoinCollection $stock,
@@ -51,14 +47,18 @@ final readonly class Wallet
             throw InsufficientCreditException::forPrice($price, $credit);
         }
 
-        $overflow = $this->creditThatDoesNotFitTheTubes();
-        $stock = $this->stock->merge($this->credit->subtract($overflow));
+        $takings = $this->creditThatGoesToTheCashBox($changeMaker);
+        $stock = $this->stock->merge($this->credit->subtract($takings));
         $change = $changeMaker->makeChange($credit->subtract($price), $stock);
 
-        return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change), $this->cashBox->merge($overflow)));
+        return Payout::of($change, new self(
+            CoinCollection::empty(),
+            $stock->subtract($change),
+            $this->cashBox->merge($takings),
+        ));
     }
 
-    // Refuses a tube past its capacity, and empties the cash box: the technician takes what it held.
+    // The technician servicing the machine takes what the cash box held, so a restock empties it.
     public function restock(CoinCollection $stock): self
     {
         foreach ($stock->countsByCents() as $cents => $count) {
@@ -90,15 +90,17 @@ final readonly class Wallet
         return $this->cashBox;
     }
 
-    private function creditThatDoesNotFitTheTubes(): CoinCollection
+    // A coin the change maker never gives has no tube to fill, and a coin that gives change goes to
+    // its tube only up to the capacity.
+    private function creditThatGoesToTheCashBox(ChangeMaker $changeMaker): CoinCollection
     {
-        $overflow = [];
+        $takings = [];
         foreach ($this->credit->countsByCents() as $cents => $count) {
             $coin = Coin::fromCents($cents);
-            $room = self::TAKINGS_COIN === $coin ? 0 : max(0, self::TUBE_CAPACITY - $this->stock->countOf($coin));
-            $overflow[$cents] = max(0, $count - $room);
+            $room = $changeMaker->gives($coin) ? max(0, self::TUBE_CAPACITY - $this->stock->countOf($coin)) : 0;
+            $takings[$cents] = max(0, $count - $room);
         }
 
-        return CoinCollection::fromCounts($overflow);
+        return CoinCollection::fromCounts($takings);
     }
 }

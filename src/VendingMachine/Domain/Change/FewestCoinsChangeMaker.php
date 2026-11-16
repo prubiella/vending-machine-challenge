@@ -18,6 +18,11 @@ final readonly class FewestCoinsChangeMaker implements ChangeMaker
         $this->given = array_values(array_unique($given, \SORT_REGULAR));
     }
 
+    public function gives(Coin $coin): bool
+    {
+        return \in_array($coin, $this->given, true);
+    }
+
     public function makeChange(Money $amount, CoinCollection $available): CoinCollection
     {
         $fewestCoinsByCents = [0 => []];
