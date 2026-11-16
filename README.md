@@ -187,8 +187,9 @@ A technician is who services the machine. `vending:technician:create` stores one
 underscores, unique), an email (a valid address, stored lowercased, unique) and the bcrypt hash of
 a password of 8 characters to 4096 bytes, and prints the id it gives the technician. It asks what
 `--username`, `--email` and `--password` leave out, the password hidden; with `-n` the three
-options are required. The technician logs in by username; the email is only kept. The password is
-never stored or logged in clear: the command bus logs only the first three characters of the
+options are required. The technician logs in by username; the email is only kept. A password is
+never trimmed, whether typed at the hidden prompt or given as an option, so spaces around it count.
+The password is never stored or logged in clear: the command bus logs only the first three characters of the
 username and of the email, the password as `***`, and the refusals (an invalid or taken username
 or email) without the value.
 

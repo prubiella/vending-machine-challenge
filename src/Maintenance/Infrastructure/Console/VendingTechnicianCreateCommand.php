@@ -10,6 +10,7 @@ use App\Shared\Domain\DomainException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Uid\Uuid;
 
@@ -54,12 +55,23 @@ final readonly class VendingTechnicianCreateCommand
      */
     private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $question, string $optionName, bool $hidden = false): string
     {
-        $value = $option ?? ($hidden ? $io->askHidden($question) : $io->ask($question));
+        $value = $option ?? ($hidden ? $io->askQuestion(self::untrimmedHiddenQuestion($question)) : $io->ask($question));
         if (!\is_string($value) || '' === $value) {
             throw MissingValueException::forOption($optionName);
         }
 
         return $value;
+    }
+
+    // A password is never trimmed, here as in --password and the login, so the spaces typed are kept;
+    // only the line ending that closes the answer goes.
+    private static function untrimmedHiddenQuestion(string $question): Question
+    {
+        return new Question($question)
+            ->setHidden(true)
+            ->setTrimmable(false)
+            ->setNormalizer(static fn (mixed $answer): mixed => \is_string($answer) ? rtrim($answer, "\r\n") : $answer)
+        ;
     }
 
     private static function refuse(SymfonyStyle $io, string $reason): int

@@ -49,6 +49,17 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         self::assertPasswordIs('correct-horse', self::storedTechnician('ana'));
     }
 
+    public function testKeepsTheSpacesAroundAnAskedPassword(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['  correct-horse  ']);
+
+        $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'ana@example.com']);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertPasswordIs('  correct-horse  ', self::storedTechnician('ana'));
+    }
+
     public function testWithoutInteractionRefusesAMissingPassword(): void
     {
         $tester = self::tester();
