@@ -11,6 +11,7 @@ use App\Maintenance\Domain\Technician\Username;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Uuid\UuidGenerator;
 use App\Shared\Domain\DomainException;
+use App\Shared\Infrastructure\Console\PasswordQuestion;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -43,7 +44,7 @@ final readonly class VendingTechnicianCreateCommand
         try {
             $resolvedUsername = self::givenOrAsked($io, $username, 'username', new Question('Username'), Username::fromString(...));
             $resolvedEmail = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
-            $resolvedPassword = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
+            $resolvedPassword = self::givenOrAsked($io, $password, 'password', PasswordQuestion::hidden('Password'), PlainPassword::fromString(...));
 
             $id = $this->uuidGenerator->generate();
             $this->commandBus->dispatch(new CreateTechnicianCommand($id, $resolvedUsername, $resolvedEmail, $resolvedPassword));
@@ -105,17 +106,6 @@ final readonly class VendingTechnicianCreateCommand
     private static function isEmpty(?string $option): bool
     {
         return '' === $option;
-    }
-
-    // A password is never trimmed, here as in --password, so the spaces typed are kept; only the line
-    // ending that closes the answer goes.
-    private static function untrimmedHiddenQuestion(string $question): Question
-    {
-        return new Question($question)
-            ->setHidden(true)
-            ->setTrimmable(false)
-            ->setNormalizer(static fn (mixed $answer): mixed => \is_string($answer) ? rtrim($answer, "\r\n") : $answer)
-        ;
     }
 
     private static function refuse(SymfonyStyle $io, string $reason): int

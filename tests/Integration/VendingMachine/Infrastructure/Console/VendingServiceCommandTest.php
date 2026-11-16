@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
+use App\Maintenance\Application\Command\CreateTechnician\CreateTechnicianCommand;
 use App\Shared\Application\Bus\Command as BusCommand;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -159,6 +160,20 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::assertStringNotContainsString('Username', $tester->getDisplay(true));
         self::assertStringNotContainsString('Units of', $tester->getDisplay(true));
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testKeepsTheSpacesAroundAnAskedPassword(): void
+    {
+        self::getContainer()->get(CommandBus::class)->dispatch(
+            new CreateTechnicianCommand('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a62', 'bob.tech', 'bob.tech@example.com', '  spaced-horse  '),
+        );
+        $tester = self::tester();
+        $tester->setInputs(['bob.tech', '  spaced-horse  ']);
+
+        $exitCode = $tester->execute(['--units' => ['WATER:2', 'JUICE:2', 'SODA:2'], '--coins' => ['0.05:1', '0.10:1', '0.25:1', '1:0']]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStatus(['WATER' => 2, 'JUICE' => 2, 'SODA' => 2], [5 => 1, 10 => 1, 25 => 1, 100 => 0]);
     }
 
     public function testAsksTheCredentialsTheOptionsLeaveOutWithThePasswordHidden(): void

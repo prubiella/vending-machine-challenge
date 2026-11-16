@@ -8,6 +8,7 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Application\Security\TechnicianAuthenticator;
 use App\Shared\Domain\DomainException;
+use App\Shared\Infrastructure\Console\PasswordQuestion;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
@@ -116,7 +117,7 @@ final readonly class MachineServicer
     {
         try {
             $username ??= self::nullIfBlank($io->ask('Username'));
-            $password ??= self::nullIfBlank($io->askHidden('Password'));
+            $password ??= self::nullIfBlank($io->askQuestion(PasswordQuestion::hidden('Password')));
         } catch (MissingInputException) {
             $input->setInteractive(false);
         }
