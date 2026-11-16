@@ -308,11 +308,8 @@ and empties the outbox ([ADR 20](docs/adr/0020-domain-events-and-outbox.md)); `m
 shows each pass that relayed something, and `make relay` makes one pass by hand. On a first run it
 restarts until the dependencies are installed and the databases migrated.
 
-MySQL holds the technicians, the migrations table, `machine_history`, and the `vending_machine` and
-`vending_machine_outbox` tables of `DbalVendingMachineRepository`, a second adapter that passes the
-same contract test and stays empty while the machine lives in MongoDB. Switching the machine to it
-means pointing the aliases of `VendingMachineRepository`, `StoredMachineResetter` and
-`MachineOutbox` in `config/services.yaml` at it.
+MySQL holds the technicians, the migrations table and `machine_history`; the machine and its outbox
+live only in MongoDB ([ADR 21](docs/adr/0021-machine-lives-only-in-mongodb.md)).
 [Design, section 6](docs/design.md#6-persistence) has the rest.
 
 ## Logs

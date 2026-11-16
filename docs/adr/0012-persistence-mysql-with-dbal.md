@@ -2,7 +2,7 @@
 
 ## Status
 
-Superseded by [ADR 16](0016-machine-stored-in-mongodb.md).
+Superseded by [ADR 16](0016-machine-stored-in-mongodb.md) and [ADR 21](0021-machine-lives-only-in-mongodb.md).
 
 ## Context
 

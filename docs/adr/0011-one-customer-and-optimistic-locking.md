@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted. Built and merged: the version in `DbalVendingMachineRepository` and
-`MongoVendingMachineRepository`, and `RetryOnConcurrentUpdateMiddleware`.
+Accepted. Built and merged: the version in `MongoVendingMachineRepository`
+(and in the DBAL adapter that [ADR 21](0021-machine-lives-only-in-mongodb.md) later removed), and `RetryOnConcurrentUpdateMiddleware`.
 
 ## Context
 

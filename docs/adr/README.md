@@ -16,15 +16,16 @@ alternatives considered. All are accepted and built, except where a record says 
 9. [The ChangeMaker passed to select()](0009-change-maker-as-an-argument.md): the aggregate holds data, not services.
 10. [SERVICE sets the counts and returns pending credit first](0010-service-sets-stock-and-returns-credit.md): set, not add.
 11. [One customer per machine, optimistic locking](0011-one-customer-and-optimistic-locking.md): a version kept by the repository and checked on save, the command retried.
-12. [Persistence: MySQL through DBAL](0012-persistence-mysql-with-dbal.md): a hand-written mapper and JSON columns, MongoDB parked. Superseded by 16.
+12. [Persistence: MySQL through DBAL](0012-persistence-mysql-with-dbal.md): a hand-written mapper and JSON columns, MongoDB parked. Superseded by 16 and 21.
 13. [Console behaviour](0013-console-behaviour.md): refusals never stop the machine, exit code 0, strict coin notation.
 14. [Logging](0014-logging.md): a command bus middleware and decorators in Infrastructure, business facts as events later.
 15. [HTTPS with Traefik](0015-https-with-traefik.md): TLS terminated at Traefik, re-encrypted to nginx with a local CA.
-16. [The machine stored in MongoDB](0016-machine-stored-in-mongodb.md): one document with a version, the same mapper, the DBAL adapter kept, the outbox planned.
+16. [The machine stored in MongoDB](0016-machine-stored-in-mongodb.md): one document with a version, the same mapper, the outbox planned. The DBAL adapter it kept is removed by 21.
 17. [UUID identities](0017-uuid-identities.md): UUID v7, a shared `Uuid` base, generation behind a port, the single machine's id from configuration.
 18. [Technician authentication](0018-technician-authentication.md): a `Maintenance` context, one credentials query for the console and HTTP, stateless RS256 tokens, nothing secret in the logs.
 19. [Machine capacities and the cash box](0019-machine-capacities.md): 200 units a slot and 500 coins a tube bound a service; a sale sends what does not fit to a cash box.
 20. [Domain events and the outbox](0020-domain-events-and-outbox.md): events recorded by the aggregate, saved in the machine's document, relayed at least once to an idempotent history.
+21. [The machine lives only in MongoDB](0021-machine-lives-only-in-mongodb.md): one store per aggregate, the DBAL adapter and its tables removed, the port kept swappable by its contract test.
 
 A new record takes the next number and is never renumbered. A decision that changes gets a new
 record that supersedes the old one, and the old status becomes "Superseded by N".

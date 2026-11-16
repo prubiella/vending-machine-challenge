@@ -36,8 +36,8 @@ the domain to one database.
   `config/services.yaml`, overridden in `.env`) names it: `DefaultVendingMachineFactory` installs the
   default machine with that id, and the adapters load the machine stored under it.
 - **Storage.** The MongoDB document's `_id` is the UUID string. The MySQL `vending_machine.id`
-  column becomes `CHAR(36)` through a migration that deletes the rows stored so far, so the next
-  load gives the default machine. `vending:reset` also deletes the MongoDB document stored under the
+  column became `CHAR(36)` through a migration that deleted the rows stored so far, so the next
+  load gave the default machine; the table was later dropped ([ADR 21](0021-machine-lives-only-in-mongodb.md)). `vending:reset` also deletes the MongoDB document stored under the
   old `_id: 1`.
 
 ## Consequences
