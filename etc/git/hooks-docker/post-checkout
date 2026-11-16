@@ -1,5 +1,13 @@
 #!/bin/bash -e
 
+# A new git worktree starts without the git-ignored .env, and a Flex recipe run there would write
+# its own one that hides .env.dist. A worktree holds no secrets, so it starts from .env.dist; the
+# main checkout's .env is never touched.
+if [[ "$3" == 1 && ! -f .env && "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]]; then
+  cp .env.dist .env
+  echo "New git worktree: created .env from .env.dist."
+fi
+
 # vendor/ is git-ignored, so a new git worktree starts without it. A file checkout ($3 = 0) or a
 # checkout that already has it stays instant.
 [[ "$3" == 1 && ! -f vendor/autoload.php ]] || exit 0
