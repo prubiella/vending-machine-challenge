@@ -70,8 +70,9 @@ final readonly class MachineServicer
         $status = $this->machineStatus();
         self::rejectUnknownSelectors($status, $givenUnits);
 
-        $technicianId = $this->technicianLogin->technicianId($input, $io, $username, $password);
-        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
+        try {
+            $technicianId = $this->technicianLogin->logIn($input, $io, $username, $password);
+        } catch (InputEndedException) {
             return self::refuseInputEnded($io);
         }
         if (null === $technicianId) {
@@ -84,17 +85,7 @@ final readonly class MachineServicer
             self::coinStockByCents($io, $status, $givenCoins),
         );
 
-        return self::inputEndedWhileAsking($startedInteractive, $input) ? self::refuseInputEnded($io) : $service;
-    }
-
-    // When the input runs out, the question helper turns it non-interactive and answers every
-    // question left with its default, so those answers are not the technician's.
-    /**
-     * @phpstan-impure
-     */
-    private static function inputEndedWhileAsking(bool $startedInteractive, InputInterface $input): bool
-    {
-        return $startedInteractive && !$input->isInteractive();
+        return InputEnd::reachedSince($startedInteractive, $input) ? self::refuseInputEnded($io) : $service;
     }
 
     private static function refuseInputEnded(SymfonyStyle $io): null

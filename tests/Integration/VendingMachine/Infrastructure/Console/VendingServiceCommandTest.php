@@ -21,6 +21,9 @@ use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
+use Monolog\Handler\TestHandler;
+use Monolog\LogRecord;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -214,6 +217,48 @@ final class VendingServiceCommandTest extends KernelTestCase
         $service = $recordingBus->dispatched[0] ?? null;
         self::assertInstanceOf(ServiceMachineCommand::class, $service);
         self::assertSame(self::TECHNICIAN_ID, $service->technicianId);
+    }
+
+    public function testTheTechnicianIdReachesTheCommandBusLog(): void
+    {
+        $logs = new TestHandler();
+        $tester = self::tester();
+        self::getContainer()->get(LoggerInterface::class)->pushHandler($logs);
+
+        $tester->execute(self::CREDENTIALS, ['interactive' => false]);
+
+        $serviced = array_filter($logs->getRecords(), static fn (LogRecord $record): bool => 'Command ServiceMachineCommand handled.' === $record->message);
+        self::assertCount(1, $serviced);
+        $data = array_values($serviced)[0]->context['data'] ?? null;
+        self::assertIsArray($data);
+        self::assertSame(self::TECHNICIAN_ID, $data['technicianId'] ?? null);
+    }
+
+    public function testAsksTheUsernameWhenOnlyThePasswordIsGiven(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs([self::TECHNICIAN_USERNAME]);
+
+        $exitCode = $tester->execute(['--password' => self::TECHNICIAN_PASSWORD, '--units' => ['WATER:2', 'JUICE:2', 'SODA:2'], '--coins' => ['0.05:1', '0.10:1', '0.25:1', '1:0']]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStringContainsString('Username', $tester->getDisplay(true));
+        self::assertStringNotContainsString('Password', $tester->getDisplay(true));
+        self::assertStatus(['WATER' => 2, 'JUICE' => 2, 'SODA' => 2], [5 => 1, 10 => 1, 25 => 1, 100 => 0]);
+    }
+
+    public function testAnEmptyPasswordOptionIsAWrongPasswordNotAMissingOne(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(
+            ['--username' => self::TECHNICIAN_USERNAME, '--password' => '', '--units' => ['WATER:2']],
+            ['interactive' => false, 'capture_stderr_separately' => true],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("Wrong username or password. The machine was not serviced.\n", $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
     public function testRefusesAWrongPasswordAndLeavesTheMachineUnserviced(): void

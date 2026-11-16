@@ -4,7 +4,8 @@
 
 Accepted. Built: `Uuid`, `MachineId`, `UuidGenerator` and `SymfonyUuidGenerator`, and the machine
 stored under its UUID by both adapters. `TechnicianId` extends `Uuid` too, and
-`vending:technician:create` takes the new technician's id from `UuidGenerator`. Changes the stored `_id: 1` of [ADR 16](0016-machine-stored-in-mongodb.md).
+`vending:technician:create` takes the new technician's id from `UuidGenerator`. Changes the stored
+`_id: 1` of [ADR 16](0016-machine-stored-in-mongodb.md).
 
 ## Context
 

@@ -10,9 +10,15 @@ use App\Shared\Application\Uuid\UuidGenerator;
 final readonly class FixedUuidGenerator implements UuidGenerator
 {
     public const string ID = '0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a6f';
+    public const string OTHER_ID = '0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a70';
+
+    public function __construct(
+        private string $id = self::ID,
+    ) {
+    }
 
     public function generate(): string
     {
-        return self::ID;
+        return $this->id;
     }
 }
