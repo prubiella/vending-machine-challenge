@@ -1,8 +1,7 @@
 # Architecture decision records
 
 One short record per decision: context, the decision, its consequences (trade-offs included) and the
-alternatives considered. All are accepted; the ones marked "in progress" are decided and being
-built.
+alternatives considered. All are accepted and built.
 
 1. [Bounded contexts first, a small Shared kernel](0001-bounded-contexts-and-shared-kernel.md): `src/<Context>/<Layer>/`, `Money` shared, `Coin` in the context, deptrac enforcing it.
 2. [Money as integer cents](0002-money-as-integer-cents.md): no floats anywhere in the domain.
