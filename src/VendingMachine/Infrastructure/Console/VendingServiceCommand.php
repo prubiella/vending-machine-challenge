@@ -89,16 +89,26 @@ final readonly class VendingServiceCommand
     {
         $countsByKey = [];
         foreach ($pairs as $pair) {
-            [$key, $count] = explode(self::PAIR_SEPARATOR, $pair, 2) + [1 => ''];
-            if ('' === $key || !ctype_digit($count)) {
+            [$key, $rawCount] = self::splitPair($pair);
+            if ('' === $key || !ctype_digit($rawCount)) {
                 throw new InvalidOptionException(\sprintf('Give --%s as KEY:COUNT, such as WATER:5 or 0.25:10, got "%s".', $option, $pair));
             }
             if (\array_key_exists($key, $countsByKey)) {
                 throw new InvalidOptionException(\sprintf('Give --%s once for each key, got %s twice.', $option, $key));
             }
-            $countsByKey[$key] = (int) $count;
+            $countsByKey[$key] = (int) $rawCount;
         }
 
         return $countsByKey;
+    }
+
+    /**
+     * @return array{string, string} the key and the raw count, which is empty without a separator
+     */
+    private static function splitPair(string $pair): array
+    {
+        $parts = explode(self::PAIR_SEPARATOR, $pair, 2);
+
+        return [$parts[0], $parts[1] ?? ''];
     }
 }
