@@ -37,6 +37,13 @@ final class LoggingChangeMakerTest extends TestCase
         ]], $this->records());
     }
 
+    public function testGivesTheCoinsOfTheChangeMakerItDecorates(): void
+    {
+        self::assertTrue($this->changeMaker()->gives(Coin::TenCents));
+        self::assertFalse($this->changeMaker()->gives(Coin::OneHundredCents));
+        self::assertSame([], $this->records());
+    }
+
     public function testLogsAMissingExactChangeAtNoticeAndRethrowsIt(): void
     {
         try {

@@ -126,6 +126,39 @@ final class WalletTest extends TestCase
         self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::FiveCents)));
     }
 
+    public function testEveryCoinTheChangeMakerNeverGivesGoesToTheCashBox(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::empty())->insert(Coin::TenCents)->insert(Coin::TwentyFiveCents)->insert(Coin::OneHundredCents);
+        $changeMaker = new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents);
+
+        $payout = $wallet->charge(Money::fromCents(135), $changeMaker);
+
+        self::assertTrue($payout->coins()->isEmpty());
+        self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::TenCents)));
+        self::assertTrue($payout->wallet()->cashBox()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::OneHundredCents)));
+    }
+
+    public function testACoinTheChangeMakerGivesFillsItsTubeEvenWhenItIsTheOne(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::empty())->insert(Coin::OneHundredCents);
+        $changeMaker = new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents, Coin::OneHundredCents);
+
+        $payout = $wallet->charge(Money::fromCents(100), $changeMaker);
+
+        self::assertTrue($payout->wallet()->stock()->equals(CoinCollection::of(Coin::OneHundredCents)));
+        self::assertTrue($payout->wallet()->cashBox()->isEmpty());
+    }
+
+    public function testCoinsThatOverflowedTheirTubeCannotGiveChange(): void
+    {
+        $wallet = Wallet::stocked(CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY]))
+            ->insert(Coin::TwentyFiveCents)->insert(Coin::TwentyFiveCents);
+
+        $this->expectException(NoExactChangeException::class);
+
+        $wallet->charge(Money::fromCents(10), self::changeMaker());
+    }
+
     public function testChargingAddsToTheCoinsAlreadyInTheCashBox(): void
     {
         $cashBox = CoinCollection::of(Coin::OneHundredCents);
@@ -200,6 +233,7 @@ final class WalletTest extends TestCase
         yield 'change from the coins just inserted' => [[], [Coin::TwentyFiveCents, Coin::TenCents, Coin::TenCents], 35];
         yield 'an inserted 1' => [[Coin::TwentyFiveCents, Coin::TenCents, Coin::FiveCents], [Coin::OneHundredCents], 65];
         yield '1 coins already in the stock' => [[Coin::OneHundredCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TenCents], [Coin::OneHundredCents], 50];
+        yield 'a full tube' => [[...array_fill(0, Wallet::TUBE_CAPACITY, Coin::TwentyFiveCents), Coin::TenCents], [Coin::TwentyFiveCents, Coin::TwentyFiveCents, Coin::TenCents], 40];
         yield 'a large stock' => [
             [...array_fill(0, 10, Coin::FiveCents), ...array_fill(0, 10, Coin::TenCents), ...array_fill(0, 10, Coin::TwentyFiveCents)],
             [Coin::OneHundredCents, Coin::OneHundredCents],
