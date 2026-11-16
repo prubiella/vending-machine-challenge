@@ -287,6 +287,22 @@ curl https://vending-machine.test/machine/status -H "Authorization: Bearer $toke
 # {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
 ```
 
+From a shell, `vending:technician:token` gives the same token without the login request: it checks
+the credentials with the same query, makes the token with the same `TechnicianTokenIssuer` as
+`POST /auth/login`, and prints the token alone on stdout. It asks what `--username` and
+`--password` leave out, the password hidden, on stderr; a wrong or missing credential goes to stderr
+with exit code 1.
+
+```bash
+token=$(make run -- vending:technician:token --username ana)
+# Password:
+curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
+```
+
+`-n --username ana --password ...` works without a prompt, for a script, but a password given as an
+option stays in the shell history (and in `ps` while the command runs): prefer the prompt. The
+console's own log of the command shows `--password=***`.
+
 The login checks the credentials with the same query as the console, `AuthenticateTechnicianQuery`,
 and the token (lexik/jwt-authentication-bundle, RS256) carries the technician's id in its `sub`
 claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its technician: the
@@ -337,7 +353,9 @@ each with a `Masking` rule: `Hide` logs a secret such as a password or a token a
 `KeepFirstThree` logs personal data such as a technician's username with its first three characters
 and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
 hidden whole. A rule for a field that is not a public property of the command stops its dispatch
-with a `LogicException`, so a misspelt or renamed field is never logged in clear. Each retry after
+with a `LogicException`, so a misspelt or renamed field is never logged in clear. Symfony logs a
+console command with its input when it fails and when it exits, and `PasswordOptionMaskingProcessor`
+logs a `--password` option there as `***`. Each retry after
 a concurrent update is logged
 at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at

@@ -45,7 +45,9 @@ to run it.
   `Shared/Infrastructure` holds the Messenger implementations of the bus ports
   (`MessengerCommandBus`, `MessengerQueryBus`), `SymfonyUuidGenerator`,
   `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener`, `JwtFailureListener`
-  (a missing, invalid or expired token answered in the same JSON) and the health check
+  (a missing, invalid or expired token answered in the same JSON), `PasswordOptionMaskingProcessor`
+  (a console `--password` logged as `***`), `PasswordQuestion` (a password prompt that never trims)
+  and the health check
   (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
