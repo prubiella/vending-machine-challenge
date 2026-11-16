@@ -63,7 +63,7 @@ Every context has the same three layers:
   `src/*/Application/Query/**/*QueryHandler.php` on `query.bus`), so keep the suffixes and do not
   use `#[AsMessageHandler]`.
 - `Infrastructure`: Symfony glue, controllers, console commands, persistence adapters. The only
-  layer that may use the framework (Symfony, Doctrine, PSR). Depends on its own Domain and
+  layer that may use the framework (Symfony, Doctrine, PSR, MongoDB). Depends on its own Domain and
   Application and on all of `Shared`.
 
 deptrac allows each context only its own layers and `Shared`, so no context uses another

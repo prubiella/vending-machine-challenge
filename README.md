@@ -104,8 +104,7 @@ The machine's store is the alias of `VendingMachineRepository` and `StoredMachin
 `config/services.yaml`. Pointing both at `DbalVendingMachineRepository` stores it in the MySQL
 table `vending_machine` instead; both adapters pass the same contract test.
 
-`make start` builds the PHP image with the `mongodb` extension, installed through PECL like
-Xdebug, so the first start after pulling this change takes a few minutes longer.
+The PHP image carries the `mongodb` extension, installed through PECL like Xdebug.
 
 ## Using the machine from the console
 
@@ -417,7 +416,7 @@ deptrac checks the rules between layers and contexts:
 
 - Domain depends only on `Shared/Domain`.
 - Application depends only on its own Domain, `Shared/Domain` and `Shared/Application`.
-- Only Infrastructure uses the framework (Symfony, Doctrine, PSR).
+- Only Infrastructure uses the framework (Symfony, Doctrine, PSR, MongoDB).
 - Every context may use `Shared`; `Shared` uses no context; a context never uses another
   context's Domain.
 - Every class in `src/` belongs to a layer, and every dependency points to a layer: a class of an
@@ -428,9 +427,9 @@ Commands and queries go through two synchronous Messenger buses, behind the `Com
 registered on `command.bus` and `query.bus` by their `CommandHandler` and `QueryHandler` suffixes
 in `config/services.yaml`, so the Application layer needs no framework attributes.
 
-The machine is saved with optimistic locking: its row has a version, and a save that finds another
-version than the one it loaded fails with a `ConcurrentUpdateException`. The command bus then runs
-the command again on the fresh machine, up to three more times, before it gives up.
+The machine is saved with optimistic locking: its stored document has a version, and a save that
+finds another version than the one it loaded fails with a `ConcurrentUpdateException`. The command
+bus then runs the command again on the fresh machine, up to three more times, before it gives up.
 
 ### Adding a bounded context
 
