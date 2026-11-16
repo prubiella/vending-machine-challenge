@@ -28,7 +28,7 @@ final readonly class ServiceForm
      */
     public function service(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): bool
     {
-        $service = $this->fill($input, $io, $givenUnits, $givenCoins);
+        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins);
         if (null === $service) {
             return false;
         }
@@ -48,7 +48,7 @@ final readonly class ServiceForm
      * @param array<string, int> $givenUnits
      * @param array<int, int>    $givenCoins
      */
-    private function fill(InputInterface $input, SymfonyStyle $io, array $givenUnits, array $givenCoins): ?ServiceMachineCommand
+    private function askForCompleteService(InputInterface $input, SymfonyStyle $io, array $givenUnits, array $givenCoins): ?ServiceMachineCommand
     {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
@@ -59,15 +59,20 @@ final readonly class ServiceForm
             self::coinStockByCents($io, $status, $givenCoins),
         );
 
-        // When the input runs out, the question helper turns it non-interactive and answers every
-        // question left with its default, so those answers are not the technician's.
-        if ($startedInteractive && !$input->isInteractive()) {
+        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
             $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
 
             return null;
         }
 
         return $service;
+    }
+
+    // When the input runs out, the question helper turns it non-interactive and answers every
+    // question left with its default, so those answers are not the technician's.
+    private static function inputEndedWhileAsking(bool $startedInteractive, InputInterface $input): bool
+    {
+        return $startedInteractive && !$input->isInteractive();
     }
 
     /**
