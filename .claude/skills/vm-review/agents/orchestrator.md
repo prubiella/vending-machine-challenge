@@ -209,7 +209,7 @@ make awkward folder names):
   read as a style remark. Merge every lens's Declined and Checks lists, and put the Decisions in their own section, since
   they are questions for the developer and must not sit among the behaviour that was set aside.
   That section holds the three decisions kept in step 5, ranked, and ends with one line saying how
-  many others were left out (`<n> other decisions left out.`), or none when there are no more. Strengths: at most four,
+  many others were left out (`<n> other decisions left out.`, with `0` when there are no more). Strengths: at most four,
   only ones the reviewers reported.
 - `handoff.md`, following `<Skill dir>/assets/handoff-template.md`: every remaining Critical and
   Important finding in the recommended order, then the Minor ones. Name the head by its kind
