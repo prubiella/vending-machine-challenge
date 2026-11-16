@@ -37,7 +37,7 @@ services:
             $products: '%vending_machine.default_products%'
             $coinStockByCents: '%vending_machine.default_coin_stock%'
 
-    App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository'
+    App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository'
 
     App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
         arguments:

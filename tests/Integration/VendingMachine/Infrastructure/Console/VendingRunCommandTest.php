@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\QueryBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
@@ -17,6 +18,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class VendingRunCommandTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     /**
      * @return iterable<string, array{string, string}>
      */

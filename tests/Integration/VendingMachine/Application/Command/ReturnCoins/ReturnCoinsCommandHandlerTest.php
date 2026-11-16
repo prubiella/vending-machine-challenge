@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\VendingMachine\Application\Command\ReturnCoins;
 
 use App\Shared\Application\Bus\CommandBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Domain\Coin\Coin;
@@ -14,6 +15,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class ReturnCoinsCommandHandlerTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     public function testReturningTheCoinsThroughTheBusDropsTheCreditInTheTray(): void
     {
         $container = self::getContainer();

@@ -6,6 +6,7 @@ namespace App\Tests\Integration\VendingMachine\Application\Query\GetTrayContents
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
@@ -14,6 +15,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class GetTrayContentsQueryHandlerTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     public function testTheBusAnswersWithWhatTheTrayHolds(): void
     {
         $container = self::getContainer();
