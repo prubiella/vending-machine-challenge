@@ -216,9 +216,8 @@ file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 
 The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
 that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
-answers above. The functional tests play the statement's three examples through the API, each from
-the default machine
-(`tests/Integration/VendingMachine/Infrastructure/Controller/StatementExamplesTest.php`).
+answers above. The Behat scenarios in `features/customer/` play the statement's examples through
+the API, each from the default machine (`make behat`).
 
 Each request reaches a controller through Traefik and nginx (see
 [How a request travels](#how-a-request-travels)). The controller sends a command or a query to its
