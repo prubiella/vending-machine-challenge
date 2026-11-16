@@ -50,3 +50,8 @@ services:
             - !php/enum App\VendingMachine\Domain\Coin\Coin::TwentyFiveCents
 
     App\VendingMachine\Domain\Change\ChangeMaker: '@App\VendingMachine\Domain\Change\FewestCoinsChangeMaker'
+
+    App\VendingMachine\Infrastructure\Change\LoggingChangeMaker:
+        decorates: App\VendingMachine\Domain\Change\ChangeMaker
+        arguments:
+            $changeMaker: '@.inner'

@@ -52,7 +52,8 @@ Every context has the same three layers:
 
 - `Domain`: entities, aggregates, value objects, domain services, repository interfaces and
   domain exceptions. Plain PHP: no Symfony, no Doctrine, no attributes. Depends only on
-  `Shared/Domain`.
+  `Shared/Domain`. To log what a domain service does, decorate it in Infrastructure, as
+  `LoggingChangeMaker` decorates `ChangeMaker` in `config/services.yaml`.
 - `Application`: one folder per use case. `Command/<UseCase>/<UseCase>Command` plus its
   `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on its
   own Domain, `Shared/Domain` and `Shared/Application`. Handlers are registered on their bus by
