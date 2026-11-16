@@ -416,9 +416,9 @@ downloads the driver the first time):
 | Database | `app`, and `app_test` for the tests | `app`, and `app_test` for the tests |
 
 MongoDB holds the machine, as the document of `vending_machines` whose `_id` is
-`VENDING_MACHINE_ID`. MySQL holds the
-migrations table and the `vending_machine` table of the DBAL adapter, empty while the machine lives
-in MongoDB. The same settings work in any other client (DBeaver, MongoDB
+`VENDING_MACHINE_ID`. MySQL holds the migrations table, the `technicians` table and the
+`vending_machine` table of the DBAL adapter, empty while the machine lives in MongoDB. The same
+settings work in any other client (DBeaver, MongoDB
 Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a
 shell inside the containers without installing anything.
 
