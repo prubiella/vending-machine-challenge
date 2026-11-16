@@ -11,6 +11,7 @@ use App\VendingMachine\Domain\VendingMachineRepository;
 use App\VendingMachine\Infrastructure\Outbox\MachineOutbox;
 use App\VendingMachine\Infrastructure\Outbox\OutboxEventFactory;
 use App\VendingMachine\Infrastructure\Outbox\OutboxEventMapper;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
@@ -82,6 +83,18 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
         );
 
         return array_map($this->outboxEventMapper->fromRow(...), $rows);
+    }
+
+    public function remove(array $ids): void
+    {
+        if ([] === $ids) {
+            return;
+        }
+        $this->connection->executeStatement(
+            'DELETE FROM vending_machine_outbox WHERE id IN (?)',
+            [$ids],
+            [ArrayParameterType::STRING],
+        );
     }
 
     public function reset(): void

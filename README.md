@@ -270,10 +270,16 @@ make mongo-shell
 db.vending_machines.findOne()
 ```
 
-MySQL holds the technicians and the migrations table, and the `vending_machine` table of
-`DbalVendingMachineRepository`, a second adapter that passes the same contract test and stays empty
-while the machine lives in MongoDB. Switching the machine to it means pointing the aliases of
-`VendingMachineRepository` and `StoredMachineResetter` in `config/services.yaml` at it.
+The document also holds the `outbox`: the events of what happened to the machine (a sale, the credit
+returned, a service) waiting to be copied to MySQL. `make run -- vending:outbox:relay` copies them
+to the `machine_history` table and empties the outbox
+([ADR 20](docs/adr/0020-domain-events-and-outbox.md)).
+
+MySQL holds the technicians, the migrations table, `machine_history`, and the `vending_machine` and
+`vending_machine_outbox` tables of `DbalVendingMachineRepository`, a second adapter that passes the
+same contract test and stays empty while the machine lives in MongoDB. Switching the machine to it
+means pointing the aliases of `VendingMachineRepository`, `StoredMachineResetter` and
+`MachineOutbox` in `config/services.yaml` at it.
 [Design, section 6](docs/design.md#6-persistence) has the rest.
 
 ## Logs

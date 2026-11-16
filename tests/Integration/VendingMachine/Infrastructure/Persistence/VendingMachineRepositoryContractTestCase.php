@@ -236,6 +236,38 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         self::assertSame([], $repository->pending());
     }
 
+    public function testRemovesTheRelayedEventsAndKeepsTheOthers(): void
+    {
+        $repository = static::repository();
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+        $machine->insertCoin(Coin::FiveCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+        [$relayed, $left] = $repository->pending();
+
+        $repository->remove([$relayed->id]);
+
+        self::assertEquals([$left], $repository->pending());
+    }
+
+    public function testRemovingEventsDoesNotCountAsAChangeOfTheMachine(): void
+    {
+        $repository = static::repository();
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+        $repository->save($machine);
+        $reloaded = $repository->get();
+
+        $repository->remove(array_map(static fn (OutboxEvent $event): string => $event->id, $repository->pending()));
+        $reloaded->insertCoin(Coin::FiveCents);
+        $repository->save($reloaded);
+
+        self::assertSame(5, $repository->get()->wallet()->credit()->total()->cents());
+    }
+
     private static function changeMaker(): FewestCoinsChangeMaker
     {
         return new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents, Coin::TwentyFiveCents);

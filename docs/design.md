@@ -304,8 +304,9 @@ sequenceDiagram
     Handler->>Repo: get()
     Repo-->>Handler: machine (credit 100)
     Handler->>Machine: select(WATER, changeMaker)
-    Note over Machine: dispense, charge 65, change 25 + 10, new tray, then replace the parts
+    Note over Machine: dispense, charge 65, change 25 + 10, new tray, then replace the parts, record ProductSold
     Handler->>Repo: save(machine)
+    Note over Repo: the state and ProductSold in one write, the event in the outbox
     API-->>Customer: 204
     Customer->>API: GET /machine/tray
     API-->>Customer: 200 {"selectors":["WATER"],"coins":[25,10]}
@@ -408,6 +409,30 @@ sequenceDiagram
 The second purchase decides again on the fresh state, so two requests on the same credit cannot
 vend twice: the second fails on credit. When the retries run out, the request answers `409`.
 
+### The relay to the history
+
+The events wait in the machine's outbox until `vending:outbox:relay` copies them to the
+`machine_history` table of MySQL ([ADR 20](adr/0020-domain-events-and-outbox.md)). It writes the
+history first and empties the outbox after, so a crash in between relays the same events again; the
+history is keyed by the event's id and keeps each once.
+
+```mermaid
+sequenceDiagram
+    participant Relay as vending:outbox:relay
+    participant Outbox as MachineOutbox (MongoDB)
+    participant History as machine_history (MySQL)
+    Relay->>Outbox: pending()
+    Outbox-->>Relay: events, oldest first
+    loop each event
+        Relay->>History: INSERT, ON DUPLICATE KEY keep the row
+    end
+    Relay->>Outbox: remove(ids): $pull the relayed ids
+    Note over Relay,Outbox: a crash before remove() relays them again, and the history ignores them
+```
+
+`remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
+the pass stay for the next one, and a save of the machine never conflicts with the relay.
+
 ## 6. Persistence
 
 The machine is one MongoDB document of the `vending_machines` collection
@@ -438,9 +463,9 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
   machine as a row of the MySQL table `vending_machine`, with JSON columns
   ([ADR 12](adr/0012-persistence-mysql-with-dbal.md), superseded by ADR 16 as the default). Both
   adapters pass `VendingMachineRepositoryContractTestCase`, so the port, not an engine, defines the
-  behaviour. Swapping them is changing two aliases in `config/services.yaml`.
-- **MySQL** holds the technicians, the migrations table and the DBAL adapter's table, and is
-  meant for the sales history later.
+  behaviour. Swapping them is changing three aliases in `config/services.yaml`.
+- **MySQL** holds the technicians, the migrations table, the DBAL adapter's tables and
+  `machine_history`, where reports such as sales per product and day are a plain `GROUP BY`.
 
 ## 7. Security
 
@@ -470,9 +495,9 @@ fix it. The key pair is created by `make jwt-keys` and ignored by git. A token s
 hour after its technician is removed: nothing is looked up per request.
 
 **Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id,
-and the machine records it in a `MachineServiced` event. The command bus logs every command with
-its data too, and that log stays the audit trail until the outbox saves the events
-([ADR 20](adr/0020-domain-events-and-outbox.md)).
+and the machine records it in a `MachineServiced` event, which the outbox saves with the machine
+and the relay copies to `machine_history` ([ADR 20](adr/0020-domain-events-and-outbox.md)): the
+history is the audit trail of who serviced the machine. The command bus log still records it too.
 
 **Masking.** A command that carries a secret or personal data implements `SensitiveCommand` and
 maps each such field to a `Masking` rule (`Hide` logs `***`, `KeepFirstThree` logs `pau***`):
@@ -580,12 +605,10 @@ Trade-offs worth saying out loud:
 
 ## 11. Future work
 
-- **Domain events and a sales history.** The aggregate would record events (a sale, the change
-  given, a service) in an embedded outbox in the same MongoDB document, so the machine and its
-  events are one atomic write. A publisher would feed a history in MySQL, where reports such as
-  sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
-  `MachineServiced` event with the technician's id would replace the command bus log as the record
-  of who serviced the machine.
+- **A broker between the outbox and its consumers.** The relay would publish to a Messenger
+  transport, and the history and the low stock alert would become consumers with their own retries
+  ([ADR 20](adr/0020-domain-events-and-outbox.md)). Reports over `machine_history` (sales per
+  product and day) and an endpoint to read it come with them.
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since

@@ -14,4 +14,12 @@ interface MachineOutbox
      * @return list<OutboxEvent> oldest first
      */
     public function pending(): array;
+
+    /**
+     * Forgets the events already relayed. It does not count as a change of the machine, so it
+     * never makes a save of the machine conflict.
+     *
+     * @param list<string> $ids
+     */
+    public function remove(array $ids): void;
 }
