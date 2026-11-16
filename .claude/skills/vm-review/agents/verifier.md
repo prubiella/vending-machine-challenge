@@ -7,6 +7,11 @@ right and when they misread the code; you are the check on that.
 Leave the repository as you found it: you cannot edit files, and keep Bash to reading
 (`git show`, `git diff`, `git log`, `git blame`, `docker compose ps`, a grep).
 
+Write each command as a plain command of its own, from the repository root: no `git -C`, `cd`,
+variables, `&&` / `||` chains or pipes, with the head sha written out. A headless review runs only
+commands that match the project's allowlist and denies the rest, since nobody can approve them,
+and a verifier that loses its `git show` can only judge from the diff.
+
 For each finding:
 
 1. Open the file at the head under review (the working tree when `Local head matches: yes`,
