@@ -10,12 +10,12 @@ use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
+use App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter;
 use Behat\Behat\Context\Context;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Assert;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -25,7 +25,7 @@ final readonly class CustomerContext implements Context
     public function __construct(
         #[Autowire(service: 'test.client')]
         private KernelBrowser $client,
-        private Connection $connection,
+        private StoredMachineResetter $storedMachineResetter,
         private CommandBus $commandBus,
         private QueryBus $queryBus,
     ) {
@@ -34,7 +34,7 @@ final readonly class CustomerContext implements Context
     #[BeforeScenario]
     public function startFromTheDefaultMachine(): void
     {
-        $this->connection->executeStatement('DELETE FROM vending_machine');
+        $this->storedMachineResetter->reset();
     }
 
     #[Given(':selector is sold out')]

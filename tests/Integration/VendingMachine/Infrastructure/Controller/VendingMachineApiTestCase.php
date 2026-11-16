@@ -16,7 +16,7 @@ abstract class VendingMachineApiTestCase extends WebTestCase
 
     protected function setUp(): void
     {
-        // StartsWithNoStoredMachine boots a kernel to empty the table, and createClient() boots its own.
+        // StartsWithNoStoredMachine boots a kernel to forget the stored machine, and createClient() boots its own.
         self::ensureKernelShutdown();
         $this->client = self::createClient();
     }

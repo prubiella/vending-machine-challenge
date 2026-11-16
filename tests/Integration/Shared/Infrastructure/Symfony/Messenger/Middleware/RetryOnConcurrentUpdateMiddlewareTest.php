@@ -21,6 +21,8 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
 
     public function testTheCommandBusRunsACommandAgainWhenAnotherSaveGotInFirst(): void
     {
+        // StartsWithNoStoredMachine used the repository, and a container cannot replace a service it already built.
+        self::ensureKernelShutdown();
         $container = self::getContainer();
         $stored = new DbalVendingMachineRepository(
             $container->get(Connection::class),

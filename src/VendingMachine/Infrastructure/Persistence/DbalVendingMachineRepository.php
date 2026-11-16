@@ -13,7 +13,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 /**
  * @phpstan-import-type MachineRow from VendingMachineMapper
  */
-final readonly class DbalVendingMachineRepository implements VendingMachineRepository
+final readonly class DbalVendingMachineRepository implements VendingMachineRepository, StoredMachineResetter
 {
     private const int MACHINE_ID = 1;
     private const int NOT_STORED = 0;

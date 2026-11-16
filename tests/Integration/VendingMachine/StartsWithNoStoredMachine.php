@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine;
 
-use Doctrine\DBAL\Connection;
+use App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter;
 use PHPUnit\Framework\Attributes\Before;
 
 /**
@@ -13,8 +13,8 @@ use PHPUnit\Framework\Attributes\Before;
 trait StartsWithNoStoredMachine
 {
     #[Before]
-    protected function deleteTheStoredMachine(): void
+    protected function forgetTheStoredMachine(): void
     {
-        self::getContainer()->get(Connection::class)->executeStatement('DELETE FROM vending_machine');
+        self::getContainer()->get(StoredMachineResetter::class)->reset();
     }
 }
