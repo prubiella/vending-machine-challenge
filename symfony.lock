@@ -38,6 +38,9 @@
             "migrations/.gitignore"
         ]
     },
+    "friends-of-behat/symfony-extension": {
+        "version": "v2.7.0"
+    },
     "friendsofphp/php-cs-fixer": {
         "version": "3.95",
         "recipe": {

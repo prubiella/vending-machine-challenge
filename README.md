@@ -1,5 +1,7 @@
 # Vending machine
 
+[![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
+
 A vending machine modelled in PHP: it accepts coins (0.05, 0.10, 0.25 and 1), sells products
 (Water 0.65, Juice 1.00, Soda 1.50), gives change, returns the inserted coins on request and lets
 a technician service it by setting the available change and the stock of each product.
@@ -219,9 +221,8 @@ file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 
 The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
 that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
-answers above. The functional tests play the statement's three examples through the API, each from
-the default machine
-(`tests/Integration/VendingMachine/Infrastructure/Controller/StatementExamplesTest.php`).
+answers above. The Behat scenarios in `features/customer/` play the statement's examples through
+the API, each from the default machine (`make behat`).
 
 Each request reaches a controller through Traefik and nginx (see
 [How a request travels](#how-a-request-travels)). The controller sends a command or a query to its
@@ -306,16 +307,26 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | Command | What it does |
 |---|---|
 | `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
+| `make behat` | The customer scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
 | `make coverage` | The tests with an HTML coverage report in `var/coverage` |
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
 | `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
 | `make cs-fixer` | Fixes the coding standard |
-| `make code-check` | The tests, PHPStan, deptrac and the coding standard in check mode (no coverage) |
+| `make cs-check` | Checks the coding standard without changing files |
+| `make lint-container` | Compiles the service container and checks that every service is wired |
+| `make code-check` | The tests, the scenarios, PHPStan, deptrac, the coding standard in check mode and the container lint (no coverage) |
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
+`master`, in the project's own PHP image on GitHub-hosted runners. One job builds the image into
+the Actions cache; then each static check, the unit tests, the integration tests and the scenarios
+run as parallel jobs that load it, so a failing check does not hide the others, and only the tests
+that need a database start one. It also runs the skill check and validates `composer.lock`. Branch
+protection requires the last job, `All checks passed`, which fails unless every other job passed.
 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
-configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
-the tests. The hooks join the containers' network when it exists, so the tests that use MySQL need
+configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac,
+the tests and the scenarios. The hooks join the containers' network when it exists, so the tests that use MySQL need
 the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
 skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
@@ -323,6 +334,14 @@ with the same refusal. `commit-msg` accepts
 [Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
 squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
 such as a new git worktree.
+
+### Scenarios
+
+`features/customer/` holds the customer's use cases as Gherkin scenarios that a non-developer can
+read, such as "When I insert 0.25 / And I select SODA / Then the tray holds SODA and no coins". The
+steps live in `tests/Behat/CustomerContext.php`. Each scenario starts from the default machine, and
+a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" services it first. The
+scenarios use the test database, so `make migrate` must have run.
 
 ## Debugging with PhpStorm
 

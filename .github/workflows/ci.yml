@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The PHP image is built once, by `build`, into the GitHub Actions cache; every other job loads it
+# from there. The checks run in parallel jobs, so one failing check does not hide the others, and
+# only the jobs that need a database start one. Branch protection requires `All checks passed`.
+jobs:
+  skills:
+    name: Skills
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Check the skills
+        run: .claude/scripts/skill-check.sh
+
+  build:
+    name: Build the PHP image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the PHP image into the cache
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: etc/infrastructure
+          file: etc/infrastructure/php.Dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  static:
+    name: ${{ matrix.check.name }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          - { name: Coding standard, run: make cs-check }
+          - { name: Container lint, run: make lint-container }
+          - { name: PHPStan, run: make phpstan }
+          - { name: Layer dependencies (deptrac), run: make deptrac }
+          - { name: Composer files, run: docker compose exec -T php-fpm composer validate --no-check-publish --no-check-all }
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start PHP
+        uses: ./.github/actions/start
+        with:
+          services: php-fpm
+          dependencies: --no-deps
+
+      - name: ${{ matrix.check.name }}
+        run: ${{ matrix.check.run }}
+
+  unit:
+    name: Unit tests
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start PHP
+        uses: ./.github/actions/start
+        with:
+          services: php-fpm
+          dependencies: --no-deps
+
+      - name: Unit tests
+        run: make test -- --testsuite unit
+
+  integration:
+    name: Integration tests
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start PHP and the databases
+        uses: ./.github/actions/start
+        with:
+          services: php-fpm mysql
+
+      - name: Migrate the databases
+        run: make migrate
+
+      - name: Integration tests
+        run: make test -- --testsuite integration
+
+      - name: Show the container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
+  behat:
+    name: Scenarios (Behat)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start PHP and the databases
+        uses: ./.github/actions/start
+        with:
+          services: php-fpm mysql
+
+      - name: Migrate the databases
+        run: make migrate
+
+      - name: Scenarios
+        run: make behat
+
+      - name: Show the container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
+  all-checks:
+    name: All checks passed
+    if: always()
+    needs: [skills, static, unit, integration, behat]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to pass
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: jq -e 'all(.[]; . == "success")' <<<"$RESULTS"
