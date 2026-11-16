@@ -1,5 +1,7 @@
 # Architecture decision records
 
+The [design document](../design.md) shows how these decisions fit together.
+
 One short record per decision: context, the decision, its consequences (trade-offs included) and the
 alternatives considered. All are accepted and built, except where a record says it was superseded.
 
