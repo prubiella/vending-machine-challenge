@@ -59,7 +59,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell mongo-shell migrate hooks
+.PHONY: run run-debug logs status shell db-shell mongo-shell tools tools-stop migrate hooks
 
 run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -81,6 +81,12 @@ db-shell: ## Open a MySQL shell on the dev database
 
 mongo-shell: ## Open a MongoDB shell on the dev database
 	@$(DOCKER_COMPOSE) exec mongo sh -c 'mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin "$$MONGO_INITDB_DATABASE"'
+
+tools: ## Start phpMyAdmin and mongo-express (local development only)
+	@$(DOCKER_COMPOSE) --profile tools up -d phpmyadmin mongo-express
+
+tools-stop: ## Stop and remove phpMyAdmin and mongo-express
+	@$(DOCKER_COMPOSE) --profile tools rm --stop --force phpmyadmin mongo-express
 
 migrate: ## Run the database migrations on the dev and test databases
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration

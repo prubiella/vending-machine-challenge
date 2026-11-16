@@ -288,11 +288,14 @@ info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation
 `make setup-host` (part of `make first-run`) does two things, both idempotent:
 
 1. `etc/infrastructure/setup-hostname.sh` appends one line per host to `/etc/hosts` (asks for
-   sudo), the API and its Swagger UI, since `/etc/hosts` has no wildcards:
+   sudo), the API, its Swagger UI and the two optional database tools, since `/etc/hosts` has no
+   wildcards:
 
    ```
    127.0.0.1 vending-machine.test
    127.0.0.1 docs.vending-machine.test
+   127.0.0.1 pma.vending-machine.test
+   127.0.0.1 mongo.vending-machine.test
    ```
 
    `.test` is a top-level domain reserved for testing, so it never clashes with a real site.
@@ -392,6 +395,15 @@ migrations table and the `vending_machine` table of the DBAL adapter, empty whil
 in MongoDB. The same settings work in any other client (DBeaver, MongoDB
 Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a
 shell inside the containers without installing anything.
+
+To look at the data in a browser instead, `make tools` starts phpMyAdmin at
+`https://pma.vending-machine.test` (already logged in as `MYSQL_USER`) and mongo-express at
+`https://mongo.vending-machine.test` (connected as the MongoDB root user; its own basic auth is
+`MONGO_EXPRESS_USER` and `MONGO_EXPRESS_PASSWORD`, `admin` / `admin` by default). They sit behind
+Traefik with the same certificate as the API and publish no port. They are for local development
+only, never for production: they open the databases with powerful credentials and weak or no
+login. `make tools-stop` removes them. Run `make setup-host` again once so `/etc/hosts` gets the
+two new hosts lines.
 
 ## Trying the API with Postman
 
