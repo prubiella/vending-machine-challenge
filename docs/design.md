@@ -382,7 +382,7 @@ sequenceDiagram
     Console->>CBus: ServiceMachineCommand with the technician's id
     CBus->>Handler: __invoke
     Handler->>Repo: get()
-    Handler->>Machine: service(units, coins, catalog change)
+    Handler->>Machine: service(technicianId, units, coins, catalog change)
     Note over Machine: pending credit goes to the tray, products are retired and installed, then units and coins are set
     Handler->>Repo: save(machine)
     Console-->>Technician: The machine is serviced.

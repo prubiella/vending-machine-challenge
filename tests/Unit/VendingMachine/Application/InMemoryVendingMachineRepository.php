@@ -30,7 +30,7 @@ final class InMemoryVendingMachineRepository implements VendingMachineRepository
         return clone $this->machine;
     }
 
-    // Takes the machine's events as the database adapters do, so they are saved once.
+    // Takes the machine's events on save, so a test reads each once, as the outbox does.
     public function save(VendingMachine $machine): void
     {
         $this->savedEvents = [...$this->savedEvents, ...$machine->releaseEvents()];

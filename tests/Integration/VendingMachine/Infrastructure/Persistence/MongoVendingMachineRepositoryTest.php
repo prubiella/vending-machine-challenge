@@ -40,6 +40,23 @@ final class MongoVendingMachineRepositoryTest extends VendingMachineRepositoryCo
         self::assertSame(10, $repository->get()->wallet()->credit()->total()->cents());
     }
 
+    public function testAMachineStoredWithoutAnOutboxKeepsWorking(): void
+    {
+        $repository = self::repository();
+        $repository->save($repository->get());
+        $machines = self::getContainer()->get(Database::class)->getCollection('vending_machines');
+        $machines->updateOne(['_id' => self::configuredMachineId()], ['$unset' => ['outbox' => '']]);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+
+        self::assertSame([], $repository->pending());
+
+        $repository->save($machine);
+
+        self::assertCount(1, $repository->pending());
+    }
+
     public function testResettingAlsoRemovesTheMachineStoredBeforeItHadAUuid(): void
     {
         $machines = self::getContainer()->get(Database::class)->getCollection('vending_machines');

@@ -17,15 +17,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 final class VendingOutboxRelayCommand implements SignalableCommandInterface
 {
-    private const int SECONDS_BETWEEN_PASSES = 2;
-    // The values of SIGINT and SIGTERM, whose constants exist only with the pcntl extension.
-    private const int SIGINT = 2;
-    private const int SIGTERM = 15;
-
     private bool $stopping = false;
 
     public function __construct(
         private readonly OutboxRelay $relay,
+        private readonly int $secondsBetweenPasses = 2,
     ) {
     }
 
@@ -34,22 +30,29 @@ final class VendingOutboxRelayCommand implements SignalableCommandInterface
         #[Option('Keep relaying, a pass every few seconds, until SIGTERM or Ctrl+C')]
         bool $watch = false,
     ): int {
-        do {
-            $relayed = $this->relay->relay();
-            if (!$watch || $relayed > 0) {
-                $output->writeln(\sprintf('Events relayed to the history: %d.', $relayed));
-            }
-            if ($watch && !$this->stopping) {
-                // A signal ends the pause early; the pass in progress always finishes.
-                sleep(self::SECONDS_BETWEEN_PASSES);
-            }
-        } while ($watch && !$this->stopping);
-
         if ($watch) {
-            $output->writeln('Stopped watching the outbox.');
+            $this->watchUntilStopped($output);
+        } else {
+            $output->writeln(\sprintf('Events relayed to the history: %d.', $this->relay->relay()));
         }
 
         return Command::SUCCESS;
+    }
+
+    private function watchUntilStopped(OutputInterface $output): void
+    {
+        do {
+            $relayed = $this->relay->relay();
+            if ($relayed > 0) {
+                $output->writeln(\sprintf('Events relayed to the history: %d.', $relayed));
+            }
+            if (!$this->stopping) {
+                // A signal ends the pause early; the pass in progress always finishes.
+                sleep($this->secondsBetweenPasses);
+            }
+        } while (!$this->stopping);
+
+        $output->writeln('Stopped watching the outbox.');
     }
 
     /**
@@ -57,7 +60,7 @@ final class VendingOutboxRelayCommand implements SignalableCommandInterface
      */
     public function getSubscribedSignals(): array
     {
-        return [self::SIGTERM, self::SIGINT];
+        return [\SIGTERM, \SIGINT];
     }
 
     public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false

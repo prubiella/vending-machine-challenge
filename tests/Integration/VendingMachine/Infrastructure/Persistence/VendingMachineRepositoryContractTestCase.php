@@ -197,22 +197,24 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
     public function testSavesTheEventsOfTheMachineInItsOutboxOldestFirst(): void
     {
         $repository = static::repository();
-        $before = new \DateTimeImmutable();
-        $machine = $repository->get();
-        $machine->insertCoin(Coin::OneHundredCents);
-        $machine->select(Selector::fromString('WATER'), self::changeMaker());
-        $repository->save($machine);
-        $machine = $repository->get();
-        $machine->insertCoin(Coin::FiveCents);
-        $machine->returnCoins();
-        $repository->save($machine);
-        $after = new \DateTimeImmutable();
+        self::saveASaleThenAReturn($repository);
 
         $pending = $repository->pending();
 
         self::assertSame(['product_sold', 'credit_returned'], array_map(static fn (OutboxEvent $event): string => $event->type, $pending));
         self::assertEquals(['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'change' => [5 => 0, 10 => 1, 25 => 1, 100 => 0]], $pending[0]->payload);
         self::assertEquals(['coins' => [5 => 1, 10 => 0, 25 => 0, 100 => 0]], $pending[1]->payload);
+    }
+
+    public function testGivesEachEventOfTheOutboxAUuidV7AndTheTimeOfItsSave(): void
+    {
+        $repository = static::repository();
+        $before = new \DateTimeImmutable();
+        self::saveASaleThenAReturn($repository);
+        $after = new \DateTimeImmutable();
+
+        $pending = $repository->pending();
+
         self::assertNotSame($pending[0]->id, $pending[1]->id);
         foreach ($pending as $event) {
             self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $event->id);
@@ -297,6 +299,18 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         $repository->save($reloaded);
 
         self::assertSame(5, $repository->get()->wallet()->credit()->total()->cents());
+    }
+
+    private static function saveASaleThenAReturn(VendingMachineRepository $repository): void
+    {
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $repository->save($machine);
+        $machine = $repository->get();
+        $machine->insertCoin(Coin::FiveCents);
+        $machine->returnCoins();
+        $repository->save($machine);
     }
 
     private static function changeMaker(): FewestCoinsChangeMaker
