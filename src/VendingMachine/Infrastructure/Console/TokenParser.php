@@ -8,7 +8,6 @@ use App\Shared\Application\Bus\Command;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
-use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 
 final readonly class TokenParser
@@ -29,7 +28,7 @@ final readonly class TokenParser
         }
 
         if (is_numeric($token)) {
-            return new InsertCoinCommand(self::coinCents($token));
+            return new InsertCoinCommand(MoneyNotation::requireCoinCents($token));
         }
 
         throw RejectedTokenException::unknownAction($token, self::usage());
@@ -53,10 +52,5 @@ final readonly class TokenParser
     private static function isSelection(string $token): bool
     {
         return str_starts_with($token, self::SELECT_PREFIX) && \strlen($token) > \strlen(self::SELECT_PREFIX);
-    }
-
-    private static function coinCents(string $token): int
-    {
-        return MoneyNotation::coinCents($token) ?? throw ForeignCoinException::fromToken($token);
     }
 }

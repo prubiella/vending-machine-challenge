@@ -30,6 +30,11 @@ final readonly class MoneyNotation
         return null;
     }
 
+    public static function requireCoinCents(string $notation): int
+    {
+        return self::coinCents($notation) ?? throw ForeignCoinException::fromToken($notation);
+    }
+
     public static function coinTokensEndingWith(string $lastSeparator): string
     {
         $tokens = array_map(static fn (Coin $coin): string => self::coinToken($coin->value), Coin::cases());

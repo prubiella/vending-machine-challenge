@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Infrastructure\Notation;
 
+use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -49,6 +50,21 @@ final class MoneyNotationTest extends TestCase
     public function testReadsNoCentsFromWhatIsNotACoin(string $notation): void
     {
         self::assertNull(MoneyNotation::coinCents($notation));
+    }
+
+    #[DataProvider('coins')]
+    public function testRequiresTheCentsOfACoinWrittenAsTheStatementDoes(int $cents, string $notation): void
+    {
+        self::assertSame($cents, MoneyNotation::requireCoinCents($notation));
+    }
+
+    #[DataProvider('notCoins')]
+    public function testRejectsWhatIsNotACoinAsAForeignCoin(string $notation): void
+    {
+        $this->expectException(ForeignCoinException::class);
+        $this->expectExceptionMessageIs(\sprintf('The machine does not accept a coin of %s: it takes 0.05, 0.10, 0.25 and 1.', $notation));
+
+        MoneyNotation::requireCoinCents($notation);
     }
 
     /**
