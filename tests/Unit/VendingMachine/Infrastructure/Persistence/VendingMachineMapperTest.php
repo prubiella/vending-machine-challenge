@@ -88,6 +88,17 @@ final class VendingMachineMapperTest extends TestCase
         $mapper->fromDocument($document);
     }
 
+    public function testRefusesADocumentWhoseCashBoxIsNull(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = $mapper->toDocument(self::machine());
+        $document['wallet_cash_box'] = null;
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromDocument($document);
+    }
+
     public function testRefusesADocumentWithoutAnId(): void
     {
         $mapper = new VendingMachineMapper();
@@ -173,6 +184,16 @@ final class VendingMachineMapperTest extends TestCase
         $row = array_diff_key($mapper->toRow(self::machine()), ['wallet_cash_box' => true]);
 
         self::assertTrue($mapper->fromRow($row)->wallet()->cashBox()->isEmpty());
+    }
+
+    public function testRefusesARowWhoseCashBoxColumnIsNull(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $row = [...$mapper->toRow(self::machine()), 'wallet_cash_box' => null];
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromRow($row);
     }
 
     public function testRefusesAColumnThatIsNotJson(): void

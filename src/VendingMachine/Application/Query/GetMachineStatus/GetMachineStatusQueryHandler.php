@@ -21,6 +21,7 @@ final readonly class GetMachineStatusQueryHandler
         return new MachineStatusResponse(
             self::unitsBySelector($machine->inventory()),
             $machine->wallet()->stock()->countsByCents(),
+            $machine->wallet()->cashBox()->countsByCents(),
         );
     }
 

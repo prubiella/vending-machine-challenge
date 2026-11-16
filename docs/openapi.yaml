@@ -245,8 +245,8 @@ paths:
     get:
       operationId: getMachineStatus
       tags: [Technician]
-      summary: Read the stock and the change
-      description: The units of each product and the count of each coin, by its cents, every coin included.
+      summary: Read the stock, the change and the cash box
+      description: The units of each product, the count of each coin in its tube and the count of each coin in the cash box, by cents, every coin included.
       security:
         - technicianToken: []
       responses:
@@ -259,6 +259,7 @@ paths:
               example:
                 unitsBySelector: { WATER: 10, JUICE: 10, SODA: 10 }
                 coinStockByCents: { '5': 10, '10': 10, '25': 10, '100': 0 }
+                cashBoxByCents: { '5': 0, '10': 0, '25': 12, '100': 37 }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -541,7 +542,7 @@ components:
 
     MachineStatus:
       type: object
-      required: [unitsBySelector, coinStockByCents]
+      required: [unitsBySelector, coinStockByCents, cashBoxByCents]
       properties:
         unitsBySelector:
           type: object
@@ -551,7 +552,16 @@ components:
             minimum: 0
         coinStockByCents:
           type: object
-          description: The count of each coin, by its cents.
+          description: The count of each coin in its tube, by its cents. A tube holds at most 500 after a service.
+          additionalProperties:
+            type: integer
+            minimum: 0
+        cashBoxByCents:
+          type: object
+          description: >-
+            The count of each coin in the cash box, by its cents. A sale puts there the coins of 1 and
+            the coins that do not fit their full tube; change never comes from it, and a service empties
+            it, since the technician takes the money.
           additionalProperties:
             type: integer
             minimum: 0

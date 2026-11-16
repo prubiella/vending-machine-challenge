@@ -17,7 +17,7 @@ final class GetMachineStatusQueryHandlerTest extends TestCase
         $response = (new GetMachineStatusQueryHandler(VendingMachineRepositoryMother::withTheStatementProducts()))(new GetMachineStatusQuery());
 
         self::assertEquals(
-            new MachineStatusResponse(['WATER' => 5, 'JUICE' => 5, 'SODA' => 0], [5 => 2, 10 => 2, 25 => 2, 100 => 0]),
+            new MachineStatusResponse(['WATER' => 5, 'JUICE' => 5, 'SODA' => 0], [5 => 2, 10 => 2, 25 => 2, 100 => 0], [5 => 0, 10 => 0, 25 => 0, 100 => 0]),
             $response,
         );
     }

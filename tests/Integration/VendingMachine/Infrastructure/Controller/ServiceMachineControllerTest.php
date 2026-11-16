@@ -21,6 +21,7 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
     private const array DEFAULT_STATUS = [
         'unitsBySelector' => ['WATER' => 10, 'JUICE' => 10, 'SODA' => 10],
         'coinStockByCents' => [5 => 10, 10 => 10, 25 => 10, 100 => 0],
+        'cashBoxByCents' => [5 => 0, 10 => 0, 25 => 0, 100 => 0],
     ];
 
     public function testSetsTheGivenUnitsAndTheWholeCoinStock(): void
@@ -37,8 +38,22 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
         $expectedStatus = [
             'unitsBySelector' => ['WATER' => 2, 'JUICE' => 10, 'SODA' => 0],
             'coinStockByCents' => [5 => 1, 10 => 0, 25 => 3, 100 => 4],
+            'cashBoxByCents' => [5 => 0, 10 => 0, 25 => 0, 100 => 0],
         ];
         self::assertSame($expectedStatus, $this->machineStatus($authHeaders));
+    }
+
+    public function testEmptiesTheCashBoxOfTheCoinsASaleLeftInIt(): void
+    {
+        $authHeaders = self::asTechnician($this->client);
+        $this->insertCoins('1');
+        $this->client->request('POST', '/machine/selections/WATER');
+        self::assertSame([5 => 0, 10 => 0, 25 => 0, 100 => 1], $this->machineStatus($authHeaders)['cashBoxByCents'] ?? null);
+
+        $this->client->jsonRequest('PUT', '/machine/service', ['units' => [], 'coins' => []], $authHeaders);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame([5 => 0, 10 => 0, 25 => 0, 100 => 0], $this->machineStatus($authHeaders)['cashBoxByCents'] ?? null);
     }
 
     public function testDropsTheCreditIntoTheTray(): void
