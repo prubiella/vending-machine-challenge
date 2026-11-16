@@ -17,34 +17,46 @@ final readonly class ServiceForm
     ) {
     }
 
-    public function fill(SymfonyStyle $io): ServiceMachineCommand
+    /**
+     * @param array<string, int> $givenUnitsBySelector
+     * @param array<int, int>    $givenCoinStockByCents
+     */
+    public function fill(SymfonyStyle $io, array $givenUnitsBySelector = [], array $givenCoinStockByCents = []): ServiceMachineCommand
     {
         $status = $this->machineStatus();
 
-        return new ServiceMachineCommand(self::askUnitsBySelector($io, $status), self::askCoinStockByCents($io, $status));
+        return new ServiceMachineCommand(
+            self::unitsBySelector($io, $status, $givenUnitsBySelector),
+            self::coinStockByCents($io, $status, $givenCoinStockByCents),
+        );
     }
 
     /**
+     * @param array<string, int> $given
+     *
      * @return array<int|string, int>
      */
-    private static function askUnitsBySelector(SymfonyStyle $io, MachineStatusResponse $status): array
+    private static function unitsBySelector(SymfonyStyle $io, MachineStatusResponse $status, array $given): array
     {
         $unitsBySelector = [];
         foreach ($status->unitsBySelector as $selector => $currentUnits) {
-            $unitsBySelector[$selector] = self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
+            $unitsBySelector[$selector] = $given[$selector] ?? self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
         }
 
-        return $unitsBySelector;
+        // A given selector the machine lacks is kept, so the service refuses it instead of ignoring it.
+        return $unitsBySelector + $given;
     }
 
     /**
+     * @param array<int, int> $given
+     *
      * @return array<int, int>
      */
-    private static function askCoinStockByCents(SymfonyStyle $io, MachineStatusResponse $status): array
+    private static function coinStockByCents(SymfonyStyle $io, MachineStatusResponse $status, array $given): array
     {
         $coinStockByCents = [];
         foreach ($status->coinStockByCents as $cents => $currentCount) {
-            $coinStockByCents[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $currentCount);
+            $coinStockByCents[$cents] = $given[$cents] ?? self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $currentCount);
         }
 
         return $coinStockByCents;
