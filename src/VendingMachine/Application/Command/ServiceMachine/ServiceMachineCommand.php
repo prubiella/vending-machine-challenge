@@ -13,6 +13,8 @@ final readonly class ServiceMachineCommand implements Command
      * @param array<int, int>        $coinStockByCents
      */
     public function __construct(
+        // No handler reads it: the command bus log records who serviced the machine, the audit
+        // trail until a MachineServiced domain event exists.
         public string $technicianId,
         public array $unitsBySelector,
         public array $coinStockByCents,

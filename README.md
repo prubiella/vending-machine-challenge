@@ -141,10 +141,13 @@ unknown selector) keeps the credit: both are reported on the error output and th
 on.
 
 Without a sequence, `make run -- vending:run` opens an interactive session: it lists the products,
-takes one action per line, prints what drops into the tray after each one and shows the credit
-in the prompt. `SERVICE` asks the technician's username and password (hidden), then the units of
-each product and the count of each coin (Enter keeps the current value) and services the machine. `QUIT` or Ctrl+D ends the session; Ctrl+D in the
-middle of `SERVICE` leaves the machine as it was.
+takes one action per line, prints what drops into the tray after each one and shows the credit in
+the prompt. `SERVICE` asks the technician's username and password (hidden), then the units of each
+product and the count of each coin (Enter keeps the current value) and services the machine. The
+service command carries the authenticated technician's id, and the command bus log records it on
+every service: that log is the audit trail of who serviced the machine until domain events exist,
+when a `MachineServiced` event goes to the outbox and the history. `QUIT` or Ctrl+D ends the
+session; Ctrl+D in the middle of `SERVICE` leaves the machine as it was.
 
 `vending:service` services the machine outside a session. `--username` and `--password` give the
 credentials of a technician (see [Technicians](#technicians)) (it asks what they leave out, the password hidden; with `-n` both are
