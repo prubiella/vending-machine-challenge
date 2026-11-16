@@ -15,7 +15,7 @@ use Symfony\Component\Security\Core\User\InMemoryUser;
 // id and the technician's role.
 final readonly class TechnicianTokenIssuer
 {
-    private const string TECHNICIAN_ROLE = 'ROLE_TECHNICIAN';
+    public const string TECHNICIAN_ROLE = 'ROLE_TECHNICIAN';
 
     public function __construct(
         private QueryBus $queryBus,

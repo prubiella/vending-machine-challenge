@@ -11,6 +11,7 @@ security:
             provider: jwt
             jwt: ~
 
-    # The customer's routes under /machine stay open: only these need a technician.
+    # The customer's routes under /machine stay open: only these need a technician, with the role
+    # that TechnicianTokenIssuer puts in every token it makes.
     access_control:
-        - { path: ^/machine/status$, methods: [GET], roles: ROLE_TECHNICIAN }
+        - { path: ^/machine/status$, methods: [GET], roles: !php/const App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer::TECHNICIAN_ROLE }
