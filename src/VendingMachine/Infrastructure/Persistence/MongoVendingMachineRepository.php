@@ -30,8 +30,6 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
 
     private Collection $machines;
 
-    private MachineId $machineId;
-
     /** @var \WeakMap<VendingMachine, int> the version each machine was loaded or last saved at */
     private \WeakMap $versions;
 
@@ -39,10 +37,9 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
         Database $database,
         private VendingMachineMapper $mapper,
         private DefaultVendingMachineFactory $defaultMachineFactory,
-        string $machineId,
+        private MachineId $machineId,
     ) {
         $this->machines = $database->getCollection(self::COLLECTION);
-        $this->machineId = MachineId::fromString($machineId);
         $this->versions = new \WeakMap();
     }
 

@@ -52,19 +52,14 @@ services:
         factory: ['@MongoDB\Client', 'getDatabase']
         arguments: ['%mongodb.database%']
 
+    App\VendingMachine\Domain\MachineId:
+        factory: ['App\VendingMachine\Domain\MachineId', fromString]
+        arguments: ['%vending_machine.id%']
+
     App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:
-            $machineId: '%vending_machine.id%'
             $products: '%vending_machine.default_products%'
             $coinStockByCents: '%vending_machine.default_coin_stock%'
-
-    App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository:
-        arguments:
-            $machineId: '%vending_machine.id%'
-
-    App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository:
-        arguments:
-            $machineId: '%vending_machine.id%'
 
     App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
     App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'

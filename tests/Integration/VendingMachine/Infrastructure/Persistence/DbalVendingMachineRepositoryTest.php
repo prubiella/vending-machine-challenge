@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Persistence;
 
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use App\VendingMachine\Infrastructure\Persistence\VendingMachineMapper;
@@ -30,7 +31,7 @@ final class DbalVendingMachineRepositoryTest extends VendingMachineRepositoryCon
             self::getContainer()->get(Connection::class),
             new VendingMachineMapper(),
             self::getContainer()->get(DefaultVendingMachineFactory::class),
-            self::configuredMachineId(),
+            MachineId::fromString(self::configuredMachineId()),
         );
     }
 }

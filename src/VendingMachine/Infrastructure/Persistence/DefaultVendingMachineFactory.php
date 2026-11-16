@@ -14,18 +14,15 @@ use App\VendingMachine\Domain\VendingMachine;
 
 final readonly class DefaultVendingMachineFactory
 {
-    private MachineId $machineId;
-
     /**
      * @param list<array{selector: string, name: string, price_cents: int, units?: int}> $products
      * @param array<int, int>                                                            $coinStockByCents
      */
     public function __construct(
-        string $machineId,
+        private MachineId $machineId,
         private array $products,
         private array $coinStockByCents,
     ) {
-        $this->machineId = MachineId::fromString($machineId);
     }
 
     public function create(): VendingMachine

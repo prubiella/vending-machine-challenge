@@ -67,7 +67,7 @@ final class InMemoryVendingMachineRepositoryTest extends TestCase
     private static function defaultMachineFactory(): DefaultVendingMachineFactory
     {
         return new DefaultVendingMachineFactory(
-            self::MACHINE_ID,
+            MachineId::fromString(self::MACHINE_ID),
             [['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 3]],
             [5 => 2, 25 => 1],
         );

@@ -22,16 +22,13 @@ final readonly class DbalVendingMachineRepository implements VendingMachineRepos
     /** @var \WeakMap<VendingMachine, int> the version each machine was loaded or last saved at */
     private \WeakMap $versions;
 
-    private MachineId $machineId;
-
     public function __construct(
         private Connection $connection,
         private VendingMachineMapper $mapper,
         private DefaultVendingMachineFactory $defaultMachineFactory,
-        string $machineId,
+        private MachineId $machineId,
     ) {
         $this->versions = new \WeakMap();
-        $this->machineId = MachineId::fromString($machineId);
     }
 
     public function get(): VendingMachine
