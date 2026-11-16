@@ -32,7 +32,7 @@ services:
         tags: [ { name: messenger.message_handler, bus: query.bus } ]
         autoconfigure: false
 
-    App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository:
+    App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:
             $products: '%vending_machine.default_products%'
             $coinStockByCents: '%vending_machine.default_coin_stock%'
