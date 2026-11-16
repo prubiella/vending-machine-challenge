@@ -44,7 +44,7 @@ Goals:
 
 Non-goals, for now:
 
-- Fleets of machines: there is exactly one, stored with id 1.
+- Fleets of machines: there is exactly one, stored under the id in `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)).
 - Card payments or any payment other than coins.
 - Domain events and the sales history built on them: planned, see [section 11](#11-future-work).
 
@@ -502,6 +502,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | A logging middleware and decorators | Logger calls inside the domain | [ADR 14](adr/0014-logging.md) |
 | TLS at Traefik, re-encrypted to nginx | Plain HTTP inside the network | [ADR 15](adr/0015-https-with-traefik.md) |
 | The machine as one MongoDB document | A MySQL row, as before | [ADR 16](adr/0016-machine-stored-in-mongodb.md) |
+| UUID v7 identities behind a shared base, the machine's id from configuration | Auto-increment ids, or UUID v4 | [ADR 17](adr/0017-uuid-identities.md) |
 
 Trade-offs worth saying out loud:
 
