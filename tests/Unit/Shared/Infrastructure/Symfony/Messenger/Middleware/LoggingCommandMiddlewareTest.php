@@ -34,6 +34,14 @@ final class LoggingCommandMiddlewareTest extends TestCase
         self::assertSame([[Level::Info, 'Command InsertCoinCommand handled.', ['command' => InsertCoinCommand::class, 'data' => ['cents' => 25]]]], $this->records());
     }
 
+    public function testLogsTheSensitiveFieldsOfACommandMasked(): void
+    {
+        $this->bus(static function (): void {
+        })->dispatch(new LogInCommand('ada', 'correct horse'));
+
+        self::assertSame([[Level::Info, 'Command LogInCommand handled.', ['command' => LogInCommand::class, 'data' => ['username' => 'ada', 'password' => '***']]]], $this->records());
+    }
+
     public function testLogsARefusedCommandAtNoticeAndRethrowsTheRefusal(): void
     {
         $refusal = new class('The coin is not accepted.') extends DomainException {
@@ -76,7 +84,7 @@ final class LoggingCommandMiddlewareTest extends TestCase
         return new MessageBus([
             new LoggingCommandMiddleware(new Logger('test', [$this->logs])),
             new UnpackExceptionMiddleware(),
-            new HandleMessageMiddleware(new HandlersLocator([InsertCoinCommand::class => [$handler]])),
+            new HandleMessageMiddleware(new HandlersLocator([InsertCoinCommand::class => [$handler], LogInCommand::class => [$handler]])),
         ]);
     }
 }
