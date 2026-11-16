@@ -48,6 +48,12 @@ the domain to one database.
 - Trade-off: the machine stored before this change is lost, both in MySQL (the migration) and in
   MongoDB (no longer loaded, removed by the next `vending:reset`). The machine was reset to the
   default anyway whenever an operator ran `vending:reset`.
+- MongoDB has no migrations on purpose: its data is one document that `vending:reset` rebuilds
+  from configuration, and the only change of shape so far (the `_id`) is handled by that reset and
+  a line in the README. With more documents, or data that cannot be regenerated, the next step is a
+  lazy migration in the mapper (read the old and the new shape, always write the new one), or a
+  small migration command with a `migrations` collection and versioned classes, run by
+  `make migrate`.
 
 ## Alternatives considered
 

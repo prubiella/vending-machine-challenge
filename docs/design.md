@@ -527,5 +527,9 @@ Trade-offs worth saying out loud:
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since
   the aggregate does not know its own storage.
+- **MongoDB migrations.** There are none on purpose: the one document is rebuilt from
+  configuration by `vending:reset` ([ADR 17](adr/0017-uuid-identities.md)). When more documents or
+  data that cannot be regenerated appear, a lazy migration in the mapper (read the old and the new
+  shape, always write the new one) or a migration command run by `make migrate` comes next.
 - **Web database clients.** A browser tool for MongoDB and MySQL next to Swagger UI, for people who
   do not want a desktop client.
