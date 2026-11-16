@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Application\Command\ServiceMachine;
 
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\TechnicianId;
 use App\VendingMachine\Domain\VendingMachineRepository;
 
 final readonly class ServiceMachineCommandHandler
@@ -19,7 +20,11 @@ final readonly class ServiceMachineCommandHandler
     {
         $machine = $this->repository->get();
         $collected = $machine->wallet()->cashBox();
-        $machine->service($command->unitsBySelector, CoinCollection::fromCounts($command->coinStockByCents));
+        $machine->service(
+            TechnicianId::fromString($command->technicianId),
+            $command->unitsBySelector,
+            CoinCollection::fromCounts($command->coinStockByCents),
+        );
         $this->repository->save($machine);
 
         if (!$collected->isEmpty()) {

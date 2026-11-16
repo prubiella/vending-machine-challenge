@@ -159,7 +159,7 @@ classDiagram
         +select(Selector, ChangeMaker)
         +returnCoins()
         +collectTray()
-        +service(unitsBySelector, CoinCollection)
+        +service(TechnicianId, unitsBySelector, CoinCollection)
         +releaseEvents() list~VendingMachineEvent~
     }
     class Inventory {
@@ -259,9 +259,12 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 ### Events
 
 The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
-`ProductSold` with the product and the change given, and `CreditReturned` with the coins given
-back (by `RETURN-COIN` or by a service, only when there were any). A refusal records nothing.
-`releaseEvents()` hands them over once, oldest first.
+`ProductSold` with the product and the change given, `CreditReturned` with the coins given back
+(by `RETURN-COIN` or by a service, only when there were any) and `MachineServiced` with the
+technician's id, the counts set and the coins collected from the cash box. A refusal records
+nothing. `releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId`
+of this context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default
+machine is built by `installStocked()`, which records no service.
 
 ### Why change making is a search and not greedy
 
@@ -460,9 +463,10 @@ server cannot check because of its own keys 500, logged as critical, since loggi
 fix it. The key pair is created by `make jwt-keys` and ignored by git. A token stays valid for its
 hour after its technician is removed: nothing is looked up per request.
 
-**Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id.
-No handler reads it: the command bus logs every command with its data, so the log records who
-serviced the machine on every service. That log is the audit trail until domain events exist.
+**Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id,
+and the machine records it in a `MachineServiced` event. The command bus logs every command with
+its data too, and that log stays the audit trail until the outbox saves the events
+([ADR 20](adr/0020-domain-events-and-outbox.md)).
 
 **Masking.** A command that carries a secret or personal data implements `SensitiveCommand` and
 maps each such field to a `Masking` rule (`Hide` logs `***`, `KeepFirstThree` logs `pau***`):
