@@ -32,6 +32,16 @@ services:
         tags: [ { name: messenger.message_handler, bus: query.bus } ]
         autoconfigure: false
 
+    App\Shared\Infrastructure\Symfony\EventListener\JsonExceptionListener:
+        arguments:
+            $statusByException:
+                App\VendingMachine\Domain\Inventory\UnknownSelectorException: 404
+                App\VendingMachine\Domain\Inventory\SoldOutException: 409
+                App\VendingMachine\Domain\Wallet\InsufficientCreditException: 409
+                App\VendingMachine\Domain\Change\NoExactChangeException: 409
+                App\VendingMachine\Domain\Product\InvalidSelectorException: 422
+                App\VendingMachine\Infrastructure\Notation\ForeignCoinException: 422
+
     App\Shared\Infrastructure\Symfony\Messenger\Middleware\RetryOnConcurrentUpdateMiddleware:
         arguments:
             $maxRetries: 3

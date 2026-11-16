@@ -112,8 +112,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    (`VendingMachineRepository` to `DbalVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
-   `#[MapRequestPayload]`. Map each domain exception to an HTTP status in `JsonExceptionListener`
-   (it has no map yet: add it with the first one). Add the request to
+   `#[MapRequestPayload]`. Map a domain exception to an HTTP status in the `$statusByException`
+   argument of `JsonExceptionListener` in `config/services.yaml`, by its exact class: one without
+   an entry answers 400. Add the request to
    `etc/postman/vending-machine.postman_collection.json`, in its context's folder, with `{{baseUrl}}`
    for the host and test scripts for the status and body.
 5. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule

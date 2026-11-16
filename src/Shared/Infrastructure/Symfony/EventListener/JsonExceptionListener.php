@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Symfony\EventListener;
 
+use App\Shared\Domain\DomainException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,9 +19,13 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 #[AsEventListener(event: 'kernel.exception', priority: -64)]
 final readonly class JsonExceptionListener
 {
+    /**
+     * @param array<class-string<\Throwable>, int> $statusByException
+     */
     public function __construct(
         #[Autowire('%kernel.debug%')]
         private bool $debug,
+        private array $statusByException,
     ) {
     }
 
@@ -44,6 +49,14 @@ final readonly class JsonExceptionListener
     {
         if ($exception instanceof HttpExceptionInterface) {
             return $exception->getStatusCode();
+        }
+
+        if (isset($this->statusByException[$exception::class])) {
+            return $this->statusByException[$exception::class];
+        }
+
+        if ($exception instanceof DomainException) {
+            return Response::HTTP_BAD_REQUEST;
         }
 
         return Response::HTTP_INTERNAL_SERVER_ERROR;
