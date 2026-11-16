@@ -21,22 +21,27 @@ final class ServiceMachineController extends BaseController
         #[CurrentUser]
         UserInterface $technician,
     ): Response {
+        $units = self::requireWholeCounts('units', $request->units);
+        $coinsByNotation = self::requireWholeCounts('coins', $request->coins);
+
         $this->command(new ServiceMachineCommand(
             $technician->getUserIdentifier(),
-            self::wholeCounts('units', $request->units),
-            self::countsByCents(self::wholeCounts('coins', $request->coins)),
+            $units,
+            self::rekeyByCoinCents($coinsByNotation),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
-    // The payload's arrays are typed by PHPDoc only, so the serializer does not check their values.
     /**
+     * Refuses a count that is not a whole number with a 422: the payload's arrays are typed by PHPDoc
+     * only, so the serializer does not check their values.
+     *
      * @param array<int|string, mixed> $counts
      *
      * @return array<int|string, int>
      */
-    private static function wholeCounts(string $field, array $counts): array
+    private static function requireWholeCounts(string $field, array $counts): array
     {
         foreach ($counts as $key => $count) {
             if (!\is_int($count)) {
@@ -49,11 +54,13 @@ final class ServiceMachineController extends BaseController
     }
 
     /**
+     * Keys each count by its coin's cents, refusing a notation that is not a coin the machine takes.
+     *
      * @param array<int|string, int> $countsByNotation
      *
      * @return array<int, int>
      */
-    private static function countsByCents(array $countsByNotation): array
+    private static function rekeyByCoinCents(array $countsByNotation): array
     {
         $countsByCents = [];
         foreach ($countsByNotation as $notation => $count) {
