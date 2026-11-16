@@ -3,9 +3,10 @@
 ## Status
 
 Accepted. Built and merged: `MongoVendingMachineRepository` stores the machine, and
-`DbalVendingMachineRepository` stays as a second adapter of the port. The embedded outbox and the
-history in MySQL are planned. Supersedes ADR 12, whose mapper and DBAL adapter this record keeps.
-`InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as a test double is
+`DbalVendingMachineRepository` stays as a second adapter of the port. The embedded outbox is built
+([ADR 20](0020-domain-events-and-outbox.md)): both adapters write the machine's events with its
+state in one write. The history in MySQL is planned. Supersedes ADR 12, whose mapper and DBAL
+adapter this record keeps. `InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as a test double is
 planned polish. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
 machine's UUID.
 

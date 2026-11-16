@@ -4,7 +4,8 @@
 
 Accepted. Built in steps, one pull request each: the events recorded by the aggregate; the outbox
 written by both repositories; the relay to the history in MySQL; the low stock alert. This record
-describes the whole decision, and its status names the steps built so far: the events.
+describes the whole decision, and its status names the steps built so far: the events and the
+outbox.
 
 ## Context
 

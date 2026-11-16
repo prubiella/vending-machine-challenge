@@ -426,6 +426,12 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
 - **A hand-written mapper.** `VendingMachineMapper` turns the aggregate into an array and back. It
   rebuilds the object through the domain's named constructors (`VendingMachine::restore()`,
   `Wallet::of()`), so loading cannot produce a state the domain would refuse.
+- **The outbox is part of the machine's write** ([ADR 20](adr/0020-domain-events-and-outbox.md)).
+  On save, `OutboxEventFactory` takes the machine's events and gives each an id from `UuidGenerator`
+  and the time from the clock. MongoDB pushes them into the document's `outbox` array in the same
+  `updateOne` that sets the state, the version still in the filter, so a conflict writes neither;
+  the DBAL adapter inserts them into `vending_machine_outbox` in the transaction of its row.
+  `MachineOutbox::pending()` reads them back, oldest first.
 - **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
   `vending:reset` deletes the stored document.
 - **A second adapter under the same contract.** `DbalVendingMachineRepository` stores the same
