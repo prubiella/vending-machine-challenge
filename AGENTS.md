@@ -228,7 +228,17 @@ cheap tests like vm-review's `lens-tests/`; one without goes from `skill-check` 
 - Commits: Conventional Commits (`feat(scope): ...`), in English. The `commit-msg` hook enforces it.
 - Never `--no-verify`. Push with `FORCE_COLOR=0 git push`.
 - Small commits that each leave the project working, and small pull requests that a person can
-  review in one sitting: the history is part of the deliverable.
+  review in one sitting: the history is part of the deliverable. In practice:
+  - One pull request, one change that a sentence describes. A feature that needs more is a stack
+    of pull requests planned before the first branch, not one branch that grows.
+  - Aim at about 15 files or 400 changed lines, generated files (`composer.lock`, `symfony.lock`)
+    aside. A branch past that is split before its pull request opens.
+  - Something new that comes up while testing or reviewing, and is not a fix of what was
+    reviewed, goes in a new pull request on top of the stack, not into the open branch.
+  - Review fixes stay in the reviewed branch while they are few; a round of more than about ten
+    commits goes in a pull request of its own on top.
+  - Cross-cutting documents go apart: an ADR may land before the code it decides, and the design
+    document, OpenAPI and Postman passes may close the stack.
 - Never write the name of the company that set this challenge, anywhere: code, tests, evals, docs,
   commits, pull requests, reviews or comments. Do not look it up in the statement or search the
   code for it; if you need to refer to it, say "the company".
