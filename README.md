@@ -40,8 +40,9 @@ make first-run
 ```
 
 It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers, installs the Composer dependencies, runs the database
-migrations and enables the git hooks. Then:
+below), builds and starts the containers, installs the Composer dependencies, creates the key pair that signs the technicians' tokens
+(`make jwt-keys`, in `config/jwt/`, which git ignores), runs the database migrations and enables
+the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
@@ -267,8 +268,32 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change, and also when another request changed the machine at the same time and the
 retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
 malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
-and is logged as critical. Servicing the machine stays in the console: the HTTP API has no
-technician login.
+and is logged as critical.
+
+### The technician's side
+
+A technician (see [Technicians](#technicians)) logs in for a token and sends it as a bearer token
+to the technician's routes. The customer's routes need no token.
+
+| Request | What it does | Answer |
+|---|---|---|
+| `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
+| `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
+
+```bash
+token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
+  -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
+curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
+# {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
+```
+
+The login checks the credentials with the same query as the console, `AuthenticateTechnicianQuery`,
+and the token (lexik/jwt-authentication-bundle, RS256) carries the technician's id in its `sub`
+claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its technician: the
+`machine` firewall in `config/packages/security.yaml` builds the user from the token, and its
+`access_control` lists the routes that need the role. A missing, invalid or expired token answers
+401 in the API's error format (`JwtFailureListener`), and a token without the role 403. Servicing
+the machine stays in the console for now.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -461,6 +486,11 @@ environment that points `baseUrl` at `https://vending-machine.test`.
    so Postman trusts the mkcert certificate.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
+The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
+`technicianPassword`) and keeps the token for the technician's requests, such as `Get machine
+status`. Create that technician once:
+`make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
+
 The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
 example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
 0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
@@ -492,7 +522,8 @@ src/
     Domain/          Money and DomainException, the base of every domain exception.
     Application/     The Command and Query interfaces, the bus ports, the health check query,
                      the TechnicianAuthenticator port that VendingMachine logs technicians in with.
-    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
+    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points,
+                     the JSON answer to a missing or invalid token.
   VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
     Application/     Use cases: commands, queries and their handlers.
@@ -501,7 +532,7 @@ src/
     Domain/          Technician, its username and password rules, the repository and hasher ports.
     Application/     Use cases: creating a technician, checking its credentials.
     Infrastructure/  The technicians table, the Symfony password hasher, console commands, the
-                     TechnicianAuthenticator adapter over the credentials query.
+                     TechnicianAuthenticator adapter over the credentials query, login.
 config/              Symfony configuration; routes in config/routes/<context>.php.
 tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).

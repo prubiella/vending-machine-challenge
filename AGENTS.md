@@ -44,7 +44,8 @@ to run it.
   checks a technician's credentials without depending on `Maintenance`, which implements it;
   `Shared/Infrastructure` holds the Messenger implementations of the bus ports
   (`MessengerCommandBus`, `MessengerQueryBus`), `SymfonyUuidGenerator`,
-  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
+  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener`, `JwtFailureListener`
+  (a missing, invalid or expired token answered in the same JSON) and the health check
   (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
@@ -118,8 +119,11 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    (`VendingMachineRepository` to `MongoVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
-   `#[MapRequestPayload]`. A customer-facing refusal gets its status and `log_level: info`
-   under `framework.exceptions` in `config/packages/framework.yaml`, the one place that decides both.
+   `#[MapRequestPayload]`. A route only a technician may use gets a line in the `access_control`
+   of `config/packages/security.yaml` (the `machine` firewall covers `/machine`), and documents
+   its 401 and 403 with the `technicianToken` security scheme. A customer-facing refusal gets its
+   status and `log_level: info` under `framework.exceptions` in `config/packages/framework.yaml`,
+   the one place that decides both.
    Any other exception answers 500 and is logged as critical. Every new domain exception goes on one
    side or the other: mapped there, or listed in `app.domain_exceptions_answering_500` in the same
    file when the HTTP API cannot reach it or it means a broken invariant;

@@ -81,6 +81,56 @@
 			]
 		},
 		{
+			"name": "Maintenance",
+			"description": "Logs in as the technician of the environment (`technicianUsername`, `technicianPassword`) and keeps the token in the `technicianToken` collection variable, which the technician's requests send. Create that technician once: `make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.",
+			"item": [
+				{
+					"name": "Log in",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('gives a token', () => pm.expect(pm.response.json().token).to.be.a('string').and.not.empty);",
+									"pm.collectionVariables.set('technicianToken', pm.response.json().token);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\": \"{{technicianUsername}}\", \"password\": \"{{technicianPassword}}\"}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "VendingMachine",
 			"item": [
 				{
@@ -725,9 +775,64 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "18. Get machine status as a technician",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('gives the units of each product and the count of each coin', () => {",
+									"    const status = pm.response.json();",
+									"    pm.expect(status.unitsBySelector).to.have.all.keys('WATER', 'JUICE', 'SODA');",
+									"    pm.expect(status.coinStockByCents).to.have.all.keys('5', '10', '25', '100');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{technicianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"status"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"description": "A customer's session as a story: the statement's last example (1 and GET-WATER give WATER, 0.25 and 0.10), then a returned coin and three refusals. Reset the machine first with `make run -- vending:reset` and run the folder in order. Every request checks its status and body, and the folder ends with no credit and an empty tray, so it passes again until the water or the change runs out."
+		}
+	],
+	"variable": [
+		{
+			"key": "technicianToken",
+			"value": ""
 		}
 	]
 }

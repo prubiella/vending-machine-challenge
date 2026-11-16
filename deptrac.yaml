@@ -5,7 +5,7 @@ deptrac:
     - name: Framework
       collectors:
         - type: classLike
-          value: ^(Symfony|Doctrine|Psr|MongoDB)\\.*
+          value: ^(Symfony|Doctrine|Psr|MongoDB|Lexik)\\.*
     - name: Kernel
       collectors:
         - type: classLike
