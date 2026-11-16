@@ -126,10 +126,36 @@ jobs:
         if: failure()
         run: docker compose logs --no-color --tail 100
 
+  behat:
+    name: Scenarios (Behat)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start PHP and the databases
+        uses: ./.github/actions/start
+        with:
+          services: php-fpm mysql
+
+      - name: Migrate the databases
+        run: make migrate
+
+      - name: Scenarios
+        run: make behat
+
+      - name: Show the container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
   all-checks:
     name: All checks passed
     if: always()
-    needs: [skills, static, unit, integration]
+    needs: [skills, static, unit, integration, behat]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
