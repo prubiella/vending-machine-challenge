@@ -2,9 +2,7 @@
 
 ## Status
 
-Accepted. Built and merged: `DbalVendingMachineRepository` and `VendingMachineMapper` are the
-adapter in use. `InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as
-a test double is planned polish.
+Superseded by [ADR 16](0016-machine-stored-in-mongodb.md).
 
 ## Context
 

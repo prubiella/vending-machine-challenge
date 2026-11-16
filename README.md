@@ -12,7 +12,7 @@ Work in progress: the project is being built in small pull requests, infrastruct
 
 - PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
 - MySQL 8.4
-- MongoDB 9.0, in an optional compose profile (see below)
+- MongoDB 9.0
 - nginx behind Traefik 3.7, HTTPS end to end
 - PHPUnit 13, PHPStan 2 (max level), deptrac, php-cs-fixer
 
@@ -73,27 +73,38 @@ new migration).
 | API documentation (Swagger UI) | <https://docs.vending-machine.test> |
 | Traefik dashboard | <http://127.0.0.1:8080> |
 | MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
-| MongoDB (profile `mongo`) | `127.0.0.1:27018`, database `app`, user `root` and password `root` as set in `.env` |
+| MongoDB | `127.0.0.1:27018`, databases `app` and `app_test`, user `root` and password `root` as set in `.env` (`make mongo-shell`) |
 
 All ports bind to localhost only. The PHP container runs as your user, so files it writes through
 the bind mount stay yours.
 
 ### MongoDB
 
-MongoDB will hold the vending machine aggregate and its outbox, while MySQL keeps the technicians
-and the history. Its repository adapter is not written yet, so the `mongo` service sits in the
-compose profile `mongo` and `make start` does not start it. Start it on demand:
+MongoDB stores the vending machine as one document, and will hold its outbox too, while MySQL will
+keep the technicians and the history ([ADR 16](docs/adr/0016-machine-stored-in-mongodb.md)).
+`make start` starts it with the rest of the stack, and the PHP container waits until it is healthy.
+Its data lives in the `mongo-data` volume. Copy the `MONGO_*` and `MONGODB_*` variables from
+`.env.dist` into an existing `.env`: the `mongo` image creates its root user only when it starts on
+an empty volume, so a volume first started without them needs `docker compose rm -sf mongo` and
+`docker volume rm vending-machine-challenge_mongo-data` before `make start`.
+
+To look at the stored machine:
 
 ```bash
-docker compose --profile mongo up -d mongo
+make mongo-shell
+db.vending_machines.findOne()
 ```
 
-`make stop` and `make down` leave it alone, since they do not enable the profile: stop it with
-`docker compose --profile mongo stop mongo`. Its data lives in the `mongo-data` volume. Copy the
-`MONGO_*` variables from `.env.dist` into an existing `.env`.
+It is the document `_id: 1`: its `version` (optimistic locking, ADR 11), `inventory`, the credit and
+the change in `wallet_credit` and `wallet_stock` (the count of each coin by its cents) and the
+`tray`. The application reaches it through `MONGODB_URL` and `MONGODB_DATABASE`; the test
+environment adds `_test` to the database name.
 
-`make start` builds the PHP image with the `mongodb` extension, installed through PECL like
-Xdebug, so the first start after pulling this change takes a few minutes longer.
+The machine's store is the alias of `VendingMachineRepository` and `StoredMachineResetter` in
+`config/services.yaml`. Pointing both at `DbalVendingMachineRepository` stores it in the MySQL
+table `vending_machine` instead; both adapters pass the same contract test.
+
+The PHP image carries the `mongodb` extension, installed through PECL like Xdebug.
 
 ## Using the machine from the console
 
@@ -145,7 +156,7 @@ then the technician's service did not happen: an option it cannot read (not a pa
 foreign coin, or a selector the machine lacks, which it checks before asking anything), input that
 ends before the last answer, or a service the machine refuses.
 
-The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
+The machine is stored in MongoDB, so each run carries on where the last one left it: the stock and
 the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
 the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
 coins of 0.05, 0.10 and 0.25 for change). The default is read only while no machine is stored: a
@@ -219,7 +230,7 @@ router; the `servers` of the document take the host and the port as variables. S
 reaches it over plain HTTP inside the Docker network, with no re-encryption. PhpStorm renders the
 file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 
-The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
+The API and the console use the same machine, stored in MongoDB: credit inserted over HTTP is credit
 that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
 answers above. The Behat scenarios in `features/customer/` play the statement's examples through
 the API, each from the default machine (`make behat`).
@@ -227,7 +238,7 @@ the API, each from the default machine (`make behat`).
 Each request reaches a controller through Traefik and nginx (see
 [How a request travels](#how-a-request-travels)). The controller sends a command or a query to its
 bus: a command goes through the logging and retry middleware to its handler, which loads the
-machine, asks the aggregate to act and saves it with its version; a query is answered from MySQL.
+machine, asks the aggregate to act and saves it with its version; a query is answered from MongoDB.
 
 ```mermaid
 flowchart LR
@@ -237,7 +248,7 @@ flowchart LR
     P -->|command| CB[Command bus: logging, retry]
     CB --> H[Handler]
     H --> M[VendingMachine aggregate]
-    H <-->|load, save with version| DB[(MySQL)]
+    H <-->|load, save with version| DB[(MongoDB)]
     P -->|query| QB[Query bus] --> QH[Query handler] --> DB
 ```
 
@@ -326,8 +337,8 @@ protection requires the last job, `All checks passed`, which fails unless every 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac,
-the tests and the scenarios. The hooks join the containers' network when it exists, so the tests that use MySQL need
-the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
+the tests and the scenarios. The hooks join the containers' network when it exists, so the tests that use MySQL or
+MongoDB need the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
 skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
 with the same refusal. `commit-msg` accepts
@@ -408,7 +419,7 @@ deptrac checks the rules between layers and contexts:
 
 - Domain depends only on `Shared/Domain`.
 - Application depends only on its own Domain, `Shared/Domain` and `Shared/Application`.
-- Only Infrastructure uses the framework (Symfony, Doctrine, PSR).
+- Only Infrastructure uses the framework (Symfony, Doctrine, PSR, MongoDB).
 - Every context may use `Shared`; `Shared` uses no context; a context never uses another
   context's Domain.
 - Every class in `src/` belongs to a layer, and every dependency points to a layer: a class of an
@@ -419,9 +430,9 @@ Commands and queries go through two synchronous Messenger buses, behind the `Com
 registered on `command.bus` and `query.bus` by their `CommandHandler` and `QueryHandler` suffixes
 in `config/services.yaml`, so the Application layer needs no framework attributes.
 
-The machine is saved with optimistic locking: its row has a version, and a save that finds another
-version than the one it loaded fails with a `ConcurrentUpdateException`. The command bus then runs
-the command again on the fresh machine, up to three more times, before it gives up.
+The machine is saved with optimistic locking: its stored document has a version, and a save that
+finds another version than the one it loaded fails with a `ConcurrentUpdateException`. The command
+bus then runs the command again on the fresh machine, up to three more times, before it gives up.
 
 ### Adding a bounded context
 

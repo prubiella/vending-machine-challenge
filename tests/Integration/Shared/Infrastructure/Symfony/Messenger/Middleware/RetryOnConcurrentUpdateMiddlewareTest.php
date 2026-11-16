@@ -9,10 +9,10 @@ use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
-use App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
+use App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository;
 use App\VendingMachine\Infrastructure\Persistence\VendingMachineMapper;
-use Doctrine\DBAL\Connection;
+use MongoDB\Database;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
@@ -24,8 +24,8 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
         // StartsWithNoStoredMachine used the repository, and a container cannot replace a service it already built.
         self::ensureKernelShutdown();
         $container = self::getContainer();
-        $stored = new DbalVendingMachineRepository(
-            $container->get(Connection::class),
+        $stored = new MongoVendingMachineRepository(
+            $container->get(Database::class),
             new VendingMachineMapper(),
             $container->get(DefaultVendingMachineFactory::class),
         );

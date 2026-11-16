@@ -3,7 +3,7 @@ description: Build the PHP image from the layer cache, start the given services 
 
 inputs:
   services:
-    description: The compose services to start, such as "php-fpm" or "php-fpm mysql".
+    description: The compose services to start, such as "php-fpm" or "php-fpm mysql mongo".
     required: true
   dependencies:
     description: '"--no-deps" starts only the services given, without the ones they depend on.'

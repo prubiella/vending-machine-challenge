@@ -114,7 +114,7 @@ jobs:
       - name: Start PHP and the databases
         uses: ./.github/actions/start
         with:
-          services: php-fpm mysql
+          services: php-fpm mysql mongo
 
       - name: Migrate the databases
         run: make migrate
@@ -140,7 +140,7 @@ jobs:
       - name: Start PHP and the databases
         uses: ./.github/actions/start
         with:
-          services: php-fpm mysql
+          services: php-fpm mysql mongo
 
       - name: Migrate the databases
         run: make migrate

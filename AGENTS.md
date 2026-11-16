@@ -6,7 +6,8 @@ file, so it is the single source for every tool.
 ## Project
 
 A vending machine modelled with DDD, CQRS and a hexagonal architecture: PHP 8.5, Symfony 8.1,
-MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
+MongoDB 9.0 for the machine, MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how
+to run it.
 
 ## Everything runs in the containers
 
@@ -25,9 +26,9 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
   installs its `vendor/` when git creates it (by hand:
   `./etc/git/hooks-docker/run-in-php-image.sh composer install`). `run-in-php-image.sh` joins
   `vending_machine_network` when it exists, so the checks it runs, the pre-commit hook's included,
-  reach the mysql service: start the containers before committing, or the database tests fail. A
-  worktree has no `.env`, so Symfony reads `.env.dist`; a Flex recipe run there writes a `.env` of
-  its own that hides `.env.dist`: delete it.
+  reach the mysql and mongo services: start the containers before committing, or the database
+  tests fail. A worktree has no `.env`, so Symfony reads `.env.dist`; a Flex recipe run there writes
+  a `.env` of its own that hides `.env.dist`: delete it.
 
 ## Bounded contexts
 
@@ -62,7 +63,7 @@ Every context has the same three layers:
   `src/*/Application/Query/**/*QueryHandler.php` on `query.bus`), so keep the suffixes and do not
   use `#[AsMessageHandler]`.
 - `Infrastructure`: Symfony glue, controllers, console commands, persistence adapters. The only
-  layer that may use the framework (Symfony, Doctrine, PSR). Depends on its own Domain and
+  layer that may use the framework (Symfony, Doctrine, PSR, MongoDB). Depends on its own Domain and
   Application and on all of `Shared`.
 
 deptrac allows each context only its own layers and `Shared`, so no context uses another
@@ -109,7 +110,7 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 2. Application: the command or query and its handler, which only loads, calls the domain and saves.
 3. Infrastructure: the adapter (controller, console command, repository). `config/services.yaml`
    leaves `Domain` out of autowiring, so alias a domain port to its adapter there
-   (`VendingMachineRepository` to `DbalVendingMachineRepository`).
+   (`VendingMachineRepository` to `MongoVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
    `#[MapRequestPayload]`. A customer-facing refusal gets its status and `log_level: info`
@@ -152,17 +153,18 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Checks
 
 `make test`, `make behat`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or
-`make code-check` for all of them. They must pass before committing. The integration tests use the `app_test` database:
-`make migrate` brings it up to date (from a worktree, `bin/console doctrine:migrations:migrate -n
---env=test` through `run-in-php-image.sh`), and a kernel test that touches the machine uses
-`StartsWithNoStoredMachine`, so it starts from the default machine. Behat (`behat.dist.php`, the
-FriendsOfBehat Symfony extension) runs the scenarios of `features/` against the kernel through
-BrowserKit, on the same test database; `CustomerContext` deletes the stored machine before each
-scenario. `tests/Behat/` is outside `src/`, so deptrac does not see it, and PHPStan analyses it with
-the rest of `tests/`. `make hooks` (part of
-`make first-run`) enables the git hooks: pre-commit runs the checks when code, configuration or
-tooling is staged, and refuses the commit when those staged files also have unstaged changes, since
-the checks read the disk.
+`make code-check` for all of them. They must pass before committing. The integration tests use the
+`app_test` databases of MySQL and MongoDB: `make migrate` brings the MySQL one up to date (from a
+worktree, `bin/console doctrine:migrations:migrate -n --env=test` through `run-in-php-image.sh`),
+and a kernel test that touches the machine uses `StartsWithNoStoredMachine`, so it starts from the
+default machine. A new adapter of `VendingMachineRepository` gets a test case that extends
+`VendingMachineRepositoryContractTestCase`. Behat (`behat.dist.php`, the FriendsOfBehat Symfony
+extension) runs the scenarios of `features/` against the kernel through BrowserKit, on the same
+test databases; `CustomerContext` deletes the stored machine before each scenario. `tests/Behat/`
+is outside `src/`, so deptrac does not see it, and PHPStan analyses it with the rest of `tests/`.
+`make hooks` (part of `make first-run`) enables the git hooks: pre-commit runs the checks when
+code, configuration or tooling is staged, and refuses the commit when those staged files also have
+unstaged changes, since the checks read the disk.
 
 `/vm-review [<pr-number>|<range>]` reviews a change in a headless `claude -p` session in the
 background and writes the report to `.audit/vm-review/`; the lenses live in

@@ -18,6 +18,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
 
   nginx:
     image: "nginx:${NGINX_VERSION:-1.30.6-alpine}"
@@ -108,7 +110,6 @@ services:
 
   mongo:
     image: "mongo:${MONGO_VERSION:-9.0.8}"
-    profiles: [mongo]
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}

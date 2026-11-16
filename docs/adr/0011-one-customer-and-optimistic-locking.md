@@ -3,7 +3,7 @@
 ## Status
 
 Accepted. Built and merged: the version in `DbalVendingMachineRepository` and
-`RetryOnConcurrentUpdateMiddleware`.
+`MongoVendingMachineRepository`, and `RetryOnConcurrentUpdateMiddleware`.
 
 ## Context
 
