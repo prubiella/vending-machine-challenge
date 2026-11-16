@@ -13,7 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
+use Symfony\Component\Serializer\Exception\PartialDenormalizationException;
 
 final class JsonExceptionListenerTest extends TestCase
 {
@@ -66,6 +69,55 @@ final class JsonExceptionListenerTest extends TestCase
         $response = $this->handle(new NotFoundHttpException('No route found'), $debug);
 
         self::assertSame(['error' => ['code' => 404, 'message' => 'No route found']], $this->body($response));
+    }
+
+    public function testNamesTheFieldOfAWrongTypeWithoutTheClass(): void
+    {
+        $error = NotNormalizableValueException::createForUnexpectedDataType(
+            'The type of the "coin" attribute for class "App\\Some\\Request" must be one of "string" ("float" given).',
+            0.25,
+            ['string'],
+            'coin',
+            true,
+        );
+
+        $response = $this->handle($this->unprocessable($error), debug: false);
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame(['error' => ['code' => 422, 'message' => 'The "coin" field must be a string, got float.']], $this->body($response));
+    }
+
+    public function testNamesTheMissingField(): void
+    {
+        $error = NotNormalizableValueException::createForUnexpectedDataType(
+            'Failed to create object because the class misses the "coin" property.',
+            null,
+            ['string'],
+            'coin',
+            true,
+        );
+
+        $response = $this->handle($this->unprocessable($error), debug: false);
+
+        self::assertSame(['error' => ['code' => 422, 'message' => 'The "coin" field is required.']], $this->body($response));
+    }
+
+    public function testReportsEveryFieldThatCannotBeBound(): void
+    {
+        $missing = NotNormalizableValueException::createForUnexpectedDataType('x', null, ['string'], 'username', true);
+        $wrongType = NotNormalizableValueException::createForUnexpectedDataType('x', 1, ['string'], 'password', true);
+
+        $response = $this->handle($this->unprocessable($missing, $wrongType), debug: false);
+
+        self::assertSame(
+            ['error' => ['code' => 422, 'message' => 'The "username" field is required. The "password" field must be a string, got int.']],
+            $this->body($response),
+        );
+    }
+
+    private function unprocessable(NotNormalizableValueException ...$errors): UnprocessableEntityHttpException
+    {
+        return new UnprocessableEntityHttpException('serializer message', new PartialDenormalizationException([], array_values($errors)));
     }
 
     private function handle(\Throwable $exception, bool $debug): Response

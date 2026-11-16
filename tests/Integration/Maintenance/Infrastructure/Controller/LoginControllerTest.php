@@ -54,6 +54,7 @@ final class LoginControllerTest extends WebTestCase
         $this->client->jsonRequest('POST', '/auth/login', ['username' => self::TECHNICIAN_USERNAME]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['error' => ['code' => 422, 'message' => 'The "password" field is required.']], $this->responseBody());
     }
 
     /**

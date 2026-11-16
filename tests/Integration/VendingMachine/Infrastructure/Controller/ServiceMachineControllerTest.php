@@ -150,6 +150,7 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
         $this->client->jsonRequest('PUT', '/machine/service', ['units' => ['WATER' => 2]], $authHeaders);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['error' => ['code' => 422, 'message' => 'The "coins" field is required.']], $this->responseBody());
         self::assertSame(self::DEFAULT_STATUS, $this->machineStatus($authHeaders));
     }
 

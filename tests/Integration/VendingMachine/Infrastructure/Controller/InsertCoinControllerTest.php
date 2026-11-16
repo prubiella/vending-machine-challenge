@@ -33,23 +33,32 @@ final class InsertCoinControllerTest extends VendingMachineApiTestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>}>
+     * @return iterable<string, array{array<string, mixed>, string}>
      */
     public static function malformedBodies(): iterable
     {
-        yield 'no coin' => [[]];
-        yield 'a coin written as a number' => [['coin' => 0.25]];
+        yield 'no coin' => [[], 'The "coin" field is required.'];
+        yield 'a coin written as a number' => [['coin' => 0.25], 'The "coin" field must be a string, got float.'];
     }
 
     /**
      * @param array<string, mixed> $body
      */
     #[DataProvider('malformedBodies')]
-    public function testRejectsABodyWithoutACoinInTheStatementNotation(array $body): void
+    public function testRejectsABodyWithoutACoinInTheStatementNotation(array $body, string $message): void
     {
         $this->client->jsonRequest('POST', '/machine/coins', $body);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['error' => ['code' => 422, 'message' => $message]], $this->responseBody());
         self::assertSame(0, $this->credit());
+    }
+
+    public function testRejectsABodyThatIsNotJson(): void
+    {
+        $this->client->request('POST', '/machine/coins', server: ['CONTENT_TYPE' => 'application/json'], content: 'garbage');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+        self::assertSame(['error' => ['code' => 400, 'message' => 'Request payload contains invalid "json" data.']], $this->responseBody());
     }
 }
