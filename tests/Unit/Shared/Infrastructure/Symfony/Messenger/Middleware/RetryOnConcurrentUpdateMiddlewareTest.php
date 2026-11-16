@@ -45,8 +45,9 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         try {
             $this->bus($this->handlerFailingWith(5), maxRetries: 2)->dispatch(new \stdClass());
             self::fail('Expected a ConcurrentUpdateException.');
-        } catch (ConcurrentUpdateException) {
+        } catch (ConcurrentUpdateException $e) {
             self::assertSame(3, $this->attempts);
+            self::assertSame('The thing changed since it was loaded at version 3.', $e->getMessage());
         }
     }
 
