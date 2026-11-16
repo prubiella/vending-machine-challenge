@@ -199,12 +199,12 @@ password of 8 characters to 4096 bytes, and prints the id it gives the technicia
 are required. An answer the domain refuses (a username or an email it does not take, a password too
 short or too long) is asked again with the domain's reason, up to three times; a value given as an
 option is refused at once. A username or an email that another technician already has is only found
-when the technician is stored, after every answer, so it ends the command. The technician will log
-in by username once a login exists; the email is only kept. A password is never trimmed, whether
-typed at the hidden prompt or given as an option, so spaces around it count. The password is never
-stored or logged in clear: the command bus logs only the first three characters of the username and
-of the email, the password as `***`, and the refusals (an invalid or taken username or email)
-without the value.
+when the technician is stored, after every answer, so it ends the command. The technician logs in by
+username (`POST /auth/login`, `vending:technician:token`); the email is only kept. A password is
+never trimmed, whether typed at the hidden prompt or given as an option, so spaces around it count.
+The password is never stored or logged in clear: the command bus logs only the first three
+characters of the username and of the email, the password as `***`, and the refusals (an invalid or
+taken username or email) without the value.
 
 `SERVICE` and `vending:service` check the credentials before asking any count, and refuse an
 unknown username and a wrong password with the same message, so a refusal does not tell which

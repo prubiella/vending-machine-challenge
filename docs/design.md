@@ -428,6 +428,18 @@ credentials first (see [SERVICE](#service)): `VendingMachine` checks them throug
 and a wrong password are refused with the same message, so a refusal does not tell which usernames
 exist.
 
+**Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
+`AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)
+whose `sub` claim is the technician's id and whose role is `ROLE_TECHNICIAN`; `TechnicianTokenIssuer`
+makes it, and `vending:technician:token` prints the same token from a shell, its prompts on stderr so
+`token=$(...)` keeps the token alone. The `machine` firewall is stateless: it builds the user from
+the token, so a request needs no database, and its `access_control` lists the technician's routes
+(`GET /machine/status`), the customer's routes staying open. A missing, malformed, badly signed or
+expired token answers 401 in the API's error format; a token without the role 403; a token the
+server cannot check because of its own keys 500, logged as critical, since logging in again cannot
+fix it. The key pair is created by `make jwt-keys` and ignored by git. A token stays valid for its
+hour after its technician is removed: nothing is looked up per request.
+
 **Who serviced the machine.** `ServiceMachineCommand` carries the authenticated technician's id.
 No handler reads it: the command bus logs every command with its data, so the log records who
 serviced the machine on every service. That log is the audit trail until domain events exist.
@@ -436,7 +448,9 @@ serviced the machine on every service. That log is the audit trail until domain 
 maps each such field to a `Masking` rule (`Hide` logs `***`, `KeepFirstThree` logs `pau***`):
 `CreateTechnicianCommand` hides the password and keeps the first three characters of the username
 and the email. The credentials check is a query, which the bus does not log, and a refusal's
-message never quotes a username, an email or a password.
+message never quotes a username, an email or a password. Symfony logs a console command with its
+input, so `PasswordOptionMaskingProcessor` logs a `--password` option as `***`; a password given as
+an option still stays in the shell history, so the prompts are the documented way.
 
 **Transport.** TLS ends at Traefik, a certificate from a local CA, and traffic is re-encrypted to
 nginx. Secrets are never committed: `.env` is ignored, and `.env.dist` holds safe defaults.
@@ -540,8 +554,8 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
   `MachineServiced` event with the technician's id would replace the command bus log as the record
   of who serviced the machine.
-- **Technician authentication.** The `Maintenance` context, described in
-  [section 7](#7-security), with service and status over HTTP.
+- **Servicing over HTTP.** A technician's `PUT /machine/service`, next to the status route that
+  [section 7](#7-security) describes.
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since
