@@ -59,14 +59,14 @@ HTTP. The console is not a server: it runs inside the PHP container through `mak
 
 ```mermaid
 flowchart LR
-    Client["Client or browser"] -->|HTTPS| Traefik
+    Client["Client or<br/>browser"] -->|HTTPS| Traefik
     Traefik -->|"HTTPS, re-encrypted"| Nginx["nginx"]
-    Nginx -->|FastCGI| Php["PHP-FPM, Symfony"]
+    Nginx -->|FastCGI| Php["PHP-FPM<br/>Symfony"]
     Traefik -->|"HTTP, docs.host"| Swagger["Swagger UI"]
     Swagger -.->|"reads docs/openapi.yaml"| Spec[("docs/openapi.yaml")]
-    Console["make run: vending:run, vending:service"] --> Php
-    Php --> Mongo[("MongoDB: the machine")]
-    Php --> MySql[("MySQL: migrations")]
+    Console["Console<br/>make run"] --> Php
+    Php --> Mongo[("MongoDB<br/>the machine")]
+    Php --> MySql[("MySQL<br/>migrations")]
 ```
 
 ### Bounded contexts and layers
@@ -79,9 +79,9 @@ reserved.
 ```mermaid
 flowchart TB
     subgraph Shared
-        SD["Domain: Money, DomainException"]
-        SA["Application: bus ports, health check query"]
-        SI["Infrastructure: Messenger buses, middleware, controllers base"]
+        SD["Domain<br/>Money<br/>DomainException"]
+        SA["Application<br/>bus ports<br/>health check query"]
+        SI["Infrastructure<br/>Messenger buses<br/>middleware<br/>base controller"]
     end
     subgraph VendingMachine
         VD[Domain]
@@ -131,10 +131,10 @@ loads the machine, asks the aggregate to act and saves it:
 
 ```mermaid
 flowchart LR
-    C[Controller or console command] -->|command| CB["Command bus: logging, unpack, retry"]
+    C["Controller or<br/>console command"] -->|command| CB["Command bus<br/>logging, unpack,<br/>retry"]
     CB --> H[Command handler]
-    H --> R[VendingMachineRepository]
-    H --> A[VendingMachine aggregate]
+    H --> R["VendingMachine<br/>Repository"]
+    H --> A["VendingMachine<br/>aggregate"]
     C -->|query| QB[Query bus] --> QH[Query handler] --> R
 ```
 
