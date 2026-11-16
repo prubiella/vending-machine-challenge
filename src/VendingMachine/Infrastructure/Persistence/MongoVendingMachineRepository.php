@@ -22,6 +22,8 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
 {
     private const string COLLECTION = 'vending_machines';
     private const int NOT_STORED = 0;
+    // The _id the machine was stored under before it had a UUID, removed on reset.
+    private const int LEGACY_MACHINE_ID = 1;
     private const int DUPLICATE_KEY = 11000;
     private const string AGGREGATE = 'vending machine';
     private const array AS_ARRAYS = ['typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']];
@@ -72,7 +74,7 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
 
     public function reset(): void
     {
-        $this->machines->deleteOne(['_id' => $this->machineId->value()]);
+        $this->machines->deleteMany(['_id' => ['$in' => [$this->machineId->value(), self::LEGACY_MACHINE_ID]]]);
     }
 
     /**

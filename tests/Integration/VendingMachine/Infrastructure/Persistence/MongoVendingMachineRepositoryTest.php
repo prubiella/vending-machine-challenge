@@ -21,6 +21,16 @@ final class MongoVendingMachineRepositoryTest extends VendingMachineRepositoryCo
         );
     }
 
+    public function testResettingAlsoRemovesTheMachineStoredBeforeItHadAUuid(): void
+    {
+        $machines = self::getContainer()->get(Database::class)->getCollection('vending_machines');
+        $machines->insertOne(['_id' => 1, 'version' => 1]);
+
+        self::repository()->reset();
+
+        self::assertSame(0, $machines->countDocuments(['_id' => 1]));
+    }
+
     protected static function repository(): MongoVendingMachineRepository
     {
         return self::getContainer()->get(MongoVendingMachineRepository::class);
