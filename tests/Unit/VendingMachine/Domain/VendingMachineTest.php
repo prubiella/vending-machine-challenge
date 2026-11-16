@@ -14,6 +14,7 @@ use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -25,6 +26,20 @@ use PHPUnit\Framework\TestCase;
 
 final class VendingMachineTest extends TestCase
 {
+    private const string MACHINE_ID = '01a1e2f0-aa80-70ea-832f-6110cbf86e31';
+
+    public function testAnInstalledMachineHasTheIdItWasInstalledWith(): void
+    {
+        self::assertTrue(self::installed()->id()->equals(MachineId::fromString(self::MACHINE_ID)));
+    }
+
+    public function testARestoredMachineKeepsItsId(): void
+    {
+        $machine = VendingMachine::restore(MachineId::fromString(self::MACHINE_ID), Inventory::of(), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+
+        self::assertTrue($machine->id()->equals(MachineId::fromString(self::MACHINE_ID)));
+    }
+
     public function testAFreshlyInstalledMachineHasEmptySlotsNoCoinsAndAnEmptyTray(): void
     {
         $machine = self::installed();
@@ -234,7 +249,7 @@ final class VendingMachineTest extends TestCase
         $wallet = Wallet::of(CoinCollection::of(Coin::OneHundredCents), CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents));
         $tray = Tray::empty()->addProduct(self::product('SODA', 'Soda', 150));
 
-        $machine = VendingMachine::restore($inventory, $wallet, $tray);
+        $machine = VendingMachine::restore(MachineId::fromString(self::MACHINE_ID), $inventory, $wallet, $tray);
         $machine->select(Selector::fromString('WATER'), self::changeMaker());
 
         self::assertSame(2, self::unitsOf($machine, 'WATER'));
@@ -262,6 +277,7 @@ final class VendingMachineTest extends TestCase
     private static function installed(): VendingMachine
     {
         return VendingMachine::install(
+            MachineId::fromString(self::MACHINE_ID),
             self::product('WATER', 'Water', 65),
             self::product('JUICE', 'Juice', 100),
             self::product('SODA', 'Soda', 150),

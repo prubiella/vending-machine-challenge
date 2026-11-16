@@ -28,6 +28,7 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends KernelTestCase
             $container->get(Database::class),
             new VendingMachineMapper(),
             $container->get(DefaultVendingMachineFactory::class),
+            $container->getParameter('vending_machine.id'),
         );
         $repository = new class($stored) implements VendingMachineRepository {
             public int $saves = 0;

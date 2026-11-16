@@ -4,14 +4,30 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Infrastructure\Persistence;
 
+use App\Shared\Domain\Uuid\InvalidUuidException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 use PHPUnit\Framework\TestCase;
 
 final class DefaultVendingMachineFactoryTest extends TestCase
 {
+    private const string MACHINE_ID = '01a1e2f0-aa80-70ea-832f-6110cbf86e31';
+
+    public function testInstallsTheMachineUnderTheConfiguredId(): void
+    {
+        self::assertTrue(self::factory()->create()->id()->equals(MachineId::fromString(self::MACHINE_ID)));
+    }
+
+    public function testRefusesAConfiguredIdThatIsNotAUuid(): void
+    {
+        $this->expectException(InvalidUuidException::class);
+
+        new DefaultVendingMachineFactory('1', [], []);
+    }
+
     public function testInstallsTheConfiguredProductsWithTheirUnits(): void
     {
         $machine = self::factory()->create();
@@ -31,6 +47,7 @@ final class DefaultVendingMachineFactoryTest extends TestCase
     public function testRefusesADefaultProductWithoutUnits(): void
     {
         $factory = new DefaultVendingMachineFactory(
+            self::MACHINE_ID,
             [['selector' => 'CHIPS', 'name' => 'Chips', 'price_cents' => 120]],
             [],
         );
@@ -61,6 +78,7 @@ final class DefaultVendingMachineFactoryTest extends TestCase
     private static function factory(): DefaultVendingMachineFactory
     {
         return new DefaultVendingMachineFactory(
+            self::MACHINE_ID,
             [
                 ['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 3],
                 ['selector' => 'SODA', 'name' => 'Soda', 'price_cents' => 150, 'units' => 0],

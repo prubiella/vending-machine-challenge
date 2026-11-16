@@ -10,6 +10,7 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -41,6 +42,11 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
     public function testGivesTheDefaultMachineWhenNoneIsStored(): void
     {
         self::assertEquals(self::defaultMachine(), static::repository()->get());
+    }
+
+    public function testTheDefaultMachineHasTheConfiguredId(): void
+    {
+        self::assertSame(self::configuredMachineId(), static::repository()->get()->id()->value());
     }
 
     public function testGivesBackEveryPartOfTheMachineItSaved(): void
@@ -155,6 +161,7 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
         $juice = self::product('JUICE', 'Juice', 100);
 
         return VendingMachine::restore(
+            MachineId::fromString(self::configuredMachineId()),
             Inventory::of(Slot::of($water, 4), Slot::of($juice, 0)),
             Wallet::of(CoinCollection::of(Coin::OneHundredCents, Coin::FiveCents), CoinCollection::of(Coin::TenCents, Coin::TwentyFiveCents, Coin::TwentyFiveCents)),
             Tray::empty()->addProduct($juice)->addProduct($water)->addCoins(CoinCollection::of(Coin::TenCents, Coin::FiveCents)),
@@ -164,6 +171,11 @@ abstract class VendingMachineRepositoryContractTestCase extends KernelTestCase
     private static function product(string $selector, string $name, int $priceInCents): Product
     {
         return Product::of(Selector::fromString($selector), ProductName::fromString($name), Money::fromCents($priceInCents));
+    }
+
+    protected static function configuredMachineId(): string
+    {
+        return self::getContainer()->getParameter('vending_machine.id');
     }
 
     private static function defaultMachine(): VendingMachine

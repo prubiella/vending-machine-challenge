@@ -11,6 +11,7 @@ final class VendingMachineRepositoryMother
     public static function withTheStatementProducts(): InMemoryVendingMachineRepository
     {
         return new InMemoryVendingMachineRepository(new DefaultVendingMachineFactory(
+            '01a1e2f0-aa80-70ea-832f-6110cbf86e31',
             [
                 ['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 5],
                 ['selector' => 'JUICE', 'name' => 'Juice', 'price_cents' => 100, 'units' => 5],

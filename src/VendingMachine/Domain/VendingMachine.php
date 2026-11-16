@@ -17,22 +17,23 @@ use App\VendingMachine\Domain\Wallet\Wallet;
 final class VendingMachine
 {
     private function __construct(
+        private readonly MachineId $id,
         private Inventory $inventory,
         private Wallet $wallet,
         private Tray $tray,
     ) {
     }
 
-    public static function install(Product ...$products): self
+    public static function install(MachineId $id, Product ...$products): self
     {
         $emptySlots = array_map(static fn (Product $product): Slot => Slot::of($product, 0), $products);
 
-        return new self(Inventory::of(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+        return new self($id, Inventory::of(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
     }
 
-    public static function restore(Inventory $inventory, Wallet $wallet, Tray $tray): self
+    public static function restore(MachineId $id, Inventory $inventory, Wallet $wallet, Tray $tray): self
     {
-        return new self($inventory, $wallet, $tray);
+        return new self($id, $inventory, $wallet, $tray);
     }
 
     public function insertCoin(Coin $coin): void
@@ -74,6 +75,11 @@ final class VendingMachine
         $tray = $this->tray->addCoins($refund->coins());
 
         $this->replaceParts($inventory, $wallet, $tray);
+    }
+
+    public function id(): MachineId
+    {
+        return $this->id;
     }
 
     public function inventory(): Inventory

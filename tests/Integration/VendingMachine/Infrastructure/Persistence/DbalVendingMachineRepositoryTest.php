@@ -11,6 +11,18 @@ use Doctrine\DBAL\Connection;
 
 final class DbalVendingMachineRepositoryTest extends VendingMachineRepositoryContractTestCase
 {
+    public function testStoresTheMachineInTheRowOfItsId(): void
+    {
+        $repository = self::repository();
+
+        $repository->save($repository->get());
+
+        self::assertSame(
+            [self::configuredMachineId()],
+            self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT id FROM vending_machine'),
+        );
+    }
+
     // The machine is stored in MongoDB, so the container does not wire this adapter.
     protected static function repository(): DbalVendingMachineRepository
     {
@@ -18,6 +30,7 @@ final class DbalVendingMachineRepositoryTest extends VendingMachineRepositoryCon
             self::getContainer()->get(Connection::class),
             new VendingMachineMapper(),
             self::getContainer()->get(DefaultVendingMachineFactory::class),
+            self::configuredMachineId(),
         );
     }
 }

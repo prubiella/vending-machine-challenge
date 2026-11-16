@@ -1,4 +1,7 @@
 parameters:
+    # The one machine this installation runs: the default machine gets this id, and the repository
+    # loads the machine stored under it.
+    vending_machine.id: '%env(VENDING_MACHINE_ID)%'
     vending_machine.default_products:
         - { selector: WATER, name: Water, price_cents: 65, units: 10 }
         - { selector: JUICE, name: Juice, price_cents: 100, units: 10 }
@@ -49,8 +52,17 @@ services:
 
     App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:
+            $machineId: '%vending_machine.id%'
             $products: '%vending_machine.default_products%'
             $coinStockByCents: '%vending_machine.default_coin_stock%'
+
+    App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository:
+        arguments:
+            $machineId: '%vending_machine.id%'
+
+    App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository:
+        arguments:
+            $machineId: '%vending_machine.id%'
 
     App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
     App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'

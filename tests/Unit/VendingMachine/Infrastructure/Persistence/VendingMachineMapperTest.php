@@ -9,6 +9,7 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -20,11 +21,14 @@ use PHPUnit\Framework\TestCase;
 
 final class VendingMachineMapperTest extends TestCase
 {
+    private const string MACHINE_ID = '01a1e2f0-aa80-70ea-832f-6110cbf86e31';
+
     public function testWritesEachPartOfTheMachineAsADocument(): void
     {
         $document = new VendingMachineMapper()->toDocument(self::machine());
 
         self::assertSame([
+            '_id' => self::MACHINE_ID,
             'inventory' => [
                 ['selector' => 'WATER', 'name' => 'Water', 'price_cents' => 65, 'units' => 3],
                 ['selector' => 'SODA', 'name' => 'Soda', 'price_cents' => 150, 'units' => 0],
@@ -59,11 +63,33 @@ final class VendingMachineMapperTest extends TestCase
         $mapper->fromDocument($document);
     }
 
+    public function testRefusesADocumentWithoutAnId(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = array_diff_key($mapper->toDocument(self::machine()), ['_id' => true]);
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('The stored vending machine has no "_id".');
+
+        $mapper->fromDocument($document);
+    }
+
+    public function testRefusesADocumentWhoseIdIsNotAUuid(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = ['_id' => 1, ...array_diff_key($mapper->toDocument(self::machine()), ['_id' => true])];
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromDocument($document);
+    }
+
     public function testWritesEachPartOfTheMachineAsJson(): void
     {
         $row = new VendingMachineMapper()->toRow(self::machine());
 
         self::assertSame([
+            'id' => self::MACHINE_ID,
             'inventory' => '[{"selector":"WATER","name":"Water","price_cents":65,"units":3},{"selector":"SODA","name":"Soda","price_cents":150,"units":0}]',
             'wallet_credit' => '{"5":0,"10":0,"25":1,"100":1}',
             'wallet_stock' => '{"5":2,"10":1,"25":0,"100":0}',
@@ -89,6 +115,16 @@ final class VendingMachineMapperTest extends TestCase
         $mapper->fromRow($row);
     }
 
+    public function testRefusesARowWithoutAnId(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $row = array_diff_key($mapper->toRow(self::machine()), ['id' => true]);
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromRow($row);
+    }
+
     public function testRefusesARowWithoutAColumn(): void
     {
         $mapper = new VendingMachineMapper();
@@ -105,6 +141,7 @@ final class VendingMachineMapperTest extends TestCase
         $soda = self::product('SODA', 'Soda', 150);
 
         return VendingMachine::restore(
+            MachineId::fromString(self::MACHINE_ID),
             Inventory::of(Slot::of($water, 3), Slot::of($soda, 0)),
             Wallet::of(
                 CoinCollection::of(Coin::TwentyFiveCents, Coin::OneHundredCents),

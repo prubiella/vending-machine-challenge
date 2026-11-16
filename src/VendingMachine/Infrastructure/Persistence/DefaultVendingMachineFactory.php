@@ -6,6 +6,7 @@ namespace App\VendingMachine\Infrastructure\Persistence;
 
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
@@ -13,19 +14,23 @@ use App\VendingMachine\Domain\VendingMachine;
 
 final readonly class DefaultVendingMachineFactory
 {
+    private MachineId $machineId;
+
     /**
      * @param list<array{selector: string, name: string, price_cents: int, units?: int}> $products
      * @param array<int, int>                                                            $coinStockByCents
      */
     public function __construct(
+        string $machineId,
         private array $products,
         private array $coinStockByCents,
     ) {
+        $this->machineId = MachineId::fromString($machineId);
     }
 
     public function create(): VendingMachine
     {
-        $machine = VendingMachine::install(...$this->defaultProducts());
+        $machine = VendingMachine::install($this->machineId, ...$this->defaultProducts());
         $machine->service($this->defaultUnitsBySelector(), CoinCollection::fromCounts($this->coinStockByCents));
 
         return $machine;
