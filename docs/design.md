@@ -248,6 +248,12 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 - **`RETURN-COIN` is not change.** It gives back exactly the coins inserted, a 1 included.
 - **`SERVICE` sets, it does not add.** It returns the pending credit to the tray, then sets units
   and coin counts to the values given ([ADR 10](adr/0010-service-sets-stock-and-returns-credit.md)).
+- **A service can change the catalog, all or nothing.** Next to the units and the coins it takes a
+  `CatalogChange`: products to install (or to redefine, which is how a price changes) and selectors
+  to retire. Retires go first, then installs, then the units of the products left in place. A
+  contradiction (a selector installed and retired, or also given units), a price that is not a
+  multiple of the smallest coin or a 41st product refuses the whole service
+  ([ADR 22](adr/0022-technician-manages-the-catalog.md)).
 - **A service is bounded, a sale is not refused.** A slot holds at most 200 units and each coin
   tube 500 coins: a service past either is refused and changes nothing. A sale is never refused for
   it: the coins that do not fit a full tube go to the cash box.
@@ -261,7 +267,9 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
 `ProductSold` with the product and the change given, `CreditReturned` with the coins given back
 (by `RETURN-COIN` or by a service, only when there were any) and `MachineServiced` with the
-technician's id, the counts set and the coins collected from the cash box. A sale that leaves a
+technician's id, the counts set and the coins collected from the cash box, followed by
+`ProductRetired` and `ProductInstalled`, each with the technician's id, the product and its units,
+for every product the service took out or put in. A sale that leaves a
 slot at or under `Slot::LOW_STOCK_THRESHOLD` (5 units), coming from above it, also records
 `StockRunningLow` with the selector and the units left: once per crossing, not on every later
 sale, and never for a service, since the technician chose that stock. A refusal records nothing.
@@ -350,7 +358,7 @@ turns the coin notation into cents. The console first logs the technician in: `T
 (hidden, never trimmed) that the options leave out and checks them through the
 `TechnicianAuthenticator` port, which `Maintenance` answers with `AuthenticateTechnicianQuery`. A
 wrong or missing credential ends the service before any count is asked. Then the console asks the
-units of each product and the count of each coin, with the current values as defaults, and
+units of each product (except the ones `--install` or `--retire` name) and the count of each coin, with the current values as defaults, and
 dispatches one command that carries the technician's id.
 
 ```mermaid
@@ -374,11 +382,23 @@ sequenceDiagram
     Console->>CBus: ServiceMachineCommand with the technician's id
     CBus->>Handler: __invoke
     Handler->>Repo: get()
-    Handler->>Machine: service(units, coins)
-    Note over Machine: pending credit goes to the tray, then units and coins are set
+    Handler->>Machine: service(units, coins, catalog change)
+    Note over Machine: pending credit goes to the tray, products are retired and installed, then units and coins are set
     Handler->>Repo: save(machine)
     Console-->>Technician: The machine is serviced.
 ```
+
+### Adding a product
+
+A product is added the way a technician adds one to a real machine: in a service. Over HTTP,
+`PUT /machine/service` takes `"install": [{"selector": "TEA", "name": "Green tea", "priceCents": 120,
+"units": 12}]`; in the console, `vending:service --install TEA:1.20:12:Green tea`. Nothing in the
+configuration changes and nothing is reset: the stock, the credit and the tray stay, and the history
+records who installed it. Retiring (`retire`, `--retire`) and replacing (both in one service) work
+the same way, and installing a selector the machine has changes its name and price. Neither the
+domain nor the storage needs a change for a new product: a slot is a selector, a name, a price and
+units, stored as such in the machine's document. What would need code is a new kind of rule about
+products, such as an age check, which would go in the aggregate like the price rule.
 
 ### A concurrent update
 
@@ -599,6 +619,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | The machine as one MongoDB document | A MySQL row, as before | [ADR 16](adr/0016-machine-stored-in-mongodb.md) |
 | The machine only in MongoDB, the DBAL adapter removed | A second adapter nothing runs | [ADR 21](adr/0021-machine-lives-only-in-mongodb.md) |
 | UUID v7 identities behind a shared base, the machine's id from configuration | Auto-increment ids, or UUID v4 | [ADR 17](adr/0017-uuid-identities.md) |
+| A technician installs, retires and reprices products in a service | Editing the configuration and resetting the machine, or a declarative catalog | [ADR 22](adr/0022-technician-manages-the-catalog.md) |
 
 Trade-offs worth saying out loud:
 
@@ -608,6 +629,8 @@ Trade-offs worth saying out loud:
 - `SERVICE` sets values rather than adding, so a technician who types a wrong count overwrites the
   right one, and a sale saved between the read and the service is undone. Service the machine
   while nobody else uses it.
+- Every technician may change the catalog and the prices: there is one role. A real operator would
+  often keep pricing apart from restocking ([ADR 22](adr/0022-technician-manages-the-catalog.md)).
 - Two storage engines in one project is extra weight. It is kept on purpose, to show that the port
   defines the behaviour and that an engine can change behind it.
 

@@ -3,9 +3,10 @@
 [![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
 
 A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, CQRS and a hexagonal architecture.
-It accepts coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50),
-gives change, returns the inserted coins on request and lets a technician service it by setting the
-available change and the stock of each product. A console command and a JSON API drive the same
+It accepts coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50 to
+start with), gives change, returns the inserted coins on request and lets a technician service it by
+setting the available change and the stock of each product, and by adding, retiring or repricing
+products. A console command and a JSON API drive the same
 machine, which is stored in MongoDB. Everything runs in Docker: the host needs no PHP or Composer.
 
 - [Design document](docs/design.md): architecture, domain model and main flows, with diagrams.
@@ -187,8 +188,23 @@ make run -- vending:service --username ana --units WATER:20 --coins 0.25:15 --co
 # The machine is serviced.
 ```
 
+The same service changes which products the machine sells ([ADR 22](docs/adr/0022-technician-manages-the-catalog.md)).
+`--install SELECTOR:PRICE:UNITS:NAME` adds a product, or redefines the name, price and units of one
+the machine has; the name goes last, so it may hold colons. `--retire SELECTOR` takes a product out
+with the units left in it. Both repeat, a replacement is one of each, and the service asks no units
+of the products they name:
+
+```bash
+make run -- vending:service -n --username ana --password correct-horse --install TEA:1.20:12:Tea --retire JUICE
+```
+
+`make run` splits its arguments on spaces, so a name with a space goes through
+`docker compose exec php-fpm bin/console vending:service --install 'TEA:1.20:12:Green tea'`. A price
+is a multiple of 0.05, the smallest coin, and the machine holds at most 40 products.
+
 `vending:service` exits with 1 whenever the machine is not serviced: an option it cannot read (not a
-pair, given twice, a foreign coin, a selector the machine lacks), input that ends before the last
+pair, given twice, a foreign coin, a selector the machine lacks, an `--install` that is not
+`SELECTOR:PRICE:UNITS:NAME`), input that ends before the last
 answer, credentials missing or wrong, or a service the machine refuses. Both ways of servicing read
 the current values once, before asking, and set every value, the kept ones included, so a sale that
 another session saves in between is undone: service the machine while nobody else is using it.
@@ -199,8 +215,9 @@ How the machine behaves between runs:
   sequence stays until `RETURN-COIN` gives it back, also from a later run.
 - Until a machine is stored, and after `make run -- vending:reset`, it is the default machine of
   `config/services.yaml`: the three products, ten units of each and ten coins of 0.05, 0.10 and 0.25
-  for change. A stored machine wins over a change to `vending_machine.default_products` until
-  `vending:reset` removes it.
+  for change. That configuration only describes the machine as first installed: products are
+  added, retired and repriced by a technician's service, which keeps the stock, the credit and the
+  tray, while editing `vending_machine.default_products` only shows after `vending:reset` wipes them.
 - Change is made only from coins of 0.05, 0.10 and 0.25 ([ADR 8](docs/adr/0008-change-making.md)).
   Coins of 1 are never given as change: a sale puts them in the cash box.
 - A slot holds at most 200 units and a coin tube at most 500 coins: servicing refuses more and
@@ -239,7 +256,7 @@ A technician logs in for a token and sends it as a bearer token to these routes:
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product, the count of each coin in its tube and in the cash box, by cents | `200`, `401` without a valid token, `403` without the technician's role |
-| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray; it also empties the cash box, and the amount collected is only in the log | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot or a coin tube holds |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray; it also empties the cash box, and the amount collected is only in the log. Optional `"install": [{"selector": "TEA", "name": "Tea", "priceCents": 120, "units": 12}]` and `"retire": ["JUICE"]` change the products | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, more than a slot or a coin tube holds, or a catalog change the machine refuses |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
@@ -397,9 +414,10 @@ environment that points `baseUrl` at `https://vending-machine.test`.
 The `VendingMachine` folder tells a customer's session as a story: the statement's last example
 (`1, GET-WATER`) with the credit and the tray checked after each step, a returned coin and three
 refusals, and every request tests its status and body. Run it in order from a machine with no credit
-and an empty tray, as `make run -- vending:reset` leaves it. Its last two requests log in as a
-technician (the `Maintenance` folder keeps the token), read the status and service the machine back
-to the default stock and change, so it passes again on every run. Create that technician once:
+and an empty tray, as `make run -- vending:reset` leaves it. Its last four requests act as a
+technician (the `Maintenance` folder keeps the token): they read the status, replace SODA by TEA,
+see a price no coins can pay refused, and service the machine back to the default products, stock
+and change, so it passes again on every run. Create that technician once:
 `make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
 
 From the command line with newman, reset the machine first; `--insecure` skips the check of the
