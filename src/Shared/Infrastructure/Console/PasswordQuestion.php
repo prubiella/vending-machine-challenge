@@ -8,8 +8,8 @@ use Symfony\Component\Console\Question\Question;
 
 final class PasswordQuestion
 {
-    // A password is never trimmed, at a prompt as in an option or a login body, so the spaces typed
-    // are kept; only the line ending that closes the answer goes.
+    // A password is never trimmed, at a prompt as in the --password option, so the spaces typed are
+    // kept; only the line ending that closes the answer goes.
     public static function hidden(string $question): Question
     {
         return new Question($question)

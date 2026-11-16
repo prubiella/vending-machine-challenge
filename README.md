@@ -157,6 +157,8 @@ prints the tray:
 ```bash
 make run -- vending:service --username ana --units WATER:20 --coins 0.25:15 --coins 1:0
 # Password:
+# Units of JUICE [10]:
+# ... every unit and coin the options leave out, Enter keeps the current value
 # The machine is serviced.
 ```
 
