@@ -13,6 +13,16 @@ use PHPUnit\Framework\TestCase;
 
 final class FewestCoinsChangeMakerTest extends TestCase
 {
+    public function testGivesTheCoinsItWasConfiguredWithAndNoOther(): void
+    {
+        $changeMaker = new FewestCoinsChangeMaker(Coin::FiveCents, Coin::TenCents);
+
+        self::assertTrue($changeMaker->gives(Coin::FiveCents));
+        self::assertTrue($changeMaker->gives(Coin::TenCents));
+        self::assertFalse($changeMaker->gives(Coin::TwentyFiveCents));
+        self::assertFalse($changeMaker->gives(Coin::OneHundredCents));
+    }
+
     public function testGivesNoCoinsForAZeroAmount(): void
     {
         $change = self::changeMaker()->makeChange(Money::fromCents(0), CoinCollection::empty());

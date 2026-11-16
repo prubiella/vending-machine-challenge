@@ -68,7 +68,7 @@ final class TechnicianContext implements Context
     }
 
     #[Given('a customer paid for :selector with a coin of :coin')]
-    public function aCustomerPaidWithACoin(string $selector, string $coin): void
+    public function aCustomerBoughtWithACoin(string $selector, string $coin): void
     {
         $this->client->jsonRequest('POST', '/machine/coins', ['coin' => $coin]);
         $this->client->request('POST', '/machine/selections/'.$selector);
