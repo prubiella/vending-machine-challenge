@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Shared\Infrastructure\Controller;
 
 use App\Shared\Application\Query\HealthCheck\DatabaseProbe;
+use App\Shared\Application\Query\HealthCheck\DocumentStoreProbe;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,7 @@ final class HealthCheckControllerTest extends KernelTestCase
         $response = self::bootKernel()->handle(Request::create('/health-check'));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertSame('{"status":"ok","checks":{"database":"ok"}}', $response->getContent());
+        self::assertSame('{"status":"ok","checks":{"database":"ok","document_store":"ok"}}', $response->getContent());
     }
 
     public function testTheApplicationStaysAliveWhenTheDatabaseIsNotReachable(): void
@@ -25,7 +26,7 @@ final class HealthCheckControllerTest extends KernelTestCase
         $response = self::kernelWithUnreachableDatabase()->handle(Request::create('/health-check'));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertSame('{"status":"ok","checks":{"database":"ko"}}', $response->getContent());
+        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok"}}', $response->getContent());
     }
 
     public function testTheApplicationIsReadyWhenEveryDependencyIsOk(): void
@@ -33,7 +34,7 @@ final class HealthCheckControllerTest extends KernelTestCase
         $response = self::bootKernel()->handle(Request::create('/health-check/ready'));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertSame('{"status":"ok","checks":{"database":"ok"}}', $response->getContent());
+        self::assertSame('{"status":"ok","checks":{"database":"ok","document_store":"ok"}}', $response->getContent());
     }
 
     public function testTheApplicationIsNotReadyWhenTheDatabaseIsNotReachable(): void
@@ -41,7 +42,23 @@ final class HealthCheckControllerTest extends KernelTestCase
         $response = self::kernelWithUnreachableDatabase()->handle(Request::create('/health-check/ready'));
 
         self::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
-        self::assertSame('{"status":"ok","checks":{"database":"ko"}}', $response->getContent());
+        self::assertSame('{"status":"ok","checks":{"database":"ko","document_store":"ok"}}', $response->getContent());
+    }
+
+    public function testTheApplicationIsNotReadyWhenTheDocumentStoreIsNotReachable(): void
+    {
+        $kernel = self::bootKernel();
+        self::getContainer()->set(DocumentStoreProbe::class, new class implements DocumentStoreProbe {
+            public function isReachable(): bool
+            {
+                return false;
+            }
+        });
+
+        $response = $kernel->handle(Request::create('/health-check/ready'));
+
+        self::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
+        self::assertSame('{"status":"ok","checks":{"database":"ok","document_store":"ko"}}', $response->getContent());
     }
 
     private static function kernelWithUnreachableDatabase(): KernelInterface

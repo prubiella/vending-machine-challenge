@@ -8,6 +8,7 @@ final readonly class HealthCheckQueryHandler
 {
     public function __construct(
         private DatabaseProbe $databaseProbe,
+        private DocumentStoreProbe $documentStoreProbe,
     ) {
     }
 
@@ -15,6 +16,7 @@ final readonly class HealthCheckQueryHandler
     {
         return new HealthCheckResponse(HealthCheckResponse::OK, [
             'database' => self::statusOf($this->databaseProbe->isReachable()),
+            'document_store' => self::statusOf($this->documentStoreProbe->isReachable()),
         ]);
     }
 

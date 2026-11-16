@@ -238,18 +238,22 @@ paths:
                 allOk:
                   value:
                     status: ok
-                    checks: { database: ok }
+                    checks: { database: ok, document_store: ok }
                 databaseDown:
                   value:
                     status: ok
-                    checks: { database: ko }
+                    checks: { database: ko, document_store: ok }
+                documentStoreDown:
+                  value:
+                    status: ok
+                    checks: { database: ok, document_store: ko }
 
   /health-check/ready:
     get:
       operationId: getReadiness
       tags: [Health]
       summary: Readiness
-      description: Answers 503 when any dependency is `ko`, so a Docker healthcheck can wait for the database.
+      description: Answers 503 when any dependency is `ko`, so a Docker healthcheck can wait for the databases.
       responses:
         '200':
           description: Every dependency is `ok`.
@@ -259,7 +263,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ok }
+                checks: { database: ok, document_store: ok }
         '503':
           description: At least one dependency is `ko`. The body has the same shape as in the 200 answer.
           content:
@@ -268,7 +272,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ko }
+                checks: { database: ok, document_store: ko }
 
 components:
   schemas:
