@@ -15,10 +15,8 @@ parameters:
         - App\Shared\Domain\Money\NegativeMoneyException
         - App\Shared\Domain\Uuid\InvalidUuidException
         - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
-        - App\VendingMachine\Domain\Coin\NegativeCoinCountException
         - App\VendingMachine\Domain\Coin\UnknownCoinException
         - App\VendingMachine\Domain\Inventory\DuplicateSelectorException
-        - App\VendingMachine\Domain\Inventory\NegativeUnitsException
         - App\VendingMachine\Domain\Product\EmptyProductNameException
         - App\VendingMachine\Domain\Product\NonPositivePriceException
 
@@ -51,6 +49,13 @@ framework:
             status_code: 422
             log_level: info
         App\VendingMachine\Infrastructure\Notation\ForeignCoinException:
+            status_code: 422
+            log_level: info
+        # A technician's PUT /machine/service can ask for them.
+        App\VendingMachine\Domain\Inventory\NegativeUnitsException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Coin\NegativeCoinCountException:
             status_code: 422
             log_level: info
         App\Maintenance\Domain\Technician\InvalidCredentialsException:

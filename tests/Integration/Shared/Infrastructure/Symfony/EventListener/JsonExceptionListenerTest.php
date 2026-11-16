@@ -6,8 +6,8 @@ namespace App\Tests\Integration\Shared\Infrastructure\Symfony\EventListener;
 
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
 use App\Shared\Domain\Money\Money;
+use App\Shared\Domain\Money\NegativeMoneyException;
 use App\VendingMachine\Domain\Change\NoExactChangeException;
-use App\VendingMachine\Domain\Inventory\NegativeUnitsException;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\InvalidSelectorException;
@@ -65,10 +65,10 @@ final class JsonExceptionListenerTest extends KernelTestCase
     {
         $logs = self::captureRequestLogs();
 
-        $response = self::answer(NegativeUnitsException::fromUnits(-1));
+        $response = self::answer(NegativeMoneyException::fromCents(-1));
 
         self::assertSame(500, $response->getStatusCode());
-        self::assertTrue($logs->hasCriticalThatContains('NegativeUnitsException'));
+        self::assertTrue($logs->hasCriticalThatContains('NegativeMoneyException'));
     }
 
     // Reuses the booted kernel: booting again would build a new container and lose the handler

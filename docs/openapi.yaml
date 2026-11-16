@@ -22,7 +22,6 @@ info:
     **Technicians.** `POST /auth/login` gives a technician a token that lasts one hour. The
     technician's routes take it as `Authorization: Bearer <token>`: without a valid one they answer
     401, and to a token without the technician's role 403. The customer's routes need no token.
-    Servicing the machine (setting the stock and the change) stays in the console for now.
 
 servers:
   - url: https://{host}:{port}
@@ -41,7 +40,7 @@ tags:
   - name: Tray
     description: What the machine has dropped
   - name: Technician
-    description: Logging in, and what only a technician may read
+    description: Logging in, reading the stock and the change, and servicing the machine
   - name: Health
     description: Liveness and readiness probes
 
@@ -267,6 +266,88 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /machine/service:
+    put:
+      operationId: serviceMachine
+      tags: [Technician]
+      summary: Service the machine
+      description: |
+        Sets the units of each product in `units` (a product left out keeps its units) and the whole
+        change in `coins` (a coin left out is set to none), as `vending:service` does. The credit
+        inserted so far drops into the tray as coins. The command carries the technician's id from
+        the token, so the log tells who serviced the machine.
+      security:
+        - technicianToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceMachineRequest'
+            example:
+              units: { WATER: 20, JUICE: 15, SODA: 10 }
+              coins: { '0.05': 20, '0.10': 20, '0.25': 20, '1': 0 }
+      responses:
+        '204':
+          description: The machine is serviced.
+        '400':
+          description: The body is not valid JSON, or there is no body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 400, message: Request payload contains invalid "json" data. }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: A selector of `units` is not a product of the machine.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 404, message: 'There is no product with selector CHIPS.' }
+        '415':
+          description: 'The body is not sent as JSON (`Content-Type: application/json`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 415, message: 'Unsupported format, "txt" must be explicitly listed in "acceptFormat".' }
+        '422':
+          description: |
+            The body has no `units` or no `coins`, a count is negative or not an integer, or a coin
+            is not one the machine takes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                negativeUnits:
+                  summary: Negative units of a product
+                  value:
+                    error: { code: 422, message: 'A slot cannot hold a negative number of units, got -1.' }
+                negativeCoinCount:
+                  summary: A negative count of a coin
+                  value:
+                    error: { code: 422, message: 'A coin of 25 cents cannot have a negative count, got -1.' }
+                foreignCoin:
+                  summary: A coin the machine does not take
+                  value:
+                    error: { code: 422, message: 'The machine does not accept a coin of 0.50: it takes 0.05, 0.10, 0.25 and 1.' }
+                missingCoins:
+                  summary: A body without coins
+                  value:
+                    error: { code: 422, message: Failed to create object because the class misses the "coins" property. }
+        '409':
+          $ref: '#/components/responses/ConcurrentUpdate'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /auth/login:
     post:
       operationId: login
@@ -462,6 +543,27 @@ components:
         coinStockByCents:
           type: object
           description: The count of each coin, by its cents.
+          additionalProperties:
+            type: integer
+            minimum: 0
+
+    ServiceMachineRequest:
+      type: object
+      required: [units, coins]
+      properties:
+        units:
+          type: object
+          description: The new units of each product, by its selector. A product left out keeps its units.
+          additionalProperties:
+            type: integer
+            minimum: 0
+        coins:
+          type: object
+          description: |
+            The new count of each coin, by the coin as written in the statement (`0.05`, `0.10`,
+            `0.25`, `1`). A coin left out is set to none.
+          propertyNames:
+            enum: ['0.05', '0.10', '0.25', '1']
           additionalProperties:
             type: integer
             minimum: 0

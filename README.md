@@ -281,12 +281,15 @@ to the technician's routes. The customer's routes need no token.
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin or a negative count |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
   -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
 curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
 # {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
+curl -X PUT https://vending-machine.test/machine/service -H "Authorization: Bearer $token" \
+  -H 'Content-Type: application/json' -d '{"units": {"WATER": 20}, "coins": {"0.05": 10, "0.10": 10, "0.25": 15, "1": 0}}'
 ```
 
 From a shell, `vending:technician:token` gives the same token without the login request: it checks
@@ -312,8 +315,9 @@ claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its te
 `access_control` lists the routes that need the role. A missing, invalid or expired token answers
 401 in the API's error format (`JwtFailureListener`), and a token without the role 403. A token
 that cannot be checked because of the server's own keys (a key file that cannot be read) answers
-500 and is logged as critical, since logging in again would not help. Servicing the machine stays in
-the console for now.
+500 and is logged as critical, since logging in again would not help. A service over HTTP carries
+the token's technician id in `ServiceMachineCommand`, as the console carries the one it
+authenticates.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -516,16 +520,17 @@ environment that points `baseUrl` at `https://vending-machine.test`.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
 The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
-`technicianPassword`) and keeps the token for the technician's requests, such as `Get machine
-status`. Create that technician once:
+`technicianPassword`) and keeps the token for the technician's requests, `Get machine status` and
+`Service machine`, which run after the purchase and set the default stock and change back. Create
+that technician once:
 `make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
 
 The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
 example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
 0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
 request tests its status and its body. Run it in order from a machine with no credit and an empty
-tray, as `make run -- vending:reset` leaves it. A run leaves the machine that way again, with one
-water and its change fewer, so the folder passes again until the water or the change runs out.
+tray, as `make run -- vending:reset` leaves it. A run ends by servicing the machine back to the
+default stock and change, so the folder passes again on every run.
 
 To run it from the command line with newman, reset the machine first and mount `etc/postman/`;
 `--insecure` skips the check of the mkcert certificate:
