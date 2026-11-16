@@ -36,13 +36,14 @@ hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok"}
+# {"status":"ok","database":"ok"}
 make run -- app:health-check
-# {"status":"ok"}
+# {"status":"ok","database":"ok"}
 ```
 
 The same use case has two entry points: the controller behind `/health-check` and the
-`app:health-check` console command both send a `HealthCheckQuery` to the query bus.
+`app:health-check` console command both send a `HealthCheckQuery` to the query bus. When MySQL does
+not answer, both report `"error"`: the route with a 503 and the command with exit code 1.
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
 `make run -- <command> <options>` runs a Symfony console command, for example

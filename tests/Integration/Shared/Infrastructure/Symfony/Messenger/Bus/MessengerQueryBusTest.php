@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Shared\Infrastructure\Symfony\Messenger\Bus;
 
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
+use App\Shared\Application\Query\HealthCheck\HealthCheckResponse;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class MessengerQueryBusTest extends KernelTestCase
@@ -14,6 +15,6 @@ final class MessengerQueryBusTest extends KernelTestCase
     {
         $bus = self::getContainer()->get(QueryBus::class);
 
-        self::assertSame(['status' => 'ok'], $bus->query(new HealthCheckQuery()));
+        self::assertEquals(new HealthCheckResponse(HealthCheckResponse::OK, HealthCheckResponse::OK), $bus->query(new HealthCheckQuery()));
     }
 }
