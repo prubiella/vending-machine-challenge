@@ -1,12 +1,8 @@
-# 12. Persistence: a hand-written mapper, MySQL through DBAL, then MongoDB
+# 12. Persistence: MySQL through DBAL with a hand-written mapper
 
 ## Status
 
-Accepted. Built and merged: `DbalVendingMachineRepository` and `VendingMachineMapper` first, then
-`MongoVendingMachineRepository`, which now stores the machine (see
-[The MongoDB adapter, built](#the-mongodb-adapter-built)). The DBAL adapter stays as a second
-implementation of the port, which the contract test runs. `InMemoryVendingMachineRepository` still
-exists in `src/`; moving it to `tests/` as a test double is planned polish.
+Superseded by [ADR 16](0016-machine-stored-in-mongodb.md).
 
 ## Context
 
@@ -34,9 +30,7 @@ parts, enums and value objects, and Domain may not use Doctrine (ADR 1). The sta
 - When no row exists, `get()` returns the default machine, built by `DefaultVendingMachineFactory`
   from `vending_machine.default_products` and the coin stock in `config/services.yaml`, and the
   first `save()` inserts it. Once a machine is stored it wins over those defaults. `vending:reset`
-  deletes the stored machine, which brings the defaults back. It does so through
-  `StoredMachineResetter`, a port of Infrastructure that each adapter implements: resetting is an
-  operator's console action, not something the domain does.
+  deletes the row, which brings the defaults back.
 
 ## Consequences
 
@@ -48,8 +42,6 @@ parts, enums and value objects, and Domain may not use Doctrine (ADR 1). The sta
 - Trade-off: JSON columns cannot be queried or indexed as tables. Nothing needs to: the machine is
   always read by id. A reporting need would be served by a read model (ADR 14, events), not by
   querying these columns.
-- Trade-off: the stack runs two databases, MySQL for what is relational and MongoDB for the
-  machine. MongoDB earns its place with the outbox, which must be written with the aggregate.
 
 ## Alternatives considered
 
@@ -58,49 +50,41 @@ parts, enums and value objects, and Domain may not use Doctrine (ADR 1). The sta
   when it hydrates, which fits an aggregate that guards its invariants in constructors badly.
 - **Normalised tables through DBAL.** Closer to the relational model, with a join and several
   writes for what is one unit.
-- **MongoDB.** Parked for the first adapter, then built, see below.
+- **MongoDB.** Considered and parked, see below.
 
-### MongoDB, parked at first
+### MongoDB, considered and parked
 
 A `VendingMachine` is naturally one document. MongoDB writes a document atomically, and optimistic
-locking is a `version` field in the update filter. It was parked for the first adapter because
-MySQL was already in the stack and nothing in this problem needs a document store. Because the
-repository is a port, the decision was cheap to revisit, and the next section revisits it.
+locking is a `version` field in the update filter. A MongoDB adapter would be a different
+implementation of the same port: with `mongodb/mongodb` and a hand-written mapper, nothing in
+Domain or Application changes.
 
-### The MongoDB adapter, built
+It is parked because MySQL is already in the stack, nothing in this problem needs a document store,
+and a second database would add an extension and an image to build for no behaviour. Because the
+repository is a port, the decision is cheap to revisit. A MongoDB read model fed by domain events
+(sales, stock and service history) is the more interesting place for it, and belongs with the
+events work.
 
-- `mongodb/mongodb`, the library alone: no ODM and no bundle. `config/services.yaml` defines
-  `MongoDB\Client` from `MONGODB_URL` and `MongoDB\Database` from `MONGODB_DATABASE`, with `_test`
-  added in the test environment, as Doctrine does for MySQL.
-- `MongoVendingMachineRepository` stores the machine as one document of the `vending_machines`
-  collection: `_id: 1`, a `version`, and the parts that the row holds as JSON columns, as nested
-  documents. `VendingMachineMapper::toDocument()` builds those parts, and the DBAL adapter encodes the
-  same arrays into its columns, so there is one mapping.
-- Optimistic locking as in ADR 11: a new machine is an `insertOne`, and a duplicate key there is a
-  conflict; a stored one is an `updateOne` with the loaded `version` in its filter that sets the
-  parts and the next version, and a matched count of 0 is a conflict. Both throw
-  `ConcurrentUpdateException`, so the retry middleware works unchanged, and the versions live in the
-  same kind of `WeakMap`.
-- The store is not configurable: `config/services.yaml` aliases `VendingMachineRepository` and
-  `StoredMachineResetter` to the MongoDB adapter. Going back to MySQL is pointing both aliases at
-  `DbalVendingMachineRepository`. A switch chosen by an environment variable was considered and left
-  out: nothing needs both stores at run time.
-- `VendingMachineRepositoryContractTestCase` holds the repository tests once, and each adapter's
-  test case runs them, which shows that the adapters are interchangeable.
-- The `mongo` service starts with the rest of the stack, and the PHP container waits until it is
-  healthy, so the tests and the hooks always reach it.
+### Next step: a MongoDB adapter
 
-### Still planned
+Planned as a later iteration, after the MySQL adapter: a `mongo` service in Docker Compose and
+`ext-mongodb` in the PHP image; a `MongoVendingMachineRepository` storing the machine as one
+document, the same array the DBAL mapper already builds, so the mapper is shared; the `version`
+field in the `updateOne` filter, raising the same concurrency exception, so the retry middleware
+works unchanged; the adapter chosen by configuration (for example `VENDING_MACHINE_STORE=mysql` or
+`mongo` deciding the port's alias); and one contract test run against both adapters, which shows
+they are interchangeable.
 
-Each store will hold what fits it:
+With that adapter, each store holds what fits it:
 
-- The machine's outbox in MongoDB. Domain events waiting to be published (a sale, the change given,
-  a service) are saved inside the machine's document, in the same atomic `updateOne` as its state,
-  so a crash can never keep one without the other. A relay then publishes them and marks them as
-  sent.
+- The machine and its outbox in MongoDB. Domain events waiting to be published (a sale, the change
+  given, a service) are saved inside the machine's document, in the same atomic `updateOne` as its
+  state, so a crash can never keep one without the other. A relay then publishes them and marks
+  them as sent.
 - The sales, change and service history in MySQL, fed from that outbox, because reports such as
   sales per product and day are a plain `GROUP BY`. The outbox must live with the aggregate; the
   history can live wherever it is easiest to query.
 - Technicians and their login in MySQL, in their own `Maintenance` context.
 
-The outbox and the history wait for domain events, which do not exist yet.
+While the machine stays on the DBAL adapter, the outbox is a MySQL table written in the same
+transaction as the machine's row.

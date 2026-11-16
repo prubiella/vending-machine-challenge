@@ -81,7 +81,7 @@ the bind mount stay yours.
 ### MongoDB
 
 MongoDB stores the vending machine as one document, and will hold its outbox too, while MySQL will
-keep the technicians and the history ([ADR 12](docs/adr/0012-persistence-mysql-with-dbal.md)).
+keep the technicians and the history ([ADR 16](docs/adr/0016-machine-stored-in-mongodb.md)).
 `make start` starts it with the rest of the stack, and the PHP container waits until it is healthy.
 Its data lives in the `mongo-data` volume. Copy the `MONGO_*` and `MONGODB_*` variables from
 `.env.dist` into an existing `.env`: the `mongo` image creates its root user only when it starts on
