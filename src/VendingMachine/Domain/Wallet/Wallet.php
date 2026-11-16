@@ -13,28 +13,35 @@ final readonly class Wallet
 {
     public const int TUBE_CAPACITY = 500;
 
-    private function __construct(private CoinCollection $credit, private CoinCollection $stock)
-    {
+    // The coin that is never given as change (ADR 8): it has no tube to fill, so a sale puts it in
+    // the cash box.
+    private const Coin TAKINGS_COIN = Coin::OneHundredCents;
+
+    private function __construct(
+        private CoinCollection $credit,
+        private CoinCollection $stock,
+        private CoinCollection $cashBox,
+    ) {
     }
 
     public static function stocked(CoinCollection $stock): self
     {
-        return new self(CoinCollection::empty(), $stock);
+        return new self(CoinCollection::empty(), $stock, CoinCollection::empty());
     }
 
-    public static function of(CoinCollection $credit, CoinCollection $stock): self
+    public static function of(CoinCollection $credit, CoinCollection $stock, ?CoinCollection $cashBox = null): self
     {
-        return new self($credit, $stock);
+        return new self($credit, $stock, $cashBox ?? CoinCollection::empty());
     }
 
     public function insert(Coin $coin): self
     {
-        return new self($this->credit->add($coin), $this->stock);
+        return new self($this->credit->add($coin), $this->stock, $this->cashBox);
     }
 
     public function returnCredit(): Payout
     {
-        return Payout::of($this->credit, new self(CoinCollection::empty(), $this->stock));
+        return Payout::of($this->credit, new self(CoinCollection::empty(), $this->stock, $this->cashBox));
     }
 
     public function charge(Money $price, ChangeMaker $changeMaker): Payout
@@ -44,15 +51,14 @@ final readonly class Wallet
             throw InsufficientCreditException::forPrice($price, $credit);
         }
 
-        $stock = $this->stock->merge($this->credit);
+        $overflow = $this->creditThatDoesNotFitTheTubes();
+        $stock = $this->stock->merge($this->credit->subtract($overflow));
         $change = $changeMaker->makeChange($credit->subtract($price), $stock);
 
-        return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change)));
+        return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change), $this->cashBox->merge($overflow)));
     }
 
-    // Refuses a tube past its capacity. Only a restock is bounded: a sale is not, since the customer's
-    // coins join the stock and may take a tube past it, as the overflow of a real machine goes to its
-    // cash box.
+    // Refuses a tube past its capacity, and empties the cash box: the technician takes what it held.
     public function restock(CoinCollection $stock): self
     {
         foreach ($stock->countsByCents() as $cents => $count) {
@@ -61,12 +67,12 @@ final readonly class Wallet
             }
         }
 
-        return new self($this->credit, $stock);
+        return new self($this->credit, $stock, CoinCollection::empty());
     }
 
     public function topUp(CoinCollection $coins): self
     {
-        return new self($this->credit, $this->stock->merge($coins));
+        return new self($this->credit, $this->stock->merge($coins), $this->cashBox);
     }
 
     public function credit(): CoinCollection
@@ -77,5 +83,22 @@ final readonly class Wallet
     public function stock(): CoinCollection
     {
         return $this->stock;
+    }
+
+    public function cashBox(): CoinCollection
+    {
+        return $this->cashBox;
+    }
+
+    private function creditThatDoesNotFitTheTubes(): CoinCollection
+    {
+        $overflow = [];
+        foreach ($this->credit->countsByCents() as $cents => $count) {
+            $coin = Coin::fromCents($cents);
+            $room = self::TAKINGS_COIN === $coin ? 0 : max(0, self::TUBE_CAPACITY - $this->stock->countOf($coin));
+            $overflow[$cents] = max(0, $count - $room);
+        }
+
+        return CoinCollection::fromCounts($overflow);
     }
 }

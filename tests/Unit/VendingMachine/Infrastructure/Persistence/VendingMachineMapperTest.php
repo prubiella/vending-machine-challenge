@@ -37,6 +37,7 @@ final class VendingMachineMapperTest extends TestCase
             ],
             'wallet_credit' => [5 => 0, 10 => 0, 25 => 1, 100 => 1],
             'wallet_stock' => [5 => 2, 10 => 1, 25 => 0, 100 => 0],
+            'wallet_cash_box' => [5 => 0, 10 => 0, 25 => 0, 100 => 3],
             'tray' => [
                 'products' => [
                     ['selector' => 'SODA', 'name' => 'Soda', 'price_cents' => 150],
@@ -59,6 +60,28 @@ final class VendingMachineMapperTest extends TestCase
     {
         $mapper = new VendingMachineMapper();
         $document = array_diff_key($mapper->toDocument(self::machine()), ['wallet_stock' => true]);
+
+        $this->expectException(\UnexpectedValueException::class);
+
+        $mapper->fromDocument($document);
+    }
+
+    public function testReadsADocumentStoredBeforeTheCashBoxAsOneWithAnEmptyCashBox(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = array_diff_key($mapper->toDocument(self::machine()), ['wallet_cash_box' => true]);
+
+        $loaded = $mapper->fromDocument($document);
+
+        self::assertTrue($loaded->wallet()->cashBox()->isEmpty());
+        self::assertTrue($loaded->wallet()->stock()->equals(self::machine()->wallet()->stock()));
+    }
+
+    public function testRefusesADocumentWhoseCashBoxIsNotAnArray(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = $mapper->toDocument(self::machine());
+        $document['wallet_cash_box'] = 'full';
 
         $this->expectException(\UnexpectedValueException::class);
 
@@ -131,6 +154,7 @@ final class VendingMachineMapperTest extends TestCase
             'inventory' => '[{"selector":"WATER","name":"Water","price_cents":65,"units":3},{"selector":"SODA","name":"Soda","price_cents":150,"units":0}]',
             'wallet_credit' => '{"5":0,"10":0,"25":1,"100":1}',
             'wallet_stock' => '{"5":2,"10":1,"25":0,"100":0}',
+            'wallet_cash_box' => '{"5":0,"10":0,"25":0,"100":3}',
             'tray' => '{"products":[{"selector":"SODA","name":"Soda","price_cents":150},{"selector":"WATER","name":"Water","price_cents":65}],"coins":{"5":0,"10":2,"25":0,"100":0}}',
         ], $row);
     }
@@ -141,6 +165,14 @@ final class VendingMachineMapperTest extends TestCase
         $machine = self::machine();
 
         self::assertEquals($machine, $mapper->fromRow($mapper->toRow($machine)));
+    }
+
+    public function testReadsARowStoredBeforeTheCashBoxAsOneWithAnEmptyCashBox(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $row = array_diff_key($mapper->toRow(self::machine()), ['wallet_cash_box' => true]);
+
+        self::assertTrue($mapper->fromRow($row)->wallet()->cashBox()->isEmpty());
     }
 
     public function testRefusesAColumnThatIsNotJson(): void
@@ -194,6 +226,7 @@ final class VendingMachineMapperTest extends TestCase
             Wallet::of(
                 CoinCollection::of(Coin::TwentyFiveCents, Coin::OneHundredCents),
                 CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TenCents),
+                CoinCollection::of(Coin::OneHundredCents, Coin::OneHundredCents, Coin::OneHundredCents),
             ),
             Tray::empty()->addProduct($soda)->addProduct($water)->addCoins(CoinCollection::of(Coin::TenCents, Coin::TenCents)),
         );
