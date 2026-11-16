@@ -87,7 +87,7 @@ hooks: ## Use the project's git hooks (they run inside the PHP image)
 	@git config core.hooksPath etc/git/hooks-docker
 
 ##@ Quality
-.PHONY: test behat coverage phpstan deptrac cs-fixer code-check
+.PHONY: test behat coverage phpstan deptrac cs-fixer cs-check lint-container code-check
 
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
@@ -108,12 +108,19 @@ deptrac: ## Check the dependencies between layers, and that every class belongs 
 cs-fixer: ## Fix the coding standard
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer fix
 
+cs-check: ## Check the coding standard without changing files
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
+
+lint-container: ## Check that the service container compiles and every service is wired
+	@$(DOCKER_COMPOSE) exec php-fpm bin/console lint:container
+
 code-check: ## Run every check, the coding standard in check mode
 	@$(MAKE) test
 	@$(MAKE) behat
 	@$(MAKE) phpstan
 	@$(MAKE) deptrac
-	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
+	@$(MAKE) cs-check
+	@$(MAKE) lint-container
 
 ifneq ($(filter $(firstword $(MAKECMDGOALS)),$(TARGETS_WITH_ARGS)),)
 %:
