@@ -1,7 +1,7 @@
 DOCKER_COMPOSE := docker compose
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
 CERTIFICATES := $(addprefix etc/infrastructure/certs/,local-cert.pem local-key.pem rootCA.pem)
-TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test coverage
+TARGETS_WITH_ARGS := install update require require-dev logs run run-debug test behat coverage
 
 .DEFAULT_GOAL := help
 
@@ -87,10 +87,13 @@ hooks: ## Use the project's git hooks (they run inside the PHP image)
 	@git config core.hooksPath etc/git/hooks-docker
 
 ##@ Quality
-.PHONY: test coverage phpstan deptrac cs-fixer code-check
+.PHONY: test behat coverage phpstan deptrac cs-fixer code-check
 
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
+
+behat: ## Run the customer scenarios of features/ against the kernel (no server, no hosts entry)
+	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/behat $(ARGS)
 
 coverage: ## Run the tests with an HTML coverage report in var/coverage
 	@$(DOCKER_COMPOSE) exec -e PHP_XDEBUG_MODE=coverage php-fpm vendor/bin/phpunit --coverage-html var/coverage $(ARGS)
@@ -107,6 +110,7 @@ cs-fixer: ## Fix the coding standard
 
 code-check: ## Run every check, the coding standard in check mode
 	@$(MAKE) test
+	@$(MAKE) behat
 	@$(MAKE) phpstan
 	@$(MAKE) deptrac
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/php-cs-fixer check
