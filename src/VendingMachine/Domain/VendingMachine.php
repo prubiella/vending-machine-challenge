@@ -7,6 +7,9 @@ namespace App\VendingMachine\Domain;
 use App\VendingMachine\Domain\Change\ChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Event\CreditReturned;
+use App\VendingMachine\Domain\Event\ProductSold;
+use App\VendingMachine\Domain\Event\VendingMachineEvent;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Product;
@@ -16,6 +19,9 @@ use App\VendingMachine\Domain\Wallet\Wallet;
 
 final class VendingMachine
 {
+    /** @var list<VendingMachineEvent> */
+    private array $events = [];
+
     private function __construct(
         private readonly MachineId $id,
         private Inventory $inventory,
@@ -49,6 +55,7 @@ final class VendingMachine
         $tray = $this->tray->addProduct($product)->addCoins($payout->coins());
 
         $this->replaceParts($inventory, $payout->wallet(), $tray);
+        $this->record(new ProductSold($product, $payout->coins()));
     }
 
     public function returnCoins(): void
@@ -57,6 +64,7 @@ final class VendingMachine
 
         $this->wallet = $refund->wallet();
         $this->tray = $this->tray->addCoins($refund->coins());
+        $this->recordCreditReturned($refund->coins());
     }
 
     public function collectTray(): void
@@ -75,6 +83,21 @@ final class VendingMachine
         $tray = $this->tray->addCoins($refund->coins());
 
         $this->replaceParts($inventory, $wallet, $tray);
+        $this->recordCreditReturned($refund->coins());
+    }
+
+    /**
+     * Hands over the events recorded since the last call, oldest first, and forgets them, so the
+     * repository saves each one once.
+     *
+     * @return list<VendingMachineEvent>
+     */
+    public function releaseEvents(): array
+    {
+        $events = $this->events;
+        $this->events = [];
+
+        return $events;
     }
 
     public function id(): MachineId
@@ -95,6 +118,18 @@ final class VendingMachine
     public function tray(): Tray
     {
         return $this->tray;
+    }
+
+    private function record(VendingMachineEvent $event): void
+    {
+        $this->events[] = $event;
+    }
+
+    private function recordCreditReturned(CoinCollection $coins): void
+    {
+        if (!$coins->isEmpty()) {
+            $this->record(new CreditReturned($coins));
+        }
     }
 
     private function replaceParts(Inventory $inventory, Wallet $wallet, Tray $tray): void

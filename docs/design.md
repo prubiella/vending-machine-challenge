@@ -160,6 +160,7 @@ classDiagram
         +returnCoins()
         +collectTray()
         +service(unitsBySelector, CoinCollection)
+        +releaseEvents() list~VendingMachineEvent~
     }
     class Inventory {
         +slotFor(Selector) Slot
@@ -254,6 +255,13 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
   technician takes the money ([ADR 19](adr/0019-machine-capacities.md)). The coins of the tubes and
   the cash box together are the coins the machine took, so a sale conserves them.
 - **Rules live in the domain.** A handler only loads, calls the domain and saves.
+
+### Events
+
+The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
+`ProductSold` with the product and the change given, and `CreditReturned` with the coins given
+back (by `RETURN-COIN` or by a service, only when there were any). A refusal records nothing.
+`releaseEvents()` hands them over once, oldest first.
 
 ### Why change making is a search and not greedy
 

@@ -10,6 +10,8 @@ use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Change\NoExactChangeException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Event\CreditReturned;
+use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
@@ -300,6 +302,112 @@ final class VendingMachineTest extends TestCase
         self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
         self::assertTrue($machine->wallet()->stock()->isEmpty());
         self::assertTrue($machine->wallet()->cashBox()->equals(CoinCollection::of(Coin::OneHundredCents)));
+    }
+
+    public function testAnInstalledOrRestoredMachineHasNoEvents(): void
+    {
+        $restored = VendingMachine::restore(MachineId::fromString(self::MACHINE_ID), Inventory::of(), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+
+        self::assertSame([], self::installed()->releaseEvents());
+        self::assertSame([], $restored->releaseEvents());
+    }
+
+    public function testASaleRecordsTheProductSoldAndTheChangeGiven(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        $events = $machine->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(ProductSold::class, $events[0]);
+        self::assertSame('WATER', $events[0]->product()->selector()->value());
+        self::assertSame(65, $events[0]->product()->price()->cents());
+        self::assertTrue($events[0]->change()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
+    }
+
+    public function testARefusedSaleRecordsNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::TenCents);
+
+        try {
+            $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        } catch (InsufficientCreditException) {
+        }
+
+        self::assertSame([], $machine->releaseEvents());
+    }
+
+    public function testReturningTheCreditRecordsTheCoinsReturned(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::TenCents);
+        $machine->insertCoin(Coin::FiveCents);
+
+        $machine->returnCoins();
+
+        $events = $machine->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(CreditReturned::class, $events[0]);
+        self::assertTrue($events[0]->coins()->equals(CoinCollection::of(Coin::TenCents, Coin::FiveCents)));
+    }
+
+    public function testReturningNoCreditRecordsNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+
+        $machine->returnCoins();
+
+        self::assertSame([], $machine->releaseEvents());
+    }
+
+    public function testServiceRecordsTheCreditItReturns(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        $machine->service([], CoinCollection::empty());
+
+        $events = $machine->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(CreditReturned::class, $events[0]);
+        self::assertTrue($events[0]->coins()->equals(CoinCollection::of(Coin::OneHundredCents)));
+    }
+
+    public function testARefusedServiceRecordsNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+
+        try {
+            $machine->service(['COFFEE' => 1], CoinCollection::empty());
+        } catch (UnknownSelectorException) {
+        }
+
+        self::assertSame([], $machine->releaseEvents());
+    }
+
+    public function testEventsAreReleasedOnceInTheOrderTheyHappened(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+        $machine->insertCoin(Coin::TenCents);
+        $machine->returnCoins();
+
+        $events = $machine->releaseEvents();
+
+        self::assertCount(2, $events);
+        self::assertInstanceOf(ProductSold::class, $events[0]);
+        self::assertInstanceOf(CreditReturned::class, $events[1]);
+        self::assertSame([], $machine->releaseEvents());
     }
 
     /**
