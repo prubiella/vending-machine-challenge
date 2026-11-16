@@ -25,18 +25,19 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
         $next = $stack->next();
-        $retry = 0;
+        $retriesDone = 0;
 
         while (true) {
             try {
                 return $next->handle($envelope, $stack);
             } catch (HandlerFailedException $failure) {
-                if (!self::causedByConcurrentUpdate($failure) || $retry === $this->maxRetries) {
+                if (!self::causedByConcurrentUpdate($failure) || $retriesDone === $this->maxRetries) {
                     throw $failure;
                 }
             }
 
-            $this->logRetry($envelope, ++$retry);
+            ++$retriesDone;
+            $this->logRetry($envelope, $retriesDone);
         }
     }
 
@@ -45,11 +46,11 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
         return [] !== $failure->getWrappedExceptions(ConcurrentUpdateException::class);
     }
 
-    private function logRetry(Envelope $envelope, int $retry): void
+    private function logRetry(Envelope $envelope, int $retriesDone): void
     {
         $command = $envelope->getMessage();
         $this->logger->notice(
-            \sprintf('Command %s met a concurrent update: retry %d of %d.', new \ReflectionClass($command)->getShortName(), $retry, $this->maxRetries),
+            \sprintf('Command %s met a concurrent update: retry %d of %d.', new \ReflectionClass($command)->getShortName(), $retriesDone, $this->maxRetries),
             ['command' => $command::class],
         );
     }
