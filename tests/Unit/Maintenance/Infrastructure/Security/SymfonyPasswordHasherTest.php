@@ -9,6 +9,7 @@ use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Infrastructure\Security\SymfonyPasswordHasher;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher;
+use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 
 final class SymfonyPasswordHasherTest extends TestCase
 {
@@ -31,5 +32,43 @@ final class SymfonyPasswordHasherTest extends TestCase
 
         self::assertTrue($hasher->verify($hash, 'correct-horse'));
         self::assertFalse($hasher->verify($hash, 'wrong-horse'));
+    }
+
+    public function testVerifiesAgainstNoTechnicianWithAHashFromItsOwnHasher(): void
+    {
+        $nativeHasher = new NativePasswordHasher(cost: 4);
+        $hasher = new SymfonyPasswordHasher($spy = new class($nativeHasher) implements PasswordHasherInterface {
+            /** @var list<string> */
+            public array $hashed = [];
+            /** @var list<string> */
+            public array $verifiedHashes = [];
+
+            public function __construct(private readonly PasswordHasherInterface $inner)
+            {
+            }
+
+            public function hash(#[\SensitiveParameter] string $plainPassword): string
+            {
+                return $this->hashed[] = $this->inner->hash($plainPassword);
+            }
+
+            public function verify(string $hashedPassword, #[\SensitiveParameter] string $plainPassword): bool
+            {
+                $this->verifiedHashes[] = $hashedPassword;
+
+                return $this->inner->verify($hashedPassword, $plainPassword);
+            }
+
+            public function needsRehash(string $hashedPassword): bool
+            {
+                return $this->inner->needsRehash($hashedPassword);
+            }
+        });
+
+        $hasher->verifyAgainstNoTechnician('first');
+        $hasher->verifyAgainstNoTechnician('second');
+
+        self::assertCount(1, $spy->hashed);
+        self::assertSame([$spy->hashed[0], $spy->hashed[0]], $spy->verifiedHashes);
     }
 }

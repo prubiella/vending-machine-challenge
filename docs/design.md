@@ -487,8 +487,8 @@ username, a unique email and the bcrypt hash of the password, never the password
 `vending:technician:create` adds one. Servicing asks for a technician's credentials first, in the
 console, or takes a technician's token over HTTP (see [SERVICE](#service)): the console checks them
 through the `TechnicianAuthenticator` port of `Shared`, since no context uses another, and an
-unknown username and a wrong password are refused with the same message, so a refusal does not tell
-which usernames exist.
+unknown username and a wrong password are refused with the same message and the same work (one
+password verification), so neither the message nor the response time tells which usernames exist.
 
 **Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
 `AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)

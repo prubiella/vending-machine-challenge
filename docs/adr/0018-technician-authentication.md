@@ -53,7 +53,9 @@ check. `VendingMachine` must not depend on whatever keeps the technicians
   an option stays in the shell history, so the README recommends the prompt.
 - **One refusal for both mistakes.** An unknown username and a wrong password answer the same
   "Wrong username or password.", and a username the format rejects is refused the same way, so a
-  refusal does not tell which usernames exist.
+  refusal does not tell which usernames exist. It also costs the same time: an unknown or malformed
+  username verifies the password against a hash no one owns, made with the configured hasher
+  (`PasswordHasher::verifyAgainstNoTechnician()`), so the response time does not tell either.
 - **A password is never trimmed**, at a prompt as in an option or a login body, so the spaces typed
   are part of it; only the line ending that closes an answer goes.
 - **Nothing logs a secret.** `CreateTechnicianCommand` implements `SensitiveCommand`: the password is
