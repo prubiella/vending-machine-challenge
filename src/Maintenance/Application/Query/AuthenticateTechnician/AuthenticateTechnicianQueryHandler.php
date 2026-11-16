@@ -23,11 +23,18 @@ final readonly class AuthenticateTechnicianQueryHandler
         try {
             $username = Username::fromString($query->username);
         } catch (InvalidUsernameException) {
+            $this->passwordHasher->verifyAgainstNoTechnician($query->password);
+
             throw InvalidCredentialsException::wrongUsernameOrPassword();
         }
 
-        $technician = $this->repository->byUsername($username)
-            ?? throw InvalidCredentialsException::wrongUsernameOrPassword();
+        $technician = $this->repository->byUsername($username);
+        if (null === $technician) {
+            $this->passwordHasher->verifyAgainstNoTechnician($query->password);
+
+            throw InvalidCredentialsException::wrongUsernameOrPassword();
+        }
+
         $technician->authenticate($query->password, $this->passwordHasher);
 
         return new AuthenticatedTechnicianResponse($technician->id()->value());

@@ -37,6 +37,19 @@ final class AuthenticateTechnicianQueryHandlerTest extends TestCase
         self::handler()(new AuthenticateTechnicianQuery($username, $password));
     }
 
+    #[DataProvider('wrongCredentials')]
+    public function testDoesTheWorkOfOneVerificationWhateverIsWrong(string $username, string $password): void
+    {
+        $hasher = new PrefixPasswordHasher();
+
+        try {
+            self::handler($hasher)(new AuthenticateTechnicianQuery($username, $password));
+        } catch (InvalidCredentialsException) {
+        }
+
+        self::assertSame(1, $hasher->verifications);
+    }
+
     /** @return iterable<string, array{string, string}> */
     public static function wrongCredentials(): iterable
     {
@@ -45,9 +58,8 @@ final class AuthenticateTechnicianQueryHandlerTest extends TestCase
         yield 'a username no technician can have' => ['A', 'correct-horse'];
     }
 
-    private static function handler(): AuthenticateTechnicianQueryHandler
+    private static function handler(PrefixPasswordHasher $hasher = new PrefixPasswordHasher()): AuthenticateTechnicianQueryHandler
     {
-        $hasher = new PrefixPasswordHasher();
         $repository = new InMemoryTechnicianRepository();
         $repository->add(Technician::register(
             TechnicianId::fromString(self::ID),
