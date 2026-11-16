@@ -321,8 +321,10 @@ order, reads the tray, prints it and collects it.
 
 ### SERVICE
 
-Servicing is done from the console (`SERVICE` in an interactive session, or `vending:service`).
-The console first logs the technician in: `TechnicianLogin` asks the username and the password
+Servicing is done from the console (`SERVICE` in an interactive session, or `vending:service`),
+or over HTTP with `PUT /machine/service` and a technician's token, which dispatches the same command
+with the token's technician id; the firewall has already checked the token, so the controller only
+turns the coin notation into cents. The console first logs the technician in: `TechnicianLogin` asks the username and the password
 (hidden, never trimmed) that the options leave out and checks them through the
 `TechnicianAuthenticator` port, which `Maintenance` answers with `AuthenticateTechnicianQuery`. A
 wrong or missing credential ends the service before any count is asked. Then the console asks the
@@ -425,11 +427,11 @@ answers `422`.
 
 **Technicians.** The `Maintenance` context keeps the technicians in MySQL: a UUID, a unique
 username, a unique email and the bcrypt hash of the password, never the password itself.
-`vending:technician:create` adds one. Servicing is a console operation that asks for a technician's
-credentials first (see [SERVICE](#service)): `VendingMachine` checks them through the
-`TechnicianAuthenticator` port of `Shared`, since no context uses another, and an unknown username
-and a wrong password are refused with the same message, so a refusal does not tell which usernames
-exist.
+`vending:technician:create` adds one. Servicing asks for a technician's credentials first, in the
+console, or takes a technician's token over HTTP (see [SERVICE](#service)): the console checks them
+through the `TechnicianAuthenticator` port of `Shared`, since no context uses another, and an
+unknown username and a wrong password are refused with the same message, so a refusal does not tell
+which usernames exist.
 
 **Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
 `AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)
@@ -437,7 +439,7 @@ whose `sub` claim is the technician's id and whose role is `ROLE_TECHNICIAN`; `T
 signs it for the technician that the query let in, and `vending:technician:token` prints the same token from a shell, its prompts on stderr so
 `token=$(...)` keeps the token alone. The `machine` firewall is stateless: it builds the user from
 the token, so a request needs no database, and its `access_control` lists the technician's routes
-(`GET /machine/status`), the customer's routes staying open. A missing, malformed, badly signed or
+(`GET /machine/status`, `PUT /machine/service`), the customer's routes staying open. A missing, malformed, badly signed or
 expired token answers 401 in the API's error format; a token without the role 403; a token the
 server cannot check because of its own keys 500, logged as critical, since logging in again cannot
 fix it. The key pair is created by `make jwt-keys` and ignored by git. A token stays valid for its
