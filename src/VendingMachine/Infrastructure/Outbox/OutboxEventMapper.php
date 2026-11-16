@@ -35,7 +35,7 @@ final readonly class OutboxEventMapper
             throw new \UnexpectedValueException('An outbox entry of the stored vending machine has no payload.');
         }
 
-        return self::event($entry, self::DOCUMENT_TIME, self::stringKeyed($entry['payload']));
+        return self::eventFrom($entry, self::DOCUMENT_TIME, self::stringKeyed($entry['payload']));
     }
 
     /**
@@ -55,7 +55,7 @@ final readonly class OutboxEventMapper
      * @param array<mixed>         $stored
      * @param array<string, mixed> $payload
      */
-    private static function event(array $stored, string $timeFormat, array $payload): OutboxEvent
+    private static function eventFrom(array $stored, string $timeFormat, array $payload): OutboxEvent
     {
         $id = $stored['id'] ?? null;
         $type = $stored['type'] ?? null;

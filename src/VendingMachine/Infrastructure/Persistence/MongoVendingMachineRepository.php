@@ -79,18 +79,16 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
 
     public function pending(): array
     {
-        $document = $this->machines->findOne(['_id' => $this->machineId->value()], ['projection' => ['outbox' => 1], ...self::AS_ARRAYS]);
-        $outbox = \is_array($document) ? ($document['outbox'] ?? []) : [];
-        if (!\is_array($outbox)) {
-            throw new \UnexpectedValueException('The outbox of the stored vending machine is not a list.');
-        }
-
-        return array_values(array_map($this->outboxEventMapper->fromDocument(...), $outbox));
+        return array_values(array_map($this->outboxEventMapper->fromDocument(...), $this->storedOutbox()));
     }
 
     public function remove(array $ids): void
     {
-        $this->machines->updateOne(['_id' => $this->machineId->value()], ['$pull' => ['outbox' => ['id' => ['$in' => $ids]]]]);
+        $filter = ['_id' => $this->machineId->value()];
+        // The version stays as it is: a relay must never make a save of the machine conflict.
+        $dropRelayed = ['$pull' => ['outbox' => ['id' => ['$in' => $ids]]]];
+
+        $this->machines->updateOne($filter, $dropRelayed);
     }
 
     public function reset(): void
@@ -130,6 +128,20 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
         if (0 === $result->getMatchedCount()) {
             throw ConcurrentUpdateException::sinceLoaded(self::AGGREGATE, $loadedVersion);
         }
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function storedOutbox(): array
+    {
+        $document = $this->machines->findOne(['_id' => $this->machineId->value()], ['projection' => ['outbox' => 1], ...self::AS_ARRAYS]);
+        $entries = \is_array($document) ? ($document['outbox'] ?? []) : [];
+        if (!\is_array($entries)) {
+            throw new \UnexpectedValueException('The outbox of the stored vending machine is not a list.');
+        }
+
+        return $entries;
     }
 
     private function tracked(VendingMachine $machine, int $version): VendingMachine
