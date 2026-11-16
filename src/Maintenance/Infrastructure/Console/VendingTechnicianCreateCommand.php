@@ -40,53 +40,74 @@ final readonly class VendingTechnicianCreateCommand
         ?string $password = null,
     ): int {
         try {
-            $username = self::givenOrAsked($io, $username, 'username', new Question('Username'), Username::fromString(...));
-            $email = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
-            $password = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
+            $resolvedUsername = self::givenOrAsked($io, $username, 'username', new Question('Username'), Username::fromString(...));
+            $resolvedEmail = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
+            $resolvedPassword = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
 
             $id = Uuid::v7()->toRfc4122();
-            $this->commandBus->dispatch(new CreateTechnicianCommand($id, $username, $email, $password));
+            $this->commandBus->dispatch(new CreateTechnicianCommand($id, $resolvedUsername, $resolvedEmail, $resolvedPassword));
         } catch (DomainException|MissingValueException $refusal) {
             return self::refuse($io, $refusal->getMessage());
         }
 
-        $io->writeln(\sprintf('Technician %s created with id %s.', $username, $id));
+        $io->writeln(\sprintf('Technician %s created with id %s.', $resolvedUsername, $id));
 
         return Command::SUCCESS;
     }
 
-    // A given option goes to the command as it is, so the domain refuses it there at once. An answer
-    // is checked with the domain's rule as it is typed, and asked again when refused; after the last
-    // attempt the domain's refusal ends the command. An empty option, or no answer as with -n, is
-    // missing.
     /**
-     * @param \Closure(string): object $domainRule
+     * @param \Closure(string): object $validateWithDomain
      */
-    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $optionName, Question $question, \Closure $domainRule): string
+    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $optionName, Question $question, \Closure $validateWithDomain): string
     {
-        if (null !== $option && '' !== $option) {
+        // A given option is checked by the domain when the command is handled, so it is not asked again.
+        if (self::isGiven($option)) {
             return $option;
         }
+        if (self::isEmpty($option)) {
+            throw MissingValueException::forOption($optionName);
+        }
 
-        $question
-            ->setValidator(static function (mixed $answer) use ($domainRule): string {
+        $answer = $io->askQuestion(self::askedAgainUntilTheDomainTakesIt($question, $validateWithDomain));
+        // Without interaction nothing is asked, so the answer is null.
+        if (!\is_string($answer) || '' === $answer) {
+            throw MissingValueException::forOption($optionName);
+        }
+
+        return $answer;
+    }
+
+    /**
+     * @param \Closure(string): object $validateWithDomain
+     */
+    private static function askedAgainUntilTheDomainTakesIt(Question $question, \Closure $validateWithDomain): Question
+    {
+        return $question
+            ->setValidator(static function (mixed $answer) use ($validateWithDomain): string {
                 $value = \is_string($answer) ? $answer : '';
-                $domainRule($value);
+                $validateWithDomain($value);
 
                 return $value;
             })
             ->setMaxAttempts(self::ATTEMPTS)
         ;
-        $value = null === $option ? $io->askQuestion($question) : null;
-        if (!\is_string($value) || '' === $value) {
-            throw MissingValueException::forOption($optionName);
-        }
-
-        return $value;
     }
 
-    // A password is never trimmed, here as in --password and the login, so the spaces typed are kept;
-    // only the line ending that closes the answer goes.
+    /**
+     * @phpstan-assert-if-true non-empty-string $option
+     */
+    private static function isGiven(?string $option): bool
+    {
+        return null !== $option && '' !== $option;
+    }
+
+    private static function isEmpty(?string $option): bool
+    {
+        return '' === $option;
+    }
+
+    // A password is never trimmed, here as in --password, so the spaces typed are kept; only the line
+    // ending that closes the answer goes.
     private static function untrimmedHiddenQuestion(string $question): Question
     {
         return new Question($question)
