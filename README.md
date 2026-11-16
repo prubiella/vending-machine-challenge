@@ -368,6 +368,25 @@ and `start_with_request=yes`, so every PHP process tries to reach the IDE on por
    `make run-debug -- app:health-check` steps through the project's own code from the CLI: put the
    breakpoint in `HealthCheckQueryHandler`.
 
+### Connecting a database client
+
+Both databases publish a port on localhost, so a desktop client reaches them with the credentials
+of `.env`. In PhpStorm, open the Database tool window and add a data source for each (PhpStorm
+downloads the driver the first time):
+
+| | MySQL | MongoDB |
+|---|---|---|
+| Host and port | `127.0.0.1` and `MYSQL_PORT` (`3307`) | `127.0.0.1` and `MONGO_PORT` (`27018`) |
+| User and password | `MYSQL_USER` and `MYSQL_PASSWORD` (`app` / `app`) | `MONGO_ROOT_USER` and `MONGO_ROOT_PASSWORD` (`root` / `root`) |
+| Authentication database | | `admin` |
+| Database | `app`, and `app_test` for the tests | `app`, and `app_test` for the tests |
+
+MongoDB holds the machine, as the document `_id: 1` of `vending_machines`. MySQL holds the
+migrations table and the `vending_machine` table of the DBAL adapter, empty while the machine lives
+in MongoDB. The same settings work in any other client (DBeaver, MongoDB
+Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a
+shell inside the containers without installing anything.
+
 ## Trying the API with Postman
 
 `etc/postman/` holds a collection with every endpoint, one folder per bounded context, and an
