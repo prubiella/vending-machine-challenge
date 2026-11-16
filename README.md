@@ -262,7 +262,8 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change, and also when another request changed the machine at the same time and the
 retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
 malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
-and is logged as critical. Servicing the machine stays in the console until technicians can log in.
+and is logged as critical. Servicing the machine stays in the console: the HTTP API has no
+technician login.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -484,7 +485,8 @@ src/
   Kernel.php
   Shared/            Shared kernel: small, stable, used by every context, uses none.
     Domain/          Money and DomainException, the base of every domain exception.
-    Application/     The Command and Query interfaces, the bus ports, the health check query.
+    Application/     The Command and Query interfaces, the bus ports, the health check query,
+                     the TechnicianAuthenticator port that VendingMachine logs technicians in with.
     Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
   VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
@@ -492,8 +494,9 @@ src/
     Infrastructure/  Symfony, controllers, console commands, persistence.
   Maintenance/       The technicians who service the machine.
     Domain/          Technician, its username and password rules, the repository and hasher ports.
-    Application/     Use cases: creating a technician.
-    Infrastructure/  The technicians table, the Symfony password hasher, console commands.
+    Application/     Use cases: creating a technician, checking its credentials.
+    Infrastructure/  The technicians table, the Symfony password hasher, console commands, the
+                     TechnicianAuthenticator adapter over the credentials query.
 config/              Symfony configuration; routes in config/routes/<context>.php.
 tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).

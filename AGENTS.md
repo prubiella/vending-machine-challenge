@@ -42,8 +42,8 @@ to run it.
   the `CommandBus` and `QueryBus` ports, `Shared/Application/Uuid` the `UuidGenerator` port, and
   `Shared/Application/Security` `TechnicianAuthenticator`, the port through which `VendingMachine`
   checks a technician's credentials without depending on `Maintenance`, which implements it;
-  `Shared/Infrastructure` holds their Messenger implementations (`MessengerCommandBus`,
-  `MessengerQueryBus`), `SymfonyUuidGenerator`,
+  `Shared/Infrastructure` holds the Messenger implementations of the bus ports
+  (`MessengerCommandBus`, `MessengerQueryBus`), `SymfonyUuidGenerator`,
   `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
   (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
