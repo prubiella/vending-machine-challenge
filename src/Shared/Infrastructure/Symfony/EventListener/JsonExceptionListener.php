@@ -28,7 +28,8 @@ final readonly class JsonExceptionListener
     public function __invoke(ExceptionEvent $event): void
     {
         $exception = $event->getThrowable();
-        $status = $this->status($exception);
+        $isHttp = $exception instanceof HttpExceptionInterface;
+        $status = $isHttp ? $exception->getStatusCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
 
         $error = [
             'code' => $status,
@@ -37,16 +38,7 @@ final readonly class JsonExceptionListener
                 : $exception->getMessage(),
         ];
 
-        $headers = $exception instanceof HttpExceptionInterface ? $exception->getHeaders() : [];
+        $headers = $isHttp ? $exception->getHeaders() : [];
         $event->setResponse(new JsonResponse(['error' => $error], $status, $headers));
-    }
-
-    private function status(\Throwable $exception): int
-    {
-        if ($exception instanceof HttpExceptionInterface) {
-            return $exception->getStatusCode();
-        }
-
-        return Response::HTTP_INTERNAL_SERVER_ERROR;
     }
 }
