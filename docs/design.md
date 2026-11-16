@@ -436,7 +436,9 @@ sequenceDiagram
 The `outbox-relay` container runs it with `--watch`: a pass every two seconds, without a broker. On
 SIGTERM it finishes the pass in progress and exits; the compose service sets that signal, since the
 PHP-FPM image would stop it with SIGQUIT. A pass that dies anyway is the crash above, and the next
-pass repeats it. `remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
+pass repeats it. Before a `StockRunningLow` event reaches the history, the relay hands it to the `LowStockNotifier`
+port, whose adapter logs a warning; notifying first means a crash may repeat a warning but never
+loses one. `remove()` pulls only the relayed ids and leaves the version alone, so events a sale pushed during
 the pass stay for the next one, and a save of the machine never conflicts with the relay.
 
 ## 6. Persistence
