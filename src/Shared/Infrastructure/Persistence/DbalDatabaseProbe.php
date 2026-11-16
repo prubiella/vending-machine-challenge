@@ -7,11 +7,13 @@ namespace App\Shared\Infrastructure\Persistence;
 use App\Shared\Application\Query\HealthCheck\DatabaseProbe;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
+use Psr\Log\LoggerInterface;
 
 final readonly class DbalDatabaseProbe implements DatabaseProbe
 {
     public function __construct(
         private Connection $connection,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -21,7 +23,12 @@ final readonly class DbalDatabaseProbe implements DatabaseProbe
             $this->connection->executeQuery('SELECT 1');
 
             return true;
-        } catch (Exception) {
+        } catch (Exception $exception) {
+            $this->logger->warning('The database is not reachable: {reason}', [
+                'reason' => $exception->getMessage(),
+                'exception' => $exception,
+            ]);
+
             return false;
         }
     }

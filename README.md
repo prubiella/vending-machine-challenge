@@ -44,7 +44,8 @@ make run -- app:health-check
 The same use case has two entry points: the controllers behind `/health-check` and
 `/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
 the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
-its dependencies, `ok` or `ko`, under `checks`.
+its dependencies, `ok` or `ko`, under `checks`. A `ko` database logs a warning with the reason it
+did not answer.
 
 - Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
   `ko`, so a database that does not answer never marks the application itself as down.
