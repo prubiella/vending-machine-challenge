@@ -41,12 +41,7 @@ final readonly class TokenParser
 
     private static function usage(): string
     {
-        return \sprintf('insert %s, %s<SELECTOR> or %s', self::coinsAsChoice(), self::SELECT_PREFIX, self::RETURN_COINS);
-    }
-
-    private static function coinsAsChoice(): string
-    {
-        return MoneyNotation::coinTokensEndingWith(' or ');
+        return \sprintf('insert %s, %s<SELECTOR> or %s', MoneyNotation::coinsAsChoice(), self::SELECT_PREFIX, self::RETURN_COINS);
     }
 
     private static function isSelection(string $token): bool

@@ -35,15 +35,25 @@ final readonly class MoneyNotation
         return self::coinCents($notation) ?? throw ForeignCoinException::fromToken($notation);
     }
 
-    public static function coinTokensEndingWith(string $lastSeparator): string
+    public static function coinsAsList(): string
     {
-        $tokens = array_map(static fn (Coin $coin): string => self::coinToken($coin->value), Coin::cases());
+        return self::joinCoinTokens(' and ');
+    }
 
-        return implode(', ', \array_slice($tokens, 0, -1)).$lastSeparator.end($tokens);
+    public static function coinsAsChoice(): string
+    {
+        return self::joinCoinTokens(' or ');
     }
 
     public static function twoDecimals(int $cents): string
     {
         return \sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);
+    }
+
+    private static function joinCoinTokens(string $lastSeparator): string
+    {
+        $tokens = array_map(static fn (Coin $coin): string => self::coinToken($coin->value), Coin::cases());
+
+        return implode(', ', \array_slice($tokens, 0, -1)).$lastSeparator.end($tokens);
     }
 }

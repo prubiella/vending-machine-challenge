@@ -67,6 +67,16 @@ final class MoneyNotationTest extends TestCase
         MoneyNotation::requireCoinCents($notation);
     }
 
+    public function testListsTheCoinsTheMachineAccepts(): void
+    {
+        self::assertSame('0.05, 0.10, 0.25 and 1', MoneyNotation::coinsAsList());
+    }
+
+    public function testOffersTheCoinsTheMachineAcceptsAsAChoice(): void
+    {
+        self::assertSame('0.05, 0.10, 0.25 or 1', MoneyNotation::coinsAsChoice());
+    }
+
     /**
      * @return iterable<string, array{int, string}>
      */
