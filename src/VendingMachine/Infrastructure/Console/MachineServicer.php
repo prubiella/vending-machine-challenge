@@ -6,15 +6,12 @@ namespace App\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
-use App\Shared\Application\Security\TechnicianAuthenticator;
 use App\Shared\Domain\DomainException;
-use App\Shared\Infrastructure\Console\PasswordQuestion;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Symfony\Component\Console\Exception\InvalidOptionException;
-use Symfony\Component\Console\Exception\MissingInputException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -23,7 +20,7 @@ final readonly class MachineServicer
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
-        private TechnicianAuthenticator $technicianAuthenticator,
+        private TechnicianLogin $technicianLogin,
     ) {
     }
 
@@ -73,7 +70,10 @@ final readonly class MachineServicer
         $status = $this->machineStatus();
         self::rejectUnknownSelectors($status, $givenUnits);
 
-        $technicianId = $this->authenticatedTechnician($input, $io, $startedInteractive, $username, $password);
+        $technicianId = $this->technicianLogin->technicianId($input, $io, $username, $password);
+        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
+            return self::refuseInputEnded($io);
+        }
         if (null === $technicianId) {
             return null;
         }
@@ -84,74 +84,24 @@ final readonly class MachineServicer
             self::coinStockByCents($io, $status, $givenCoins),
         );
 
-        return self::reportedInputEnd($io, $startedInteractive, $input) ? null : $service;
-    }
-
-    private function authenticatedTechnician(
-        InputInterface $input,
-        SymfonyStyle $io,
-        bool $startedInteractive,
-        ?string $username,
-        #[\SensitiveParameter]
-        ?string $password,
-    ): ?string {
-        [$username, $password] = self::askForMissingCredentials($input, $io, $username, $password);
-        if (self::reportedInputEnd($io, $startedInteractive, $input)) {
-            return null;
-        }
-
-        // Left out without interaction, or a blank answer.
-        if (null === $username || null === $password) {
-            $io->getErrorStyle()->writeln('The service needs the technician\'s username and password (--username and --password without interaction): the machine was not serviced.');
-
-            return null;
-        }
-
-        return $this->verifiedTechnicianId($io, $username, $password);
-    }
-
-    /**
-     * @return array{?string, ?string} the username and the password, null when not given
-     */
-    private static function askForMissingCredentials(InputInterface $input, SymfonyStyle $io, ?string $username, #[\SensitiveParameter] ?string $password): array
-    {
-        try {
-            $username ??= self::nullIfBlank($io->ask('Username'));
-            $password ??= self::nullIfBlank($io->askQuestion(PasswordQuestion::hidden('Password')));
-        } catch (MissingInputException) {
-            $input->setInteractive(false);
-        }
-
-        return [$username, $password];
-    }
-
-    private function verifiedTechnicianId(SymfonyStyle $io, string $username, #[\SensitiveParameter] string $password): ?string
-    {
-        try {
-            return $this->technicianAuthenticator->authenticate($username, $password);
-        } catch (DomainException $refusal) {
-            $io->getErrorStyle()->writeln($refusal->getMessage().' The machine was not serviced.');
-
-            return null;
-        }
-    }
-
-    private static function nullIfBlank(mixed $answer): ?string
-    {
-        return \is_string($answer) && '' !== $answer ? $answer : null;
+        return self::inputEndedWhileAsking($startedInteractive, $input) ? self::refuseInputEnded($io) : $service;
     }
 
     // When the input runs out, the question helper turns it non-interactive and answers every
     // question left with its default, so those answers are not the technician's.
-    private static function reportedInputEnd(SymfonyStyle $io, bool $startedInteractive, InputInterface $input): bool
+    /**
+     * @phpstan-impure
+     */
+    private static function inputEndedWhileAsking(bool $startedInteractive, InputInterface $input): bool
     {
-        if (!$startedInteractive || $input->isInteractive()) {
-            return false;
-        }
+        return $startedInteractive && !$input->isInteractive();
+    }
 
+    private static function refuseInputEnded(SymfonyStyle $io): null
+    {
         $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
 
-        return true;
+        return null;
     }
 
     /**
