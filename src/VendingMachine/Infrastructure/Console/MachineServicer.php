@@ -14,7 +14,7 @@ use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-final readonly class ServiceForm
+final readonly class MachineServicer
 {
     public function __construct(
         private CommandBus $commandBus,

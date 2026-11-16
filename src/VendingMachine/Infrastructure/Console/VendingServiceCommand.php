@@ -21,7 +21,7 @@ final readonly class VendingServiceCommand
     private const string PAIR_SEPARATOR = ':';
 
     public function __construct(
-        private ServiceForm $serviceForm,
+        private MachineServicer $machineServicer,
         private TrayPrinter $trayPrinter,
     ) {
     }
@@ -38,7 +38,7 @@ final readonly class VendingServiceCommand
         #[Option('The count of a coin, as COIN:COUNT, such as 0.25:10 (repeat it for each coin)')]
         array $coins = [],
     ): int {
-        if (!$this->serviceForm->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins))) {
+        if (!$this->machineServicer->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins))) {
             return Command::FAILURE;
         }
 
