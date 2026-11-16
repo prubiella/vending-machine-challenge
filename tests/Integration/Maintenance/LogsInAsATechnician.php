@@ -19,10 +19,17 @@ trait LogsInAsATechnician
     private static function asTechnician(KernelBrowser $client): array
     {
         $client->jsonRequest('POST', '/auth/login', ['username' => self::TECHNICIAN_USERNAME, 'password' => self::TECHNICIAN_PASSWORD]);
+
+        return ['HTTP_AUTHORIZATION' => 'Bearer '.self::tokenFrom($client)];
+    }
+
+    // The last response must be a successful login.
+    private static function tokenFrom(KernelBrowser $client): string
+    {
         $body = json_decode((string) $client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
         self::assertIsArray($body);
         self::assertIsString($body['token'] ?? null, 'The login gave no token.');
 
-        return ['HTTP_AUTHORIZATION' => 'Bearer '.$body['token']];
+        return $body['token'];
     }
 }

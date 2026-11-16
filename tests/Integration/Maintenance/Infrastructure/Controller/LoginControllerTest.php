@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Maintenance\Infrastructure\Controller;
 
-use App\Tests\Integration\Maintenance\HasATechnician;
+use App\Tests\Integration\Maintenance\LogsInAsATechnician;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class LoginControllerTest extends WebTestCase
 {
-    use HasATechnician;
+    use LogsInAsATechnician;
 
     private KernelBrowser $client;
 
@@ -28,9 +28,7 @@ final class LoginControllerTest extends WebTestCase
         $this->client->jsonRequest('POST', '/auth/login', ['username' => self::TECHNICIAN_USERNAME, 'password' => self::TECHNICIAN_PASSWORD]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
-        $token = $this->responseBody()['token'] ?? null;
-        self::assertIsString($token);
-        $claims = self::getContainer()->get(JWTEncoderInterface::class)->decode($token);
+        $claims = self::getContainer()->get(JWTEncoderInterface::class)->decode(self::tokenFrom($this->client));
         self::assertSame(self::TECHNICIAN_ID, $claims['sub'] ?? null);
         self::assertSame(['ROLE_TECHNICIAN'], $claims['roles'] ?? null);
     }
@@ -43,7 +41,7 @@ final class LoginControllerTest extends WebTestCase
         self::assertSame(['error' => ['code' => 401, 'message' => 'Wrong username or password.']], $this->responseBody());
     }
 
-    public function testRefusesAnUnknownUsernameAlike(): void
+    public function testRefusesAnUnknownUsernameWithTheSame401AsAWrongPassword(): void
     {
         $this->client->jsonRequest('POST', '/auth/login', ['username' => 'nobody', 'password' => self::TECHNICIAN_PASSWORD]);
 
