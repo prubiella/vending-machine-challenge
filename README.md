@@ -308,8 +308,10 @@ and the token (lexik/jwt-authentication-bundle, RS256) carries the technician's 
 claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its technician: the
 `machine` firewall in `config/packages/security.yaml` builds the user from the token, and its
 `access_control` lists the routes that need the role. A missing, invalid or expired token answers
-401 in the API's error format (`JwtFailureListener`), and a token without the role 403. Servicing
-the machine stays in the console for now.
+401 in the API's error format (`JwtFailureListener`), and a token without the role 403. A token
+that cannot be checked because of the server's own keys (a key file that cannot be read) answers
+500 and is logged as critical, since logging in again would not help. Servicing the machine stays in
+the console for now.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
