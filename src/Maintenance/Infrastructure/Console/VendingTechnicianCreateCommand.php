@@ -9,13 +9,13 @@ use App\Maintenance\Domain\Technician\Email;
 use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Domain\Technician\Username;
 use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Uuid\UuidGenerator;
 use App\Shared\Domain\DomainException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Uid\Uuid;
 
 #[AsCommand(
     name: 'vending:technician:create',
@@ -27,6 +27,7 @@ final readonly class VendingTechnicianCreateCommand
 
     public function __construct(
         private CommandBus $commandBus,
+        private UuidGenerator $uuidGenerator,
     ) {
     }
 
@@ -44,7 +45,7 @@ final readonly class VendingTechnicianCreateCommand
             $resolvedEmail = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
             $resolvedPassword = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
 
-            $id = Uuid::v7()->toRfc4122();
+            $id = $this->uuidGenerator->generate();
             $this->commandBus->dispatch(new CreateTechnicianCommand($id, $resolvedUsername, $resolvedEmail, $resolvedPassword));
         } catch (DomainException|MissingValueException $refusal) {
             return self::refuse($io, $refusal->getMessage());

@@ -7,13 +7,14 @@ namespace App\Tests\Integration\Maintenance\Infrastructure\Console;
 use App\Maintenance\Domain\Technician\Technician;
 use App\Maintenance\Domain\Technician\TechnicianRepository;
 use App\Maintenance\Domain\Technician\Username;
+use App\Shared\Application\Uuid\UuidGenerator;
+use App\Tests\Integration\Maintenance\FixedUuidGenerator;
 use App\Tests\Integration\Maintenance\StartsWithNoTechnicians;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher;
-use Symfony\Component\Uid\Uuid;
 
 final class VendingTechnicianCreateCommandTest extends KernelTestCase
 {
@@ -28,8 +29,8 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         self::assertSame(Command::SUCCESS, $exitCode);
         $technician = self::storedTechnician('ana');
         self::assertSame('ana@example.com', $technician->email()->value());
-        self::assertSame(\sprintf("Technician ana created with id %s.\n", $technician->id()->value()), $tester->getDisplay(true));
-        self::assertTrue(Uuid::isValid($technician->id()->value()));
+        self::assertSame(\sprintf("Technician ana created with id %s.\n", FixedUuidGenerator::ID), $tester->getDisplay(true));
+        self::assertSame(FixedUuidGenerator::ID, $technician->id()->value());
         self::assertPasswordIs('correct-horse', $technician);
     }
 
@@ -159,7 +160,10 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
 
     private static function tester(): CommandTester
     {
-        return new CommandTester(new Application(self::bootKernel())->find('vending:technician:create'));
+        $application = new Application(self::bootKernel());
+        self::getContainer()->set(UuidGenerator::class, new FixedUuidGenerator());
+
+        return new CommandTester($application->find('vending:technician:create'));
     }
 
     private static function technicians(): TechnicianRepository
