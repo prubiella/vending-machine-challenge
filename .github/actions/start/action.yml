@@ -48,3 +48,9 @@ runs:
     - name: Install the dependencies
       shell: bash
       run: make install
+
+    # The tests' bootstrap would create them too; doing it here gives every job, the ones that only
+    # boot the kernel included, the keys that sign and check the technicians' tokens.
+    - name: Create the JWT key pair
+      shell: bash
+      run: make jwt-keys

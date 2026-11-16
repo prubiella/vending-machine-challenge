@@ -34,12 +34,13 @@ down: ## Stop and remove the containers
 destroy: ## Remove the containers and their volumes (the database is lost)
 	@$(DOCKER_COMPOSE) down -v
 
-first-run: ## Create .env, set up the host, start the containers, install the dependencies, migrate the databases and enable the git hooks
+first-run: ## Create .env, set up the host, start the containers, install the dependencies, create the token keys, migrate the databases and enable the git hooks
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
 	@$(MAKE) setup-host
 	@$(MAKE) start
 	@$(MAKE) install
+	@$(MAKE) jwt-keys
 	@$(MAKE) migrate
 	@$(MAKE) hooks
 
@@ -59,7 +60,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell mongo-shell tools tools-stop migrate hooks
+.PHONY: run run-debug logs status shell db-shell mongo-shell tools tools-stop migrate jwt-keys hooks
 
 run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -92,6 +93,9 @@ migrate: ## Run the database migrations on the dev and test databases
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
 
+jwt-keys: ## Create the key pair that signs the technicians' tokens, at the paths in .env (config/jwt, git ignores it), unless both keys exist
+	@$(DOCKER_COMPOSE) exec php-fpm php etc/jwt/ensure-key-pair.php
+
 hooks: ## Use the project's git hooks (they run inside the PHP image)
 	@git config core.hooksPath etc/git/hooks-docker
 
@@ -101,7 +105,7 @@ hooks: ## Use the project's git hooks (they run inside the PHP image)
 test: ## Run the unit and integration tests
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/phpunit --testdox $(ARGS)
 
-behat: ## Run the customer scenarios of features/ against the kernel (no server, no hosts entry)
+behat: ## Run the customer and technician scenarios of features/ against the kernel (no server, no hosts entry)
 	@$(DOCKER_COMPOSE) exec php-fpm vendor/bin/behat $(ARGS)
 
 coverage: ## Run the tests with an HTML coverage report in var/coverage

@@ -6,7 +6,6 @@ parameters:
     # fails when one is on neither side.
     app.domain_exceptions_answering_500:
         - App\Maintenance\Domain\Technician\EmailTakenException
-        - App\Maintenance\Domain\Technician\InvalidCredentialsException
         - App\Maintenance\Domain\Technician\InvalidEmailException
         - App\Maintenance\Domain\Technician\InvalidUsernameException
         - App\Maintenance\Domain\Technician\TooLongPasswordException
@@ -53,6 +52,9 @@ framework:
             log_level: info
         App\VendingMachine\Infrastructure\Notation\ForeignCoinException:
             status_code: 422
+            log_level: info
+        App\Maintenance\Domain\Technician\InvalidCredentialsException:
+            status_code: 401
             log_level: info
         # Not a business refusal: LoggingCommandMiddleware already logged it as an error once the
         # retries ran out, and the request can simply be sent again.

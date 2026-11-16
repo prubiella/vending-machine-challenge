@@ -4,7 +4,7 @@ info:
   title: Vending machine API
   version: 1.0.0
   description: |
-    The customer's side of the vending machine, and the health checks.
+    The customer's side of the vending machine, the technician's, and the health checks.
 
     **Money.** Amounts the machine reports are integer cents (`creditCents`, `priceCents`, the
     `coins` of the tray): 65 is 0.65. The only amount a client sends is a coin, written as in the
@@ -19,8 +19,10 @@ info:
     with another method answers 405, in the same format. The messages are for people, not for
     programs: a client decides by the status.
 
-    Servicing the machine (setting the stock and the change) stays in the console: the HTTP API has
-    no technician login.
+    **Technicians.** `POST /auth/login` gives a technician a token that lasts one hour. The
+    technician's routes take it as `Authorization: Bearer <token>`: without a valid one they answer
+    401, and to a token without the technician's role 403. The customer's routes need no token.
+    Servicing the machine (setting the stock and the change) stays in the console for now.
 
 servers:
   - url: https://{host}:{port}
@@ -38,6 +40,8 @@ tags:
     description: Products, credit and coins
   - name: Tray
     description: What the machine has dropped
+  - name: Technician
+    description: Logging in, and what only a technician may read
   - name: Health
     description: Liveness and readiness probes
 
@@ -238,6 +242,92 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /machine/status:
+    get:
+      operationId: getMachineStatus
+      tags: [Technician]
+      summary: Read the stock and the change
+      description: The units of each product and the count of each coin, by its cents, every coin included.
+      security:
+        - technicianToken: []
+      responses:
+        '200':
+          description: The machine as the technician sees it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineStatus'
+              example:
+                unitsBySelector: { WATER: 10, JUICE: 10, SODA: 10 }
+                coinStockByCents: { '5': 10, '10': 10, '25': 10, '100': 0 }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Technician]
+      summary: Log in as a technician
+      description: |
+        Gives a token for the technician with that username and password, created with
+        `vending:technician:create`. An unknown username and a wrong password are refused alike.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: ana
+              password: correct-horse
+      responses:
+        '200':
+          description: The token, for the `Authorization` header of the technician's routes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+              example:
+                token: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwMTk2ZjFkMi03YzNhLTdiOWUtOWExZC0zZjVlOGMyYjRhNjEifQ.signature
+        '400':
+          description: The body is not valid JSON, or there is no body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 400, message: Request payload contains invalid "json" data. }
+        '401':
+          description: No technician has that username and password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 401, message: Wrong username or password. }
+        '415':
+          description: 'The body is not sent as JSON (`Content-Type: application/json`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 415, message: 'Unsupported format, "txt" must be explicitly listed in "acceptFormat".' }
+        '422':
+          description: The body has no `username` or no `password`, or one is not a string.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 422, message: Failed to create object because the class misses the "password" property. }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /health-check:
     get:
       operationId: getLiveness
@@ -257,15 +347,19 @@ paths:
                 allOk:
                   value:
                     status: ok
-                    checks: { database: ok, document_store: ok }
+                    checks: { database: ok, document_store: ok, jwt_keys: ok }
                 databaseDown:
                   value:
                     status: ok
-                    checks: { database: ko, document_store: ok }
+                    checks: { database: ko, document_store: ok, jwt_keys: ok }
                 documentStoreDown:
                   value:
                     status: ok
-                    checks: { database: ok, document_store: ko }
+                    checks: { database: ok, document_store: ko, jwt_keys: ok }
+                jwtKeysUnusable:
+                  value:
+                    status: ok
+                    checks: { database: ok, document_store: ok, jwt_keys: ko }
 
   /health-check/ready:
     get:
@@ -282,7 +376,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ok, document_store: ok }
+                checks: { database: ok, document_store: ok, jwt_keys: ok }
         '503':
           description: At least one dependency is `ko`. The body has the same shape as in the 200 answer.
           content:
@@ -291,7 +385,7 @@ paths:
                 $ref: '#/components/schemas/HealthCheck'
               example:
                 status: ok
-                checks: { database: ok, document_store: ko }
+                checks: { database: ok, document_store: ko, jwt_keys: ok }
 
 components:
   schemas:
@@ -355,6 +449,42 @@ components:
             type: integer
             enum: [5, 10, 25, 100]
 
+    MachineStatus:
+      type: object
+      required: [unitsBySelector, coinStockByCents]
+      properties:
+        unitsBySelector:
+          type: object
+          description: The units of each product, by its selector.
+          additionalProperties:
+            type: integer
+            minimum: 0
+        coinStockByCents:
+          type: object
+          description: The count of each coin, by its cents.
+          additionalProperties:
+            type: integer
+            minimum: 0
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: ana
+        password:
+          type: string
+          format: password
+
+    Token:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: A JWT whose `sub` claim is the technician's id. It lasts one hour.
+
     HealthCheck:
       type: object
       required: [status, checks]
@@ -385,7 +515,48 @@ components:
               type: string
               description: The reason, for people. A 5xx hides it outside debug mode.
 
+  securitySchemes:
+    technicianToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The token that `POST /auth/login` gives.
+
   responses:
+    Unauthorized:
+      description: No token, or one that is invalid or has expired. A technician gets a token from `POST /auth/login`.
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            enum: [Bearer]
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            noToken:
+              summary: No Authorization header
+              value:
+                error: { code: 401, message: 'Send a technician''s token as "Authorization: Bearer <token>".' }
+            invalidToken:
+              summary: A token that is not valid
+              value:
+                error: { code: 401, message: 'The token is invalid: log in again.' }
+            expiredToken:
+              summary: A token older than one hour
+              value:
+                error: { code: 401, message: 'The token has expired: log in again.' }
+
+    Forbidden:
+      description: A valid token without the technician's role.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: { code: 403, message: "Access Denied. The user doesn't have ROLE_TECHNICIAN." }
+
     ConcurrentUpdate:
       description: Another request changed the machine at the same time, and the command kept meeting it through its retries. Nothing was changed, so send the request again.
       content:

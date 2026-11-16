@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tests\Behat\CustomerContext;
+use App\Tests\Behat\TechnicianContext;
 use Behat\Config\Config;
 use Behat\Config\Extension;
 use Behat\Config\Profile;
@@ -19,6 +20,11 @@ return new Config()
                 new Suite('customer')
                     ->withPaths('features/customer')
                     ->withContexts(CustomerContext::class)
+            )
+            ->withSuite(
+                new Suite('technician')
+                    ->withPaths('features/technician')
+                    ->withContexts(TechnicianContext::class)
             )
             ->withExtension(
                 new Extension(SymfonyExtension::class, [

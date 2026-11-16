@@ -42,21 +42,24 @@ make first-run
 ```
 
 It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers, installs the Composer dependencies, runs the database
-migrations and enables the git hooks. Then:
+below), builds and starts the containers, installs the Composer dependencies, creates the key pair that signs the technicians' tokens
+(`make jwt-keys`, in `config/jwt/`, which git ignores), runs the database migrations and enables
+the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
 make run -- app:health-check
-# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
 ```
 
 The same use case has two entry points: the controllers behind `/health-check` and
 `/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
 the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
-its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL and `document_store` is
-MongoDB. A `ko` dependency logs a warning with the reason it did not answer.
+its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL, `document_store` is MongoDB
+and `jwt_keys` is the key pair that signs the technicians' tokens, checked by signing a throwaway
+token and verifying it, so a missing or unreadable key, or a public key of another pair, is `ko`. A
+`ko` dependency logs a warning with the reason it did not answer.
 
 - Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
   `ko`, so a database that does not answer never marks the application itself as down.
@@ -200,12 +203,12 @@ password of 8 characters to 4096 bytes, and prints the id it gives the technicia
 are required. An answer the domain refuses (a username or an email it does not take, a password too
 short or too long) is asked again with the domain's reason, up to three times; a value given as an
 option is refused at once. A username or an email that another technician already has is only found
-when the technician is stored, after every answer, so it ends the command. The technician will log
-in by username once a login exists; the email is only kept. A password is never trimmed, whether
-typed at the hidden prompt or given as an option, so spaces around it count. The password is never
-stored or logged in clear: the command bus logs only the first three characters of the username and
-of the email, the password as `***`, and the refusals (an invalid or taken username or email)
-without the value.
+when the technician is stored, after every answer, so it ends the command. The technician logs in by
+username (`POST /auth/login`, `vending:technician:token`); the email is only kept. A password is
+never trimmed, whether typed at the hidden prompt or given as an option, so spaces around it count.
+The password is never stored or logged in clear: the command bus logs only the first three
+characters of the username and of the email, the password as `***`, and the refusals (an invalid or
+taken username or email) without the value.
 
 `SERVICE` and `vending:service` check the credentials before asking any count, and refuse an
 unknown username and a wrong password with the same message, so a refusal does not tell which
@@ -269,8 +272,50 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change, and also when another request changed the machine at the same time and the
 retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
 malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
-and is logged as critical. Servicing the machine stays in the console: the HTTP API has no
-technician login.
+and is logged as critical.
+
+### The technician's side
+
+A technician (see [Technicians](#technicians)) logs in for a token and sends it as a bearer token
+to the technician's routes. The customer's routes need no token.
+
+| Request | What it does | Answer |
+|---|---|---|
+| `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
+| `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
+
+```bash
+token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
+  -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
+curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
+# {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
+```
+
+From a shell, `vending:technician:token` gives the same token without the login request: it checks
+the credentials with the same `AuthenticateTechnicianQuery` on the query bus and signs the token with
+the same `TechnicianTokenIssuer` as `POST /auth/login`, and prints the token alone on stdout. It asks what `--username` and
+`--password` leave out, the password hidden, on stderr; a wrong or missing credential goes to stderr
+with exit code 1.
+
+```bash
+token=$(make run -- vending:technician:token --username ana)
+# Password:
+curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
+```
+
+`-n --username ana --password ...` works without a prompt, for a script, but a password given as an
+option stays in the shell history (and in `ps` while the command runs): prefer the prompt. The
+console's own log of the command shows `--password=***`.
+
+The login checks the credentials with the same query as the console, `AuthenticateTechnicianQuery`,
+and the token (lexik/jwt-authentication-bundle, RS256) carries the technician's id in its `sub`
+claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its technician: the
+`machine` firewall in `config/packages/security.yaml` builds the user from the token, and its
+`access_control` lists the routes that need the role. A missing, invalid or expired token answers
+401 in the API's error format (`JwtFailureListener`), and a token without the role 403. A token
+that cannot be checked because of the server's own keys (a key file that cannot be read) answers
+500 and is logged as critical, since logging in again would not help. Servicing the machine stays in
+the console for now.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -314,7 +359,9 @@ each with a `Masking` rule: `Hide` logs a secret such as a password or a token a
 `KeepFirstThree` logs personal data such as a technician's username with its first three characters
 and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
 hidden whole. A rule for a field that is not a public property of the command stops its dispatch
-with a `LogicException`, so a misspelt or renamed field is never logged in clear. Each retry after
+with a `LogicException`, so a misspelt or renamed field is never logged in clear. Symfony logs a
+console command with its input when it fails and when it exits, and `PasswordOptionMaskingProcessor`
+logs a `--password` option there as `***`. Each retry after
 a concurrent update is logged
 at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
@@ -374,7 +421,7 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | Command | What it does |
 |---|---|
 | `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
-| `make behat` | The customer scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
+| `make behat` | The customer and technician scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
 | `make coverage` | The tests with an HTML coverage report in `var/coverage` |
 | `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
 | `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
@@ -409,6 +456,13 @@ read, such as "When I insert 0.25 / And I select SODA / Then the tray holds SODA
 steps live in `tests/Behat/CustomerContext.php`. Each scenario starts from the default machine, and
 a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" services it first. The
 scenarios use the test database, so `make migrate` must have run.
+
+`features/technician/` holds the technician's side, with the steps of
+`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token, and
+reading the stock and the change. Each scenario starts with no technician and the default machine,
+and a `Given` creates the technician it logs in as. Every login gives a token with the technician's
+role, so a 403 cannot be reached from a scenario: the kernel tests make a token without the role to
+cover it.
 
 ## Debugging with PhpStorm
 
@@ -463,6 +517,11 @@ environment that points `baseUrl` at `https://vending-machine.test`.
    so Postman trusts the mkcert certificate.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
+The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
+`technicianPassword`) and keeps the token for the technician's requests, such as
+`18. Get machine status as a technician`. Create that technician once:
+`make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
+
 The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
 example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
 0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
@@ -494,7 +553,8 @@ src/
     Domain/          Money and DomainException, the base of every domain exception.
     Application/     The Command and Query interfaces, the bus ports, the health check query,
                      the TechnicianAuthenticator port that VendingMachine logs technicians in with.
-    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points.
+    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points,
+                     the JSON answer to a missing or invalid token.
   VendingMachine/    The machine of the statement.
     Domain/          Business rules. Plain PHP.
     Application/     Use cases: commands, queries and their handlers.
@@ -503,7 +563,7 @@ src/
     Domain/          Technician, its username and password rules, the repository and hasher ports.
     Application/     Use cases: creating a technician, checking its credentials.
     Infrastructure/  The technicians table, the Symfony password hasher, console commands, the
-                     TechnicianAuthenticator adapter over the credentials query.
+                     TechnicianAuthenticator adapter over the credentials query, login.
 config/              Symfony configuration; routes in config/routes/<context>.php.
 tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
 tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).

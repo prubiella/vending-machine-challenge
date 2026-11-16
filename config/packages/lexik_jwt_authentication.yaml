@@ -1,0 +1,13 @@
+parameters:
+    # The same defaults as .env.dist, so an .env written before the tokens existed still works;
+    # make jwt-keys creates these keys, which git ignores.
+    env(JWT_SECRET_KEY): '%kernel.project_dir%/config/jwt/private.pem'
+    env(JWT_PUBLIC_KEY): '%kernel.project_dir%/config/jwt/public.pem'
+    env(JWT_PASSPHRASE): ''
+
+lexik_jwt_authentication:
+    secret_key: '%env(resolve:JWT_SECRET_KEY)%'
+    public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
+    pass_phrase: '%env(JWT_PASSPHRASE)%'
+    # The standard subject claim holds the technician's id.
+    user_id_claim: sub

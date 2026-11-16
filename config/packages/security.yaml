@@ -1,0 +1,17 @@
+security:
+    # The technician's token carries the technician's id and roles, so a request needs no database.
+    providers:
+        jwt:
+            lexik_jwt: ~
+
+    firewalls:
+        machine:
+            pattern: ^/machine
+            stateless: true
+            provider: jwt
+            jwt: ~
+
+    # The customer's routes under /machine stay open: only these need a technician, with the role
+    # that TechnicianTokenIssuer puts in every token it makes.
+    access_control:
+        - { path: ^/machine/status$, methods: [GET], roles: !php/const App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer::TECHNICIAN_ROLE }

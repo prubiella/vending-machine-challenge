@@ -44,7 +44,10 @@ to run it.
   checks a technician's credentials without depending on `Maintenance`, which implements it;
   `Shared/Infrastructure` holds the Messenger implementations of the bus ports
   (`MessengerCommandBus`, `MessengerQueryBus`), `SymfonyUuidGenerator`,
-  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
+  `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener`, `JwtFailureListener`
+  (a missing, invalid or expired token answered in the same JSON), `PasswordOptionMaskingProcessor`
+  (a console `--password` logged as `***`), `PasswordQuestion` (a password prompt that never trims)
+  and the health check
   (liveness on `/health-check`, readiness on `/health-check/ready` and `app:health-check --ready`;
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
@@ -118,8 +121,11 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    (`VendingMachineRepository` to `MongoVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
-   `#[MapRequestPayload]`. A customer-facing refusal gets its status and `log_level: info`
-   under `framework.exceptions` in `config/packages/framework.yaml`, the one place that decides both.
+   `#[MapRequestPayload]`. A route only a technician may use gets a line in the `access_control`
+   of `config/packages/security.yaml` (the `machine` firewall covers `/machine`), and documents
+   its 401 and 403 with the `technicianToken` security scheme. A customer-facing refusal gets its
+   status and `log_level: info` under `framework.exceptions` in `config/packages/framework.yaml`,
+   the one place that decides both.
    Any other exception answers 500 and is logged as critical. Every new domain exception goes on one
    side or the other: mapped there, or listed in `app.domain_exceptions_answering_500` in the same
    file when the HTTP API cannot reach it or it means a broken invariant;
@@ -131,7 +137,8 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    machine lacks its 500 (a command also its 409); the statuses of its own are for you to list.
 5. Scenario: a customer use case gets a scenario in `features/customer/<topic>.feature`, written in
    the customer's words, reusing the steps of `tests/Behat/CustomerContext.php` and adding one only
-   when no step says it. Feature files hold no PHP and no HTTP details.
+   when no step says it; a technician's use case does the same in `features/technician/` with
+   `tests/Behat/TechnicianContext.php`. Feature files hold no PHP and no HTTP details.
 6. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
    and for every handler with logic of its own; integration tests in `tests/Integration/<Context>/`
    for wiring that only the kernel can prove. A handler with no logic (one that returns a
@@ -167,7 +174,8 @@ and a kernel test that touches the machine uses `StartsWithNoStoredMachine`, so 
 default machine. A new adapter of `VendingMachineRepository` gets a test case that extends
 `VendingMachineRepositoryContractTestCase`. Behat (`behat.dist.php`, the FriendsOfBehat Symfony
 extension) runs the scenarios of `features/` against the kernel through BrowserKit, on the same
-test databases; `CustomerContext` deletes the stored machine before each scenario. `tests/Behat/`
+test databases; `CustomerContext` deletes the stored machine before each scenario, and
+`TechnicianContext` the technicians too. `tests/Behat/`
 is outside `src/`, so deptrac does not see it, and PHPStan analyses it with the rest of `tests/`.
 `make hooks` (part of `make first-run`) enables the git hooks: pre-commit runs the checks when
 code, configuration or tooling is staged, and refuses the commit when those staged files also have
