@@ -18,9 +18,9 @@ final readonly class QueryBusTechnicianAuthenticator implements TechnicianAuthen
 
     public function authenticate(string $username, #[\SensitiveParameter] string $password): string
     {
-        $technician = $this->queryBus->query(new AuthenticateTechnicianQuery($username, $password));
-        \assert($technician instanceof AuthenticatedTechnicianResponse);
+        $authenticated = $this->queryBus->query(new AuthenticateTechnicianQuery($username, $password));
+        \assert($authenticated instanceof AuthenticatedTechnicianResponse);
 
-        return $technician->technicianId;
+        return $authenticated->technicianId;
     }
 }

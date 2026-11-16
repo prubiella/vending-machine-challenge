@@ -83,13 +83,7 @@ final readonly class MachineServicer
             self::coinStockByCents($io, $status, $givenCoins),
         );
 
-        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
-            return null;
-        }
-
-        return $service;
+        return self::reportedInputEnd($io, $startedInteractive, $input) ? null : $service;
     }
 
     private function authenticatedTechnician(
@@ -100,25 +94,38 @@ final readonly class MachineServicer
         #[\SensitiveParameter]
         ?string $password,
     ): ?string {
-        try {
-            $username ??= self::answer($io->ask('Username'));
-            $password ??= self::answer($io->askHidden('Password'));
-        } catch (MissingInputException) {
-            $input->setInteractive(false);
-        }
-
-        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
+        [$username, $password] = self::askForMissingCredentials($input, $io, $username, $password);
+        if (self::reportedInputEnd($io, $startedInteractive, $input)) {
             return null;
         }
 
+        // Left out without interaction, or a blank answer.
         if (null === $username || null === $password) {
             $io->getErrorStyle()->writeln('The service needs the technician\'s username and password (--username and --password without interaction): the machine was not serviced.');
 
             return null;
         }
 
+        return $this->verifiedTechnicianId($io, $username, $password);
+    }
+
+    /**
+     * @return array{?string, ?string} the username and the password, null when not given
+     */
+    private static function askForMissingCredentials(InputInterface $input, SymfonyStyle $io, ?string $username, #[\SensitiveParameter] ?string $password): array
+    {
+        try {
+            $username ??= self::nullIfBlank($io->ask('Username'));
+            $password ??= self::nullIfBlank($io->askHidden('Password'));
+        } catch (MissingInputException) {
+            $input->setInteractive(false);
+        }
+
+        return [$username, $password];
+    }
+
+    private function verifiedTechnicianId(SymfonyStyle $io, string $username, #[\SensitiveParameter] string $password): ?string
+    {
         try {
             return $this->technicianAuthenticator->authenticate($username, $password);
         } catch (DomainException $refusal) {
@@ -128,16 +135,22 @@ final readonly class MachineServicer
         }
     }
 
-    private static function answer(mixed $answer): ?string
+    private static function nullIfBlank(mixed $answer): ?string
     {
         return \is_string($answer) && '' !== $answer ? $answer : null;
     }
 
     // When the input runs out, the question helper turns it non-interactive and answers every
     // question left with its default, so those answers are not the technician's.
-    private static function inputEndedWhileAsking(bool $startedInteractive, InputInterface $input): bool
+    private static function reportedInputEnd(SymfonyStyle $io, bool $startedInteractive, InputInterface $input): bool
     {
-        return $startedInteractive && !$input->isInteractive();
+        if (!$startedInteractive || $input->isInteractive()) {
+            return false;
+        }
+
+        $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
+
+        return true;
     }
 
     /**
