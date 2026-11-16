@@ -6,6 +6,7 @@ namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
@@ -118,6 +119,20 @@ final class VendingServiceCommandTest extends KernelTestCase
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame("The input ended before the service was complete: the machine was not serviced.\n", $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testReportsARefusedServiceAndFails(): void
+    {
+        $application = new Application(self::bootKernel());
+        self::getContainer()->set(CommandBus::class, new ServiceRefusingCommandBus(new MessengerCommandBus(self::getContainer()->get('command.bus'))));
+        $tester = new CommandTester($application->find('vending:service'));
+
+        $exitCode = $tester->execute(['--units' => ['WATER:2']], ['interactive' => false, 'capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame(ServiceRefusingCommandBus::REFUSAL."\n", $tester->getErrorOutput(true));
+        self::assertSame('', $tester->getDisplay(true));
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
