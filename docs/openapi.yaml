@@ -335,6 +335,14 @@ paths:
                   summary: A negative count of a coin
                   value:
                     error: { code: 422, message: 'A coin of 25 cents cannot have a negative count, got -1.' }
+                slotCapacity:
+                  summary: More units than a slot holds
+                  value:
+                    error: { code: 422, message: 'A slot holds at most 200 units, got 201 of WATER.' }
+                coinTubeCapacity:
+                  summary: More coins than a tube holds
+                  value:
+                    error: { code: 422, message: 'A coin tube holds at most 500 coins, got 501 of 5 cents.' }
                 foreignCoin:
                   summary: A coin the machine does not take
                   value:
@@ -553,20 +561,22 @@ components:
       properties:
         units:
           type: object
-          description: The new units of each product, by its selector. A product left out keeps its units.
+          description: The new units of each product, by its selector. A product left out keeps its units. A slot holds at most 200.
           additionalProperties:
             type: integer
             minimum: 0
+            maximum: 200
         coins:
           type: object
           description: |
             The new count of each coin, by the coin as written in the statement (`0.05`, `0.10`,
-            `0.25`, `1`). A coin left out is set to none.
+            `0.25`, `1`). A coin left out is set to none. A tube holds at most 500 coins.
           propertyNames:
             enum: ['0.05', '0.10', '0.25', '1']
           additionalProperties:
             type: integer
             minimum: 0
+            maximum: 500
 
     LoginRequest:
       type: object

@@ -9,6 +9,7 @@ use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Change\NoExactChangeException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Wallet\CoinTubeCapacityExceededException;
 use App\VendingMachine\Domain\Wallet\InsufficientCreditException;
 use App\VendingMachine\Domain\Wallet\Wallet;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -157,6 +158,20 @@ final class WalletTest extends TestCase
         self::assertTrue($restocked->stock()->equals($newStock));
         self::assertTrue($restocked->credit()->equals(CoinCollection::of(Coin::TenCents)));
         self::assertTrue($wallet->stock()->equals(CoinCollection::of(Coin::FiveCents)));
+    }
+
+    public function testATubeTakesAsManyCoinsAsItsCapacity(): void
+    {
+        $restocked = Wallet::stocked(CoinCollection::empty())->restock(CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY]));
+
+        self::assertSame(Wallet::TUBE_CAPACITY, $restocked->stock()->countsByCents()[25]);
+    }
+
+    public function testRefusesToRestockATubePastItsCapacity(): void
+    {
+        $this->expectExceptionObject(CoinTubeCapacityExceededException::forCoin(Coin::TenCents, 501));
+
+        Wallet::stocked(CoinCollection::empty())->restock(CoinCollection::fromCounts([5 => 10, 10 => Wallet::TUBE_CAPACITY + 1]));
     }
 
     public function testToppingUpAddsCoinsToTheStockAndLeavesTheCreditAlone(): void

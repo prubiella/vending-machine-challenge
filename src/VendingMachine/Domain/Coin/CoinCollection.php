@@ -35,16 +35,19 @@ final readonly class CoinCollection
      */
     public static function fromCounts(array $countsByCents): self
     {
-        $coins = [];
+        $positiveCounts = [];
         foreach ($countsByCents as $cents => $count) {
             $coin = Coin::fromCents($cents);
             if ($count < 0) {
                 throw NegativeCoinCountException::forCoin($coin, $count);
             }
-            $coins = [...$coins, ...array_fill(0, $count, $coin)];
+            if ($count > 0) {
+                $positiveCounts[$coin->value] = $count;
+            }
         }
+        ksort($positiveCounts);
 
-        return self::of(...$coins);
+        return new self($positiveCounts);
     }
 
     /**

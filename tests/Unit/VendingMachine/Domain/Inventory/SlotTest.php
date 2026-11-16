@@ -7,6 +7,7 @@ namespace App\Tests\Unit\VendingMachine\Domain\Inventory;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Inventory\NegativeUnitsException;
 use App\VendingMachine\Domain\Inventory\Slot;
+use App\VendingMachine\Domain\Inventory\SlotCapacityExceededException;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
@@ -60,7 +61,7 @@ final class SlotTest extends TestCase
     {
         $slot = Slot::of(self::water(), 2);
 
-        $restocked = $slot->withUnits(10);
+        $restocked = $slot->restockedTo(10);
 
         self::assertSame(10, $restocked->units());
         self::assertSame(2, $slot->units());
@@ -71,7 +72,19 @@ final class SlotTest extends TestCase
     {
         $this->expectException(NegativeUnitsException::class);
 
-        Slot::of(self::water(), 2)->withUnits(-1);
+        Slot::of(self::water(), 2)->restockedTo(-1);
+    }
+
+    public function testHoldsAsManyUnitsAsItsCapacity(): void
+    {
+        self::assertSame(Slot::CAPACITY, Slot::of(self::water(), 2)->restockedTo(Slot::CAPACITY)->units());
+    }
+
+    public function testRefusesToBeRestockedPastItsCapacity(): void
+    {
+        $this->expectExceptionObject(SlotCapacityExceededException::forSelector(Selector::fromString('WATER'), 201));
+
+        Slot::of(self::water(), 2)->restockedTo(Slot::CAPACITY + 1);
     }
 
     private static function water(): Product

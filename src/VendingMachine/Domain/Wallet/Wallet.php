@@ -11,6 +11,8 @@ use App\VendingMachine\Domain\Coin\CoinCollection;
 
 final readonly class Wallet
 {
+    public const int TUBE_CAPACITY = 500;
+
     private function __construct(private CoinCollection $credit, private CoinCollection $stock)
     {
     }
@@ -48,8 +50,16 @@ final readonly class Wallet
         return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change)));
     }
 
+    // A sale is not bounded: the customer's coins join the stock and may take a tube past its
+    // capacity, as the overflow of a real machine goes to its cash box.
     public function restock(CoinCollection $stock): self
     {
+        foreach ($stock->countsByCents() as $cents => $count) {
+            if ($count > self::TUBE_CAPACITY) {
+                throw CoinTubeCapacityExceededException::forCoin(Coin::fromCents($cents), $count);
+            }
+        }
+
         return new self($this->credit, $stock);
     }
 

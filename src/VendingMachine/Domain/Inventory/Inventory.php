@@ -49,7 +49,7 @@ final readonly class Inventory
 
     public function restock(Selector $selector, int $units): self
     {
-        return $this->replacing($this->slotFor($selector)->withUnits($units));
+        return $this->replacing($this->slotFor($selector)->restockedTo($units));
     }
 
     /**

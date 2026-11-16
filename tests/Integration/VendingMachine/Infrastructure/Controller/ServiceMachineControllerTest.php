@@ -102,17 +102,20 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
     /**
      * @return iterable<string, array{array<string, array<string, int>>}>
      */
-    public static function negativeCounts(): iterable
+    public static function countsTheMachineRefuses(): iterable
     {
         yield 'negative units' => [['units' => ['WATER' => -1], 'coins' => []]];
         yield 'a negative count of a coin' => [['units' => [], 'coins' => ['0.25' => -1]]];
+        yield 'more units than a slot holds' => [['units' => ['WATER' => 201], 'coins' => []]];
+        yield 'more coins than a tube holds' => [['units' => [], 'coins' => ['0.05' => 501]]];
+        yield 'a count far past a tube' => [['units' => [], 'coins' => ['0.05' => 100_000_000]]];
     }
 
     /**
      * @param array<string, array<string, int>> $body
      */
-    #[DataProvider('negativeCounts')]
-    public function testRefusesANegativeCountWith422(array $body): void
+    #[DataProvider('countsTheMachineRefuses')]
+    public function testRefusesACountTheMachineCannotHoldWith422(array $body): void
     {
         $authHeaders = self::asTechnician($this->client);
 

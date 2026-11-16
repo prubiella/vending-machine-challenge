@@ -58,6 +58,12 @@ framework:
         App\VendingMachine\Domain\Coin\NegativeCoinCountException:
             status_code: 422
             log_level: info
+        App\VendingMachine\Domain\Inventory\SlotCapacityExceededException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Wallet\CoinTubeCapacityExceededException:
+            status_code: 422
+            log_level: info
         App\Maintenance\Domain\Technician\InvalidCredentialsException:
             status_code: 401
             log_level: info

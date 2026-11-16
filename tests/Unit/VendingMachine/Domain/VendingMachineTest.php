@@ -20,6 +20,7 @@ use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
+use App\VendingMachine\Domain\Wallet\CoinTubeCapacityExceededException;
 use App\VendingMachine\Domain\Wallet\InsufficientCreditException;
 use App\VendingMachine\Domain\Wallet\Wallet;
 use PHPUnit\Framework\TestCase;
@@ -241,6 +242,34 @@ final class VendingMachineTest extends TestCase
         } catch (UnknownSelectorException) {
             self::assertSame($before, self::snapshot($machine));
         }
+    }
+
+    public function testServicePastACapacityChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::TenCents);
+        $before = self::snapshot($machine);
+
+        try {
+            $machine->service(['WATER' => 1], CoinCollection::fromCounts([25 => Wallet::TUBE_CAPACITY + 1]));
+            self::fail('Expected CoinTubeCapacityExceededException.');
+        } catch (CoinTubeCapacityExceededException) {
+            self::assertSame($before, self::snapshot($machine));
+        }
+    }
+
+    public function testASaleTakesTheCreditIntoAFullTube(): void
+    {
+        $machine = self::installed();
+        $machine->service(['WATER' => 1], CoinCollection::fromCounts([5 => 10, 10 => 10, 25 => Wallet::TUBE_CAPACITY]));
+        $machine->insertCoin(Coin::TwentyFiveCents);
+        $machine->insertCoin(Coin::TwentyFiveCents);
+        $machine->insertCoin(Coin::TwentyFiveCents);
+
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        self::assertSame(['Water'], self::productsInTray($machine));
+        self::assertSame(Wallet::TUBE_CAPACITY + 3, $machine->wallet()->stock()->countsByCents()[25]);
     }
 
     public function testARestoredMachineCarriesOnFromTheGivenParts(): void

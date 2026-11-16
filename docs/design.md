@@ -243,6 +243,9 @@ shared `Uuid` base: `MachineId` for the machine, `TechnicianId` for a technician
 - **`RETURN-COIN` is not change.** It gives back exactly the coins inserted, a 1 included.
 - **`SERVICE` sets, it does not add.** It returns the pending credit to the tray, then sets units
   and coin counts to the values given ([ADR 10](adr/0010-service-sets-stock-and-returns-credit.md)).
+- **A service is bounded, a sale is not.** A slot holds at most 200 units and each coin tube 500
+  coins: a service past either is refused and changes nothing. A sale may take a tube past 500,
+  since the customer's coins join the stock ([ADR 19](adr/0019-machine-capacities.md)).
 - **Rules live in the domain.** A handler only loads, calls the domain and saves.
 
 ### Why change making is a search and not greedy
@@ -556,8 +559,9 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
   `MachineServiced` event with the technician's id would replace the command bus log as the record
   of who serviced the machine.
-- **Servicing over HTTP.** A technician's `PUT /machine/service`, next to the status route that
-  [section 7](#7-security) describes.
+- **A cash box for the overflow.** A sale may take a coin tube past its 500 coins; a real machine
+  drops that overflow into a cash box, which the model does not have yet: the stock keeps the extra
+  coins until the next service ([ADR 19](adr/0019-machine-capacities.md)).
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since

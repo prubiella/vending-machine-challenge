@@ -38,6 +38,16 @@ final class CoinCollectionTest extends TestCase
         self::assertTrue($coins->equals(CoinCollection::of(Coin::FiveCents, Coin::FiveCents, Coin::TwentyFiveCents)));
     }
 
+    public function testHoldsAHugeCountWithoutAnElementPerCoin(): void
+    {
+        $memoryBefore = memory_get_usage();
+
+        $collection = CoinCollection::fromCounts([5 => 1_000_000_000]);
+
+        self::assertSame(1_000_000_000, $collection->countsByCents()[5]);
+        self::assertLessThan(1_000_000, memory_get_usage() - $memoryBefore);
+    }
+
     public function testRejectsACountOfAnUnknownCoin(): void
     {
         $this->expectException(UnknownCoinException::class);
