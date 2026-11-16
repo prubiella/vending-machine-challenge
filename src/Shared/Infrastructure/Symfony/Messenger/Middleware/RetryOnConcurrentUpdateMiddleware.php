@@ -22,16 +22,18 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
     // before handle_message.
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
-        $handleMessage = $stack->next();
+        $next = $stack->next();
         $retriesLeft = $this->maxRetries;
 
         while (true) {
             try {
-                return $handleMessage->handle($envelope, $stack);
+                return $next->handle($envelope, $stack);
             } catch (HandlerFailedException $failure) {
-                if (0 === $retriesLeft-- || !self::causedByConcurrentUpdate($failure)) {
+                if (!self::causedByConcurrentUpdate($failure) || 0 === $retriesLeft) {
                     throw $failure;
                 }
+
+                --$retriesLeft;
             }
         }
     }
