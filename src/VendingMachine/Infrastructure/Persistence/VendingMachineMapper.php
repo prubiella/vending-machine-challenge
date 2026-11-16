@@ -23,7 +23,6 @@ use App\VendingMachine\Domain\Wallet\Wallet;
  * @phpstan-type TrayRow array{products: list<ProductRow>, coins: array<int, int>}
  * @phpstan-type MachineParts array{inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, wallet_cash_box: array<int, int>, tray: TrayRow}
  * @phpstan-type MachineDocument array{_id: string, inventory: list<SlotRow>, wallet_credit: array<int, int>, wallet_stock: array<int, int>, wallet_cash_box: array<int, int>, tray: TrayRow}
- * @phpstan-type MachineRow array{id: string, inventory: string, wallet_credit: string, wallet_stock: string, wallet_cash_box: string, tray: string}
  */
 final readonly class VendingMachineMapper
 {
@@ -47,34 +46,6 @@ final readonly class VendingMachineMapper
         self::assertEveryPartIsPresent($document);
 
         return self::restore($id, $document);
-    }
-
-    /**
-     * The id and each part of the document as a JSON column of the vending_machine row.
-     *
-     * @return MachineRow
-     */
-    public function toRow(VendingMachine $machine): array
-    {
-        return ['id' => $machine->id()->value(), ...array_map(self::encode(...), self::parts($machine))];
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    public function fromRow(array $row): VendingMachine
-    {
-        $id = self::storedId($row, 'id');
-        $parts = [];
-        foreach (self::PARTS as $part) {
-            if (\array_key_exists($part, $row) || 'wallet_cash_box' !== $part) {
-                $parts[$part] = self::decode($row[$part] ?? null);
-            }
-        }
-        $parts = self::withTheCashBoxOfAnOlderMachine($parts);
-        self::assertEveryPartIsPresent($parts);
-
-        return self::restore($id, $parts);
     }
 
     /**
@@ -224,19 +195,5 @@ final readonly class VendingMachineMapper
             ProductName::fromString($row['name']),
             Money::fromCents($row['price_cents']),
         );
-    }
-
-    private static function encode(mixed $value): string
-    {
-        return json_encode($value, \JSON_THROW_ON_ERROR);
-    }
-
-    private static function decode(mixed $column): mixed
-    {
-        if (!\is_string($column)) {
-            throw new \UnexpectedValueException('A column of the vending_machine row is missing or is not text.');
-        }
-
-        return json_decode($column, true, flags: \JSON_THROW_ON_ERROR);
     }
 }

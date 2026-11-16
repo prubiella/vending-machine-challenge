@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\VendingMachine\Infrastructure\Outbox;
 
 /**
- * An outbox event as an entry of the machine's MongoDB document or as a row of the DBAL outbox
- * table, and back. Times are stored in UTC, to the microsecond.
+ * An outbox event as an entry of the machine's MongoDB document or as a row of machine_history.
+ * Times are stored in UTC, to the microsecond.
  *
  * @phpstan-type OutboxEntry array{id: string, type: string, occurred_at: string, payload: array<string, mixed>}
  * @phpstan-type OutboxRow array{id: string, type: string, occurred_at: string, payload: string}
@@ -49,22 +49,6 @@ final readonly class OutboxEventMapper
             'occurred_at' => self::utc($event->occurredAt)->format(self::ROW_TIME),
             'payload' => json_encode($event->payload, \JSON_THROW_ON_ERROR),
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    public function fromRow(array $row): OutboxEvent
-    {
-        if (!\is_string($row['payload'] ?? null)) {
-            throw new \UnexpectedValueException('An outbox row has no payload.');
-        }
-        $payload = json_decode($row['payload'], true, flags: \JSON_THROW_ON_ERROR);
-        if (!\is_array($payload)) {
-            throw new \UnexpectedValueException('The payload of an outbox row is not an object.');
-        }
-
-        return self::event($row, self::ROW_TIME, self::stringKeyed($payload));
     }
 
     /**
