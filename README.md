@@ -301,8 +301,10 @@ history and shows in `ps`: prefer the prompt.
 
 Servicing, in the console or over HTTP, needs a technician. An unknown username and a wrong password
 are refused with the same message and the same work (one password verification), so a refusal does
-not tell which usernames exist, and the service command carries the technician's id, which the
-command bus logs: that log tells who serviced the machine. The password is never stored or logged in clear ([Logs](#logs)).
+not tell which usernames exist. There is no limit on login attempts: repeated guesses are neither
+slowed down nor locked out. The service command carries the technician's id, and the machine
+records it in the `MachineServiced` event that the relay copies to `machine_history`: the history
+tells who serviced the machine. The password is never stored or logged in clear ([Logs](#logs)).
 
 ## Where the machine lives
 

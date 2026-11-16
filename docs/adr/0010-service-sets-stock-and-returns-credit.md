@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted.
+Accepted. Changed since by [ADR 19](0019-machine-capacities.md): the 1s a sale takes go to a cash box,
+which every service empties, so the count of 1s given to a service now sets their tube only. The
+default machine is built by `VendingMachine::installStocked()`, which records no service
+([ADR 20](0020-domain-events-and-outbox.md)).
 
 ## Context
 
@@ -34,8 +37,9 @@ customer in the middle of an operation?
   would not fix that, only make it harder to see.
 - Trade-off: the pending credit is returned rather than kept for the customer, so a technician
   servicing mid-sale cancels the sale. Real machines behave the same in service mode.
-- Not built yet: recording who serviced the machine (the technician id arrives with the
-  `Maintenance` context).
+- Not built when this record was written: recording who serviced the machine. Built since:
+  `MachineServiced` carries the technician's id to the history ([ADR 18](0018-technician-authentication.md),
+  [ADR 20](0020-domain-events-and-outbox.md)).
 
 ## Alternatives considered
 

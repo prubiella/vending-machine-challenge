@@ -43,8 +43,9 @@ flowchart TD
    context the session has.
 3. **Design first.** For anything with a choice in it, the session presents the options with a
    recommendation and waits for the developer.
-4. **Tests first, in a worktree.** The session works in its own git worktree with its own test
-   databases, so several run in parallel without touching each other or the developer's checkout.
+4. **Tests first, in a worktree.** The session works in its own git worktree, so several run in
+   parallel without touching each other's files or the developer's checkout; they share the
+   `app_test` databases.
 5. **The developer tests.** The main checkout, where the containers, `make`, the IDE and Xdebug
    point, switches to the branch detached, so the session can keep moving it.
 6. **Pull request and review.** A tested branch is pushed and its pull request opened. A review
@@ -59,7 +60,7 @@ flowchart TD
 |---|---|---|
 | Git hooks | Every commit | Branch names, Conventional Commits, and, when code is staged: coding standard, container lint, PHPStan at the max level, deptrac (layers and contexts), PHPUnit and Behat, inside the project's PHP image. |
 | CI | Every pull request and push to `master` | The same checks as parallel jobs on GitHub-hosted runners; branch protection requires `All checks passed`. |
-| Contract tests | In the suite | One repository contract run against both stores; `OpenApiDocumentTest` keeps `docs/openapi.yaml` and the routes in step; `DomainExceptionStatusTest` makes every domain exception map to a status. |
+| Contract tests | In the suite | One repository contract that every adapter of the machine must pass (today the MongoDB one); `OpenApiDocumentTest` keeps `docs/openapi.yaml` and the routes in step; `DomainExceptionStatusTest` makes every domain exception map to a status. |
 | Review | On request | `/vm-review` (below). |
 | The developer | Every branch | Tries it by hand before it is published, and decides what a review raises. |
 
@@ -114,6 +115,6 @@ belongs:
 
 ## In numbers
 
-About sixty pull requests and four hundred commits, over sixty reviews posted on them, and
-seventeen ADRs on `master`; technician authentication adds two more ADRs and brings the suite to
-about five hundred PHPUnit tests and twelve Behat scenarios.
+Counted on `master` at the catalog work, the last feature: 94 pull requests merged, 593 commits
+(489 without the merge commits), about seventy reviews posted on 58 of those pull requests, and 22
+ADRs. The suite holds 669 PHPUnit tests and 17 Behat scenarios.

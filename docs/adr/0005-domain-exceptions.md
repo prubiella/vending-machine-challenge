@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted.
+Accepted. Since built, each status is set under `framework.exceptions` in
+`config/packages/framework.yaml`, with its log level; `JsonExceptionListener` only renders the JSON
+body.
 
 ## Context
 

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted. The JSON column of the MySQL row went with that table
+([ADR 21](0021-machine-lives-only-in-mongodb.md)): the cash box is stored only in the MongoDB document.
 
 ## Context
 
