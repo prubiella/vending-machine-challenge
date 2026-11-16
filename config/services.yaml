@@ -1,6 +1,8 @@
 parameters:
     # The one machine this installation runs: the default machine gets this id, and the repository
-    # loads the machine stored under it.
+    # loads the machine stored under it. The default matches .env.dist, so a .env created before the
+    # variable existed keeps working.
+    env(VENDING_MACHINE_ID): '01a1e2f0-aa80-70ea-832f-6110cbf86e31'
     vending_machine.id: '%env(VENDING_MACHINE_ID)%'
     vending_machine.default_products:
         - { selector: WATER, name: Water, price_cents: 65, units: 10 }
