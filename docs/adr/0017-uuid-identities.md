@@ -31,8 +31,8 @@ the domain to one database.
   of a caller passes a fixed generator, so it knows the id it will read back.
 - **The single machine's id is configuration.** The statement asks for one machine, so the ports
   keep `get()` and `save()` without an id, and routes, commands and queries carry none. The
-  `vending_machine.id` parameter (`VENDING_MACHINE_ID`, with the same fixed UUID as default in
-  `.env.dist` and `config/services.yaml`) names it: `DefaultVendingMachineFactory` installs the
+  `vending_machine.id` parameter (`VENDING_MACHINE_ID`, whose only default is a fixed UUID in
+  `config/services.yaml`, overridden in `.env`) names it: `DefaultVendingMachineFactory` installs the
   default machine with that id, and the adapters load the machine stored under it.
 - **Storage.** The MongoDB document's `_id` is the UUID string. The MySQL `vending_machine.id`
   column becomes `CHAR(36)` through a migration that deletes the rows stored so far, so the next

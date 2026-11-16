@@ -107,8 +107,8 @@ Its `_id` is the machine's UUID, `VENDING_MACHINE_ID` (ADR 17), and it holds its
 environment adds `_test` to the database name.
 
 `VENDING_MACHINE_ID` names the one machine: the default machine gets that id, and the repository
-loads the machine stored under it. `.env.dist` and `config/services.yaml` give it the same fixed
-UUID, so a `.env` created before the variable existed keeps working. The machine stored under
+loads the machine stored under it. `config/services.yaml` gives it a fixed default UUID, and `.env.dist` keeps the variable commented:
+uncomment it in `.env` to run the machine under another id. The machine stored under
 `_id: 1` before machines had a UUID is no longer loaded; `make run -- vending:reset` deletes it, or
 `db.vending_machines.deleteOne({_id: 1})` in `make mongo-shell`.
 
