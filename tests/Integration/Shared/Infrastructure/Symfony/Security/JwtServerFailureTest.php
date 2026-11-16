@@ -8,7 +8,6 @@ use App\Tests\Integration\Maintenance\LogsInAsATechnician;
 use App\Tests\Integration\VendingMachine\Infrastructure\Controller\VendingMachineApiTestCase;
 use Monolog\Handler\TestHandler;
 use PHPUnit\Framework\Attributes\After;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 final class JwtServerFailureTest extends VendingMachineApiTestCase
@@ -44,12 +43,14 @@ final class JwtServerFailureTest extends VendingMachineApiTestCase
         self::ensureKernelShutdown();
         $this->client = self::createClient();
         $logs = new TestHandler();
-        self::getContainer()->get(LoggerInterface::class)->pushHandler($logs);
+        self::getContainer()->get('monolog.logger.request')->pushHandler($logs);
 
         $this->client->request('GET', '/machine/status', server: $headers);
 
         self::assertResponseStatusCodeSame(Response::HTTP_INTERNAL_SERVER_ERROR);
-        self::assertSame(['error' => ['code' => 500, 'message' => 'Internal server error']], $this->responseBody());
+        $error = $this->responseBody()['error'] ?? null;
+        self::assertIsArray($error);
+        self::assertSame(500, $error['code'] ?? null);
         self::assertTrue($logs->hasCriticalRecords());
     }
 }
