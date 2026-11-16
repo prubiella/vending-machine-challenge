@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Maintenance\Infrastructure\Console;
 
 use App\Maintenance\Application\Command\CreateTechnician\CreateTechnicianCommand;
+use App\Maintenance\Domain\Technician\Email;
+use App\Maintenance\Domain\Technician\PlainPassword;
+use App\Maintenance\Domain\Technician\Username;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Domain\DomainException;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,6 +23,8 @@ use Symfony\Component\Uid\Uuid;
 )]
 final readonly class VendingTechnicianCreateCommand
 {
+    private const int ATTEMPTS = 3;
+
     public function __construct(
         private CommandBus $commandBus,
     ) {
@@ -35,9 +40,9 @@ final readonly class VendingTechnicianCreateCommand
         ?string $password = null,
     ): int {
         try {
-            $username = self::givenOrAsked($io, $username, 'Username', 'username');
-            $email = self::givenOrAsked($io, $email, 'Email', 'email');
-            $password = self::givenOrAsked($io, $password, 'Password', 'password', hidden: true);
+            $username = self::givenOrAsked($io, $username, 'username', new Question('Username'), Username::fromString(...));
+            $email = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
+            $password = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
 
             $id = Uuid::v7()->toRfc4122();
             $this->commandBus->dispatch(new CreateTechnicianCommand($id, $username, $email, $password));
@@ -50,12 +55,29 @@ final readonly class VendingTechnicianCreateCommand
         return Command::SUCCESS;
     }
 
+    // A given option goes to the command as it is, so the domain refuses it there at once. An answer
+    // is checked with the domain's rule as it is typed, and asked again when refused; after the last
+    // attempt the domain's refusal ends the command. An empty option, or no answer as with -n, is
+    // missing.
     /**
-     * @throws MissingValueException when the option is left out and the answer is blank, or never asked
+     * @param \Closure(string): object $domainRule
      */
-    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $question, string $optionName, bool $hidden = false): string
+    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $optionName, Question $question, \Closure $domainRule): string
     {
-        $value = $option ?? ($hidden ? $io->askQuestion(self::untrimmedHiddenQuestion($question)) : $io->ask($question));
+        if (null !== $option && '' !== $option) {
+            return $option;
+        }
+
+        $question
+            ->setValidator(static function (mixed $answer) use ($domainRule): string {
+                $value = \is_string($answer) ? $answer : '';
+                $domainRule($value);
+
+                return $value;
+            })
+            ->setMaxAttempts(self::ATTEMPTS)
+        ;
+        $value = null === $option ? $io->askQuestion($question) : null;
         if (!\is_string($value) || '' === $value) {
             throw MissingValueException::forOption($optionName);
         }

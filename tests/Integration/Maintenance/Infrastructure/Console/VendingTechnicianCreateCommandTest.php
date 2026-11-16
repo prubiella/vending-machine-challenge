@@ -60,6 +60,46 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         self::assertPasswordIs('  correct-horse  ', self::storedTechnician('ana'));
     }
 
+    public function testAsksAgainForEachValueTheDomainRefuses(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['Ana', 'ana', 'ana.example.com', 'ana@example.com', 'short', 'correct-horse']);
+
+        $exitCode = $tester->execute([]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        $display = $tester->getDisplay(true);
+        self::assertStringContainsString('A username has 3 to 32 lowercase letters', $display);
+        self::assertStringContainsString('An email is an address such as ana@example.com.', $display);
+        self::assertStringContainsString('A password has at least 8 characters.', $display);
+        self::assertPasswordIs('correct-horse', self::storedTechnician('ana'));
+    }
+
+    public function testGivesUpAfterThreeRefusedAnswers(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['A', 'B', 'C', 'ana']);
+
+        $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("A username has 3 to 32 lowercase letters, digits, dots, hyphens or underscores.\n", $tester->getErrorOutput(true));
+        self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
+    }
+
+    public function testRefusesAGivenOptionAtOnceWithoutAskingAgain(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(['ana', 'ana@example.com', 'correct-horse']);
+
+        $exitCode = $tester->execute(['--username' => 'Ana'], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("A username has 3 to 32 lowercase letters, digits, dots, hyphens or underscores.\n", $tester->getErrorOutput(true));
+        self::assertStringNotContainsString('Username', $tester->getDisplay(true));
+        self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
+    }
+
     public function testWithoutInteractionRefusesAMissingPassword(): void
     {
         $tester = self::tester();
