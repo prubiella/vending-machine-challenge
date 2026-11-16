@@ -212,7 +212,8 @@ code, and `tests/Integration/Shared/Infrastructure/OpenApiDocumentTest.php` fail
 missing from it, a documented route does not exist, or a status that `framework.exceptions` maps is
 documented nowhere. Read it, and try the requests, in Swagger UI at <https://docs.vending-machine.test>
 (the `swagger-ui` service serves the file from `docs/`). The API answers cross-origin requests from
-that origin only, through a Traefik headers middleware on its router. Swagger UI is static, so Traefik
+that origin only (with or without `TRAEFIK_HTTPS_PORT`), through a Traefik headers middleware on its
+router; the `servers` of the document take the host and the port as variables. Swagger UI is static, so Traefik
 reaches it over plain HTTP inside the Docker network, with no re-encryption. PhpStorm renders the
 file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 

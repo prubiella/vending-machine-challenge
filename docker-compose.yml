@@ -39,8 +39,9 @@ services:
       - traefik.http.services.vending-machine.loadbalancer.server.port=443
       - traefik.http.services.vending-machine.loadbalancer.server.scheme=https
       - traefik.http.services.vending-machine.loadbalancer.serverstransport=nginx@file
-      # Only Swagger UI, served from its own subdomain, may call the API from a browser.
-      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolalloworiginlist=https://docs.${PROJECT_HOSTNAME}
+      # Only Swagger UI, served from its own subdomain, may call the API from a browser. A browser
+      # leaves the port out of the origin when it is 443 and sends it otherwise, so list both.
+      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolalloworiginlist=https://docs.${PROJECT_HOSTNAME},https://docs.${PROJECT_HOSTNAME}:${TRAEFIK_HTTPS_PORT:-443}
       - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS
       - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolallowheaders=Content-Type
       - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolmaxage=600

@@ -23,8 +23,15 @@ info:
     can log in.
 
 servers:
-  - url: https://vending-machine.test
+  - url: https://{host}:{port}
     description: Local, behind Traefik with an mkcert certificate
+    variables:
+      host:
+        default: vending-machine.test
+        description: PROJECT_HOSTNAME of the `.env` file.
+      port:
+        default: '443'
+        description: TRAEFIK_HTTPS_PORT of the `.env` file.
 
 tags:
   - name: Machine
