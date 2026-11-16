@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Infrastructure\Console;
 
+use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
@@ -15,6 +17,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final readonly class ServiceForm
 {
     public function __construct(
+        private CommandBus $commandBus,
         private QueryBus $queryBus,
     ) {
     }
@@ -22,8 +25,32 @@ final readonly class ServiceForm
     /**
      * @param array<string, int> $givenUnits the units of each selector
      * @param array<int, int>    $givenCoins the count of each coin, by its cents
+     *
+     * @return bool whether the machine was serviced
      */
-    public function fill(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): ?ServiceMachineCommand
+    public function service(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): bool
+    {
+        $service = $this->fill($input, $io, $givenUnits, $givenCoins);
+        if (null === $service) {
+            return false;
+        }
+
+        try {
+            $this->commandBus->dispatch($service);
+        } catch (DomainException $refusal) {
+            $io->getErrorStyle()->writeln($refusal->getMessage());
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, int> $givenUnits
+     * @param array<int, int>    $givenCoins
+     */
+    private function fill(InputInterface $input, SymfonyStyle $io, array $givenUnits, array $givenCoins): ?ServiceMachineCommand
     {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();

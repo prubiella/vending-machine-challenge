@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
+use App\Shared\Application\Bus\Command as BusCommand;
+use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Domain\DomainException;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
+use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
@@ -173,6 +178,34 @@ final class VendingRunCommandTest extends KernelTestCase
         self::assertSame([5 => 4, 10 => 5, 25 => 6, 100 => 7], $status->coinStockByCents);
         self::assertSame(['1'], self::trayLines($tester->getDisplay(true)));
         self::assertSame("The product of selector WATER is sold out.\n", $tester->getErrorOutput(true));
+    }
+
+    public function testTheSessionReportsARefusedServiceAndGoesOn(): void
+    {
+        $application = new Application(self::bootKernel());
+        $commandBus = new MessengerCommandBus(self::getContainer()->get('command.bus'));
+        self::getContainer()->set(CommandBus::class, new readonly class($commandBus) implements CommandBus {
+            public function __construct(private CommandBus $commandBus)
+            {
+            }
+
+            public function dispatch(BusCommand $command): void
+            {
+                if ($command instanceof ServiceMachineCommand) {
+                    throw new class('The machine refuses the service.') extends DomainException {
+                    };
+                }
+                $this->commandBus->dispatch($command);
+            }
+        });
+        $tester = new CommandTester($application->find('vending:run'));
+        $tester->setInputs(['0.25', 'SERVICE', ...array_fill(0, 7, ''), 'RETURN-COIN', 'QUIT']);
+
+        $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("The machine refuses the service.\n", $tester->getErrorOutput(true));
+        self::assertSame(['0.25'], self::trayLines($tester->getDisplay(true)));
     }
 
     public function testTheSessionEndsWithTheInput(): void
