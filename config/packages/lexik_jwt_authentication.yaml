@@ -1,6 +1,6 @@
 parameters:
-    # Defaults, so an .env written before the tokens existed still works; make jwt-keys creates
-    # these keys, which git ignores, and an environment can point elsewhere.
+    # The same defaults as .env.dist, so an .env written before the tokens existed still works;
+    # make jwt-keys creates these keys, which git ignores.
     env(JWT_SECRET_KEY): '%kernel.project_dir%/config/jwt/private.pem'
     env(JWT_PUBLIC_KEY): '%kernel.project_dir%/config/jwt/public.pem'
     env(JWT_PASSPHRASE): ''
