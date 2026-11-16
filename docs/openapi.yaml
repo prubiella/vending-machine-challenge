@@ -19,8 +19,8 @@ info:
     with another method answers 405, in the same format. The messages are for people, not for
     programs: a client decides by the status.
 
-    Servicing the machine (setting the stock and the change) stays in the console until technicians
-    can log in.
+    Servicing the machine (setting the stock and the change) stays in the console: the HTTP API has
+    no technician login.
 
 servers:
   - url: https://{host}:{port}
