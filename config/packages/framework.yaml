@@ -16,12 +16,7 @@ parameters:
         - App\Shared\Domain\Uuid\InvalidUuidException
         - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
         - App\VendingMachine\Domain\Coin\UnknownCoinException
-        - App\VendingMachine\Domain\Inventory\ContradictoryCatalogChangeException
         - App\VendingMachine\Domain\Inventory\DuplicateSelectorException
-        - App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException
-        - App\VendingMachine\Domain\Product\EmptyProductNameException
-        - App\VendingMachine\Domain\Product\NonPositivePriceException
-        - App\VendingMachine\Domain\Product\UnpayablePriceException
 
 framework:
     secret: '%env(APP_SECRET)%'
@@ -65,6 +60,22 @@ framework:
             status_code: 422
             log_level: info
         App\VendingMachine\Domain\Wallet\CoinTubeCapacityExceededException:
+            status_code: 422
+            log_level: info
+        # And so can the products it installs or retires (ADR 22).
+        App\VendingMachine\Domain\Inventory\ContradictoryCatalogChangeException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Product\UnpayablePriceException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Product\NonPositivePriceException:
+            status_code: 422
+            log_level: info
+        App\VendingMachine\Domain\Product\EmptyProductNameException:
             status_code: 422
             log_level: info
         App\Maintenance\Domain\Technician\InvalidCredentialsException:
