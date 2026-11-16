@@ -31,8 +31,8 @@ make first-run
 ```
 
 It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers, installs the Composer dependencies and enables the git
-hooks. Then:
+below), builds and starts the containers, installs the Composer dependencies, runs the database
+migrations and enables the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
@@ -60,7 +60,9 @@ and drops it.
 
 A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
 message until the certificate files exist in `etc/infrastructure/certs/`. A checkout from before the
-database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`.
+database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`, then
+`make migrate`, which creates the tables in the dev and test databases (run it again after pulling a
+new migration).
 
 | Service | Where |
 |---|---|
@@ -75,9 +77,10 @@ the bind mount stay yours.
 
 `vending:run` takes a sequence of actions separated by commas, runs them on the machine and prints
 what drops into the tray: the products first, then the coins from the largest. The statement's
-examples:
+examples, from the default machine:
 
 ```bash
+make run -- vending:reset
 make run -- vending:run "1, 0.25, 0.25, GET-SODA"
 # SODA
 make run -- vending:run "0.10, 0.10, RETURN-COIN"
@@ -101,10 +104,11 @@ middle of `SERVICE` leaves the machine as it was.
 The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
 exits with 1, the only case besides an unexpected error where it does not exit with 0.
 
-The machine lives in memory: each run starts from the default machine in `config/services.yaml`
-(the statement's products, ten units of each and ten coins of 0.05, 0.10 and 0.25 for change).
-Credit left at the end of a sequence stays in the machine until `RETURN-COIN` gives it back, as on
-a real one; since the machine is not persisted yet, that credit is lost when the process ends.
+The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
+the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
+the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
+coins of 0.05, 0.10 and 0.25 for change). Credit left at the end of a sequence stays in the machine
+until `RETURN-COIN` gives it back, as on a real one, also from a later run.
 
 Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given

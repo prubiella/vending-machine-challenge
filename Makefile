@@ -34,12 +34,13 @@ down: ## Stop and remove the containers
 destroy: ## Remove the containers and their volumes (the database is lost)
 	@$(DOCKER_COMPOSE) down -v
 
-first-run: ## Create .env, set up the host, start the containers, install the dependencies and enable the git hooks
+first-run: ## Create .env, set up the host, start the containers, install the dependencies, migrate the databases and enable the git hooks
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
 	@$(MAKE) setup-host
 	@$(MAKE) start
 	@$(MAKE) install
+	@$(MAKE) migrate
 	@$(MAKE) hooks
 
 ##@ Composer
@@ -58,7 +59,7 @@ require-dev: ## Add a development dependency
 	@$(DOCKER_COMPOSE) exec php-fpm composer require --dev $(ARGS)
 
 ##@ Development
-.PHONY: run run-debug logs status shell db-shell hooks
+.PHONY: run run-debug logs status shell db-shell migrate hooks
 
 run: ## Run a console command: make run -- <command> [options], option values after a space
 	@$(DOCKER_COMPOSE) exec php-fpm bin/console $(ARGS)
@@ -77,6 +78,10 @@ shell: ## Open a shell in the PHP container
 
 db-shell: ## Open a MySQL shell on the dev database
 	@$(DOCKER_COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u"$$MYSQL_USER" "$$MYSQL_DATABASE"'
+
+migrate: ## Run the database migrations on the dev and test databases
+	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+	@$(DOCKER_COMPOSE) exec php-fpm bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
 
 hooks: ## Use the project's git hooks (they run inside the PHP image)
 	@git config core.hooksPath etc/git/hooks-docker
