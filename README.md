@@ -397,11 +397,21 @@ environment that points `baseUrl` at `https://vending-machine.test`.
    so Postman trusts the mkcert certificate.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
-The `VendingMachine` folder plays the statement's last example, `1, GET-WATER`, and checks the
-machine after each step: the credit, the water with 0.25 and 0.10 in the tray, and the empty tray
-once collected. Run it in order from a machine with no credit and an empty tray, as
-`make run -- vending:reset` leaves it. A run leaves the machine that way again, with one water and
-its change fewer, so the folder passes again until the water or the change runs out.
+The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
+example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
+0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
+request tests its status and its body. Run it in order from a machine with no credit and an empty
+tray, as `make run -- vending:reset` leaves it. A run leaves the machine that way again, with one
+water and its change fewer, so the folder passes again until the water or the change runs out.
+
+To run it from the command line with newman, reset the machine first and mount `etc/postman/`;
+`--insecure` skips the check of the mkcert certificate:
+
+```
+make run -- vending:reset
+docker run --rm --network host -v "$PWD/etc/postman:/etc/newman" postman/newman:6.1.3-alpine \
+  run vending-machine.postman_collection.json -e vending-machine.test.postman_environment.json --insecure
+```
 
 The repository is the source of the collection: after changing it in Postman, export it (v2.1)
 over the file in `etc/postman/`. If you change `TRAEFIK_HTTPS_PORT` in `.env`, add the port to

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "6a545872-00eb-434b-9673-d4943a38673a",
 		"name": "Vending machine",
-		"description": "HTTP API of the vending machine. One folder per bounded context. Select the `vending-machine.test` environment, which sets `baseUrl`.",
+		"description": "HTTP API of the vending machine. One folder per bounded context. Select the `vending-machine.test` environment, which sets `baseUrl`. Reset the machine with `make run -- vending:reset` before running the VendingMachine folder.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -84,7 +84,7 @@
 			"name": "VendingMachine",
 			"item": [
 				{
-					"name": "Get machine",
+					"name": "1. Get machine at the start",
 					"event": [
 						{
 							"listen": "test",
@@ -94,7 +94,7 @@
 									"pm.test('responds 200', () => pm.response.to.have.status(200));",
 									"pm.test('lists the products of the statement', () => pm.expect(pm.response.json().products.map((product) => [product.selector, product.name, product.priceCents])).to.eql([['WATER', 'Water', 65], ['JUICE', 'Juice', 100], ['SODA', 'Soda', 150]]));",
 									"pm.test('tells whether each product is available', () => pm.response.json().products.forEach((product) => pm.expect(product.available).to.be.a('boolean')));",
-									"pm.test('starts the purchase with no credit', () => pm.expect(pm.response.json().creditCents).to.equal(0));"
+									"pm.test('starts with no credit', () => pm.expect(pm.response.json().creditCents).to.equal(0));"
 								]
 							}
 						}
@@ -120,7 +120,42 @@
 					"response": []
 				},
 				{
-					"name": "Insert coin",
+					"name": "2. Get tray at the start",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('starts empty', () => pm.expect(pm.response.json()).to.eql({ selectors: [], coins: [] }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Insert coin",
 					"event": [
 						{
 							"listen": "test",
@@ -128,12 +163,417 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('responds 204', () => pm.response.to.have.status(204));",
-									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));",
-									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine'), header: { Accept: 'application/json' } }, (error, response) => {",
-									"    pm.test('adds the coin to the credit', () => {",
-									"        pm.expect(error).to.equal(null);",
-									"        pm.expect(response.json().creditCents).to.equal(100);",
-									"    });",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/coins",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"coins"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"coin\": \"1\"}"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get machine with the coin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('lists the products of the statement', () => pm.expect(pm.response.json().products.map((product) => [product.selector, product.name, product.priceCents])).to.eql([['WATER', 'Water', 65], ['JUICE', 'Juice', 100], ['SODA', 'Soda', 150]]));",
+									"pm.test('tells whether each product is available', () => pm.response.json().products.forEach((product) => pm.expect(product.available).to.be.a('boolean')));",
+									"pm.test('holds the coin of 1 as credit', () => pm.expect(pm.response.json().creditCents).to.equal(100));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Select product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/selections/WATER",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"selections",
+								"WATER"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Get machine after the purchase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('lists the products of the statement', () => pm.expect(pm.response.json().products.map((product) => [product.selector, product.name, product.priceCents])).to.eql([['WATER', 'Water', 65], ['JUICE', 'Juice', 100], ['SODA', 'Soda', 150]]));",
+									"pm.test('tells whether each product is available', () => pm.response.json().products.forEach((product) => pm.expect(product.available).to.be.a('boolean')));",
+									"pm.test('spent the whole credit on the water and its change', () => pm.expect(pm.response.json().creditCents).to.equal(0));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Get tray after the purchase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('holds the water and its change, 0.25 and 0.10', () => pm.expect(pm.response.json()).to.eql({ selectors: [\"WATER\"], coins: [25, 10] }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Collect tray",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray/collect",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray",
+								"collect"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Get tray after collecting",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('is empty again', () => pm.expect(pm.response.json()).to.eql({ selectors: [], coins: [] }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Insert coin to get it back",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/coins",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"coins"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"coin\": \"0.25\"}"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Return coins",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/coin-return",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"coin-return"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Get tray with the returned coin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('holds the coin of 0.25 and no product', () => pm.expect(pm.response.json()).to.eql({ selectors: [], coins: [25] }));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Collect the returned coin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray/collect",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray",
+								"collect"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14. Refuse a coin the machine does not take",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 422', () => pm.response.to.have.status(422));",
+									"pm.test('answers JSON', () => pm.response.to.have.header('Content-Type', 'application/json'));",
+									"pm.test('refuses the coin and says which one', () => {",
+									"    const error = pm.response.json().error;",
+									"    pm.expect(error.code).to.equal(422);",
+									"    pm.expect(error.message).to.include('does not accept a coin of 0.50');",
 									"});"
 								]
 							}
@@ -151,10 +591,6 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\"coin\": \"1\"}"
-						},
 						"url": {
 							"raw": "{{baseUrl}}/machine/coins",
 							"host": [
@@ -164,25 +600,69 @@
 								"machine",
 								"coins"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"coin\": \"0.50\"}"
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Select product",
+					"name": "15. Refuse an unknown product",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('responds 204', () => pm.response.to.have.status(204));",
-									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));",
-									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine'), header: { Accept: 'application/json' } }, (error, response) => {",
-									"    pm.test('spends the whole credit on the product and its change', () => {",
-									"        pm.expect(error).to.equal(null);",
-									"        pm.expect(response.json().creditCents).to.equal(0);",
-									"    });",
+									"pm.test('responds 404', () => pm.response.to.have.status(404));",
+									"pm.test('answers JSON', () => pm.response.to.have.header('Content-Type', 'application/json'));",
+									"pm.test('says there is no such product', () => {",
+									"    const error = pm.response.json().error;",
+									"    pm.expect(error.code).to.equal(404);",
+									"    pm.expect(error.message).to.include('no product with selector COFFEE');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/selections/COFFEE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"selections",
+								"COFFEE"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "16. Refuse a selection without credit",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 409', () => pm.response.to.have.status(409));",
+									"pm.test('answers JSON', () => pm.response.to.have.header('Content-Type', 'application/json'));",
+									"pm.test('says the credit does not cover the price', () => {",
+									"    const error = pm.response.json().error;",
+									"    pm.expect(error.code).to.equal(409);",
+									"    pm.expect(error.message).to.include('does not cover the price of 65 cents');",
 									"});"
 								]
 							}
@@ -211,48 +691,7 @@
 					"response": []
 				},
 				{
-					"name": "Return coins",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('responds 204', () => pm.response.to.have.status(204));",
-									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));",
-									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine'), header: { Accept: 'application/json' } }, (error, response) => {",
-									"    pm.test('leaves no credit', () => {",
-									"        pm.expect(error).to.equal(null);",
-									"        pm.expect(response.json().creditCents).to.equal(0);",
-									"    });",
-									"});"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/machine/coin-return",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"machine",
-								"coin-return"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get tray contents",
+					"name": "17. Get machine after the refusals",
 					"event": [
 						{
 							"listen": "test",
@@ -260,7 +699,9 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('responds 200', () => pm.response.to.have.status(200));",
-									"pm.test('holds the water and its change, 0.25 and 0.10', () => pm.expect(pm.response.json()).to.eql({ selectors: ['WATER'], coins: [25, 10] }));"
+									"pm.test('lists the products of the statement', () => pm.expect(pm.response.json().products.map((product) => [product.selector, product.name, product.priceCents])).to.eql([['WATER', 'Water', 65], ['JUICE', 'Juice', 100], ['SODA', 'Soda', 150]]));",
+									"pm.test('tells whether each product is available', () => pm.response.json().products.forEach((product) => pm.expect(product.available).to.be.a('boolean')));",
+									"pm.test('has no credit after the refusals', () => pm.expect(pm.response.json().creditCents).to.equal(0));"
 								]
 							}
 						}
@@ -274,62 +715,19 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/machine/tray",
+							"raw": "{{baseUrl}}/machine",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"machine",
-								"tray"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Collect tray",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('responds 204', () => pm.response.to.have.status(204));",
-									"pm.test('has no body', () => pm.expect(pm.response.text()).to.equal(''));",
-									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine/tray'), header: { Accept: 'application/json' } }, (error, response) => {",
-									"    pm.test('empties the tray', () => {",
-									"        pm.expect(error).to.equal(null);",
-									"        pm.expect(response.json()).to.eql({ selectors: [], coins: [] });",
-									"    });",
-									"});"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/machine/tray/collect",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"machine",
-								"tray",
-								"collect"
+								"machine"
 							]
 						}
 					},
 					"response": []
 				}
 			],
-			"description": "A customer's purchase, the statement's last example: 1 and GET-WATER give WATER, 0.25 and 0.10. Run the folder in order from a machine with no credit and an empty tray, such as the one `make run -- vending:reset` leaves; a run leaves it that way again, with one water and its change fewer."
+			"description": "A customer's session as a story: the statement's last example (1 and GET-WATER give WATER, 0.25 and 0.10), then a returned coin and three refusals. Reset the machine first with `make run -- vending:reset` and run the folder in order. Every request checks its status and body, and the folder ends with no credit and an empty tray, so it passes again until the water or the change runs out."
 		}
 	]
 }
