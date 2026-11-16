@@ -13,6 +13,7 @@ use App\Maintenance\Domain\Technician\Username;
 use App\Maintenance\Domain\Technician\UsernameTakenException;
 use App\Maintenance\Infrastructure\Persistence\DbalTechnicianRepository;
 use App\Tests\Integration\Maintenance\StartsWithNoTechnicians;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DbalTechnicianRepositoryTest extends KernelTestCase
@@ -54,6 +55,16 @@ final class DbalTechnicianRepositoryTest extends KernelTestCase
         $this->expectException(EmailTakenException::class);
 
         $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a62', 'bob', 'shared@example.com'));
+    }
+
+    public function testReportsAClashOnTheIdItselfInsteadOfBlamingTheEmail(): void
+    {
+        $repository = self::repository();
+        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61', 'ana'));
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61', 'bob'));
     }
 
     private static function repository(): DbalTechnicianRepository
