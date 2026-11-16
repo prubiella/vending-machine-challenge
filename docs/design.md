@@ -213,7 +213,7 @@ classDiagram
     Product --> Money
     Product --> Selector
     Product --> ProductName
-    Wallet --> CoinCollection : credit and stock
+    Wallet --> CoinCollection : credit, stock and cash box
     Wallet ..> Payout : returns
     Payout --> CoinCollection
     Payout --> Wallet
@@ -242,14 +242,17 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 - **A refusal changes nothing and keeps the credit.** The customer can insert more coins, pick
   another product or ask for the coins back.
 - **A sale moves the credit into the stock first.** The inserted coins join the coin stock, and the
-  change is taken from that stock. A coin of 1 never leaves as change, so it stays as takings
-  ([ADR 8](adr/0008-change-making.md)).
+  change is taken from that stock. A coin the change maker never gives, the 1, has no tube to fill, so it goes to the cash box
+  (the wallet asks the change maker which coins it gives; [ADR 8](adr/0008-change-making.md), [ADR 19](adr/0019-machine-capacities.md)).
 - **`RETURN-COIN` is not change.** It gives back exactly the coins inserted, a 1 included.
 - **`SERVICE` sets, it does not add.** It returns the pending credit to the tray, then sets units
   and coin counts to the values given ([ADR 10](adr/0010-service-sets-stock-and-returns-credit.md)).
-- **A service is bounded, a sale is not.** A slot holds at most 200 units and each coin tube 500
-  coins: a service past either is refused and changes nothing. A sale may take a tube past 500,
-  since the customer's coins join the stock ([ADR 19](adr/0019-machine-capacities.md)).
+- **A service is bounded, a sale is not refused.** A slot holds at most 200 units and each coin
+  tube 500 coins: a service past either is refused and changes nothing. A sale is never refused for
+  it: the coins that do not fit a full tube go to the cash box.
+- **The cash box is never change.** Only a sale fills it, and `SERVICE` empties it, so the
+  technician takes the money ([ADR 19](adr/0019-machine-capacities.md)). The coins of the tubes and
+  the cash box together are the coins the machine took, so a sale conserves them.
 - **Rules live in the domain.** A handler only loads, calls the domain and saves.
 
 ### Why change making is a search and not greedy
@@ -400,7 +403,7 @@ The machine is one MongoDB document of the `vending_machines` collection
 ([ADR 16](adr/0016-machine-stored-in-mongodb.md)), whose `_id` is the machine's UUID: the
 `vending_machine.id` parameter, `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)). The aggregate is the consistency boundary, so
 one document is one atomic write. It holds a `version`, the `inventory`, the credit and the change
-in `wallet_credit` and `wallet_stock` (the count of each coin by its cents), and the `tray`.
+in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin by its cents), and the `tray`.
 
 - **Optimistic locking.** A save updates the document only where `version` is the one that was
   loaded, and it increments it. The first save is an insert, and a duplicate key there counts as a
@@ -550,7 +553,7 @@ Trade-offs worth saying out loud:
 
 - "Fewest coins" is a policy, not a law. The `ChangeMaker` interface lets another policy replace it.
 - Coins of 1 are never given as change, so a machine holding only 1s refuses a sale that a real
-  machine might serve. The statement's examples ask for it.
+  machine might serve; the 1s of a sale go to the cash box, so they do not even add to the stock. The statement's examples ask for it.
 - `SERVICE` sets values rather than adding, so a technician who types a wrong count overwrites the
   right one, and a sale saved between the read and the service is undone. Service the machine
   while nobody else uses it.
@@ -565,9 +568,6 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
   `MachineServiced` event with the technician's id would replace the command bus log as the record
   of who serviced the machine.
-- **A cash box for the overflow.** A sale may take a coin tube past its 500 coins; a real machine
-  drops that overflow into a cash box, which the model does not have yet: the stock keeps the extra
-  coins until the next service ([ADR 19](adr/0019-machine-capacities.md)).
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since

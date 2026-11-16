@@ -24,9 +24,12 @@ statement also limits what change may be made of, and says what RETURN-COIN give
   equal swap, 4 x 10 against 25 + 3 x 5, is beaten by 25 + 10 + 5. A new denomination could introduce
   ties, so adding a coin means rechecking this (ADR 3).
 - Change is made only of 0.05, 0.10 and 0.25. The coins it may give are the constructor arguments of
-  the change maker, set in `config/services.yaml`. Coins of 1, inserted or stocked through SERVICE,
-  stay in the machine as takings, like a cash box, and are never given as change.
-- On a sale the inserted coins join the coin stock first, and change is taken from that stock.
+  the change maker, set in `config/services.yaml`. Coins of 1 are never given as change: an
+  inserted one goes to the cash box ([ADR 19](0019-machine-capacities.md)), and one stocked through
+  SERVICE stays in its tube.
+- On a sale the inserted coins join the coin stock first, except the 1s and the coins that do not fit
+  their tube, which go to the cash box (ADR 19); change is taken from the stock. The wallet does not
+  know which coins are change: it asks the change maker (`ChangeMaker::gives()`).
 - RETURN-COIN is not change: it gives back exactly the coins inserted, a 1 included.
 - A refusal (insufficient credit, no exact change) keeps the credit.
 
