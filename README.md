@@ -149,7 +149,8 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
 configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac and
-the tests. The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
+the tests. The hooks join the containers' network when it exists, so the tests that use MySQL need
+the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
 also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
 skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
 with the same refusal. `commit-msg` accepts

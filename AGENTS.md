@@ -23,7 +23,11 @@ MySQL 8.4, nginx behind Traefik with HTTPS. `README.md` explains how to run it.
 - Work on a branch rather than a git worktree: the containers bind-mount the main checkout, so `make`
   targets run its code, not the worktree's. The git hooks do work from a worktree: `post-checkout`
   installs its `vendor/` when git creates it (by hand:
-  `./etc/git/hooks-docker/run-in-php-image.sh composer install`).
+  `./etc/git/hooks-docker/run-in-php-image.sh composer install`). `run-in-php-image.sh` joins
+  `vending_machine_network` when it exists, so the checks it runs, the pre-commit hook's included,
+  reach the mysql service: start the containers before committing, or the database tests fail. A
+  worktree has no `.env`, so Symfony reads `.env.dist`; a Flex recipe run there writes a `.env` of
+  its own that hides `.env.dist`: delete it.
 
 ## Bounded contexts
 
