@@ -51,7 +51,8 @@ Give an option its value after a space: make takes a word with `=` (`--format=js
 and drops it.
 
 A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
-message until the certificate files exist in `etc/infrastructure/certs/`.
+message until the certificate files exist in `etc/infrastructure/certs/`. A checkout from before the
+database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`.
 
 | Service | Where |
 |---|---|
