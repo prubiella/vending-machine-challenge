@@ -124,44 +124,29 @@ If curl does not trust the certificate, add `--cacert etc/infrastructure/certs/r
 and the console share one machine: credit inserted over HTTP is credit that `vending:run` sees,
 and the other way round.
 
-## Using the machine from the console
+## Console
 
 `vending:run` takes a sequence of actions separated by commas, runs them on the machine and prints
-what drops into the tray: the products first, then the coins from the largest. The statement's
-examples, from the default machine:
-
-```bash
-make run -- vending:reset
-make run -- vending:run "1, 0.25, 0.25, GET-SODA"
-# SODA
-make run -- vending:run "0.10, 0.10, RETURN-COIN"
-# 0.10, 0.10
-make run -- vending:run "1, GET-WATER"
-# WATER, 0.25, 0.10
-```
-
-The actions are a coin (`0.05`, `0.10`, `0.25` or `1`), `GET-<SELECTOR>` (`GET-WATER`,
-`GET-JUICE`, `GET-SODA`) and `RETURN-COIN`. The machine rejects any other coin, as a real one
-spits out a foreign coin, and a refused action (sold out, not enough credit, no exact change, an
-unknown selector) keeps the credit: both are reported on the error output and the sequence goes
-on.
+what drops into the tray. An action is a coin (`0.05`, `0.10`, `0.25` or `1`), `GET-<SELECTOR>`
+(`GET-WATER`, `GET-JUICE`, `GET-SODA`) or `RETURN-COIN`. The machine rejects any other coin, as a
+real one spits out a foreign coin, and a refused action (sold out, not enough credit, no exact
+change, an unknown selector) keeps the credit: both are reported on the error output and the
+sequence goes on ([ADR 13](docs/adr/0013-console-behaviour.md)).
 
 Without a sequence, `make run -- vending:run` opens an interactive session: it lists the products,
-takes one action per line, prints what drops into the tray after each one and shows the credit in
-the prompt. `SERVICE` asks the technician's username and password (hidden), then the units of each
-product and the count of each coin (Enter keeps the current value) and services the machine. The
-service command carries the authenticated technician's id, and the command bus log records it on
-every service: that log is the audit trail of who serviced the machine until domain events exist,
-when a `MachineServiced` event goes to the outbox and the history. `QUIT` or Ctrl+D ends the
-session; Ctrl+D in the middle of `SERVICE` leaves the machine as it was.
+takes one action per line, prints the tray after each one and shows the credit in the prompt.
+`SERVICE` asks for a technician's username and password (hidden), then the units of each product and
+the count of each coin (Enter keeps the current value). `QUIT` or Ctrl+D ends the session; Ctrl+D in
+the middle of `SERVICE` leaves the machine as it was. The session needs interactive input: with `-n`
+or `-q` and no sequence the command reports it and exits with 1, the only case besides an unexpected
+error where it does not exit with 0.
 
-`vending:service` services the machine outside a session. `--username` and `--password` give the
-credentials of a technician (see [Technicians](#technicians)); it asks what they leave out, the
-password hidden, and with `-n` both are required. `--units SELECTOR:UNITS` and `--coins COIN:COUNT`
-give the new values, each repeated as needed, and it asks the rest with the current values as
-defaults; with `-n` it keeps the current value of what the options leave out.
-Servicing returns the credit left in the machine, so it first prints those coins as `vending:run`
-prints the tray:
+`vending:service` services the machine outside a session. `--username` and `--password` give a
+technician's credentials ([Technicians](#technicians)) and it asks what they leave out, with `-n`
+both are required. `--units SELECTOR:UNITS` and `--coins COIN:COUNT` give the new values, each
+repeated as needed; it asks the rest with the current values as defaults, and with `-n` it keeps
+them. Servicing returns the credit left in the machine, so it first prints those coins as
+`vending:run` prints the tray:
 
 ```bash
 make run -- vending:service --username ana --units WATER:20 --coins 0.25:15 --coins 1:0
@@ -171,68 +156,31 @@ make run -- vending:service --username ana --units WATER:20 --coins 0.25:15 --co
 # The machine is serviced.
 ```
 
-Both `SERVICE` and `vending:service` read the current values once, before asking, and set every
-value, the kept ones included. A sale that another session saves in between is therefore undone
-by the service: service the machine while nobody else is using it.
+`vending:service` exits with 1 whenever the machine is not serviced: an option it cannot read (not a
+pair, given twice, a foreign coin, a selector the machine lacks), input that ends before the last
+answer, credentials missing or wrong, or a service the machine refuses. Both ways of servicing read
+the current values once, before asking, and set every value, the kept ones included, so a sale that
+another session saves in between is undone: service the machine while nobody else is using it.
 
-The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
-exits with 1, the only case besides an unexpected error where it does not exit with 0.
-`vending:service` exits with 0 once the machine is serviced and with 1 whenever it is not, since
-then the technician's service did not happen: an option it cannot read (not a pair, given twice, a
-foreign coin, or a selector the machine lacks, which it checks before asking anything), input that
-ends before the last answer, credentials missing or wrong, or a service the machine refuses.
+How the machine behaves between runs:
 
-The machine is stored in MongoDB, so each run carries on where the last one left it: the stock and
-the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
-the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
-coins of 0.05, 0.10 and 0.25 for change). The default is read only while no machine is stored: a
-stored machine wins over a change to `vending_machine.default_products` until `vending:reset`
-removes it. Credit left at the end of a sequence stays in the machine
-until `RETURN-COIN` gives it back, as on a real one, also from a later run.
+- It is stored, so each run carries on where the last one left it. Credit left at the end of a
+  sequence stays until `RETURN-COIN` gives it back, also from a later run.
+- Until a machine is stored, and after `make run -- vending:reset`, it is the default machine of
+  `config/services.yaml`: the three products, ten units of each and ten coins of 0.05, 0.10 and 0.25
+  for change. A stored machine wins over a change to `vending_machine.default_products` until
+  `vending:reset` removes it.
+- Change is made only from coins of 0.05, 0.10 and 0.25 ([ADR 8](docs/adr/0008-change-making.md)).
+  Coins of 1 stay in the machine as takings and are never given as change; `SERVICE` asks their count
+  so the technician can empty the cash box.
+- A slot holds at most 200 units and a coin tube at most 500 coins: servicing refuses more and
+  changes nothing. A sale is not bounded, so the customer's coins may take a tube past 500
+  ([ADR 19](docs/adr/0019-machine-capacities.md)).
 
-Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
-stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
-as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
+## HTTP API
 
-A slot holds at most 200 units of its product and each coin tube at most 500 coins: `SERVICE`,
-`vending:service` and `PUT /machine/service` refuse more, and change nothing. A sale is not bounded,
-so the customer's coins may take a tube past 500, as the overflow of a real machine drops into its
-cash box ([ADR 19](docs/adr/0019-machine-capacities.md)).
-
-## Technicians
-
-A technician is who services the machine. `vending:technician:create` stores one in the
-`technicians` table with a username (3 to 32 lowercase letters, digits, dots, hyphens or
-underscores, unique), an email (a valid address, stored lowercased, unique) and the bcrypt hash of a
-password of 8 characters to 4096 bytes, and prints the id it gives the technician. It asks what
-`--username`, `--email` and `--password` leave out, the password hidden; with `-n` the three options
-are required. An answer the domain refuses (a username or an email it does not take, a password too
-short or too long) is asked again with the domain's reason, up to three times; a value given as an
-option is refused at once. A username or an email that another technician already has is only found
-when the technician is stored, after every answer, so it ends the command. The technician logs in by
-username (`POST /auth/login`, `vending:technician:token`); the email is only kept. A password is
-never trimmed, whether typed at the hidden prompt or given as an option, so spaces around it count.
-The password is never stored or logged in clear: the command bus logs only the first three
-characters of the username and of the email, the password as `***`, and the refusals (an invalid or
-taken username or email) without the value.
-
-`SERVICE` and `vending:service` check the credentials before asking any count, and refuse an
-unknown username and a wrong password with the same message, so a refusal does not tell which
-usernames exist. The service command carries the technician's id, which the command bus logs, so
-the log tells who serviced the machine. `VendingMachine` reaches the technicians through the
-`TechnicianAuthenticator` port of `Shared/Application`, which `Maintenance` implements, since no
-context uses another.
-
-```bash
-make run -- vending:technician:create --username ana --email ana@example.com
-# Password:
-# Technician ana created with id 019a8c5e-....
-```
-
-## Using the machine over HTTP
-
-The customer's side of the machine is a JSON API. Commands answer `204 No Content` with no body:
-what they did is read with a query, such as the tray after a purchase.
+Commands answer `204 No Content` with no body: what they did is read with a query, such as the tray
+after a purchase. The customer's routes need no token.
 
 | Request | What it does | Answer |
 |---|---|---|
@@ -243,53 +191,22 @@ what they did is read with a query, such as the tray after a purchase.
 | `GET /machine/tray` | The selectors of the products in the tray and the cents of each coin, from the largest | `200` |
 | `POST /machine/tray/collect` | Empties the tray | `204` |
 
-A customer who buys a water with a coin of 1, the statement's last example (`1, GET-WATER`), reads
-the products, inserts the coin, selects the water, finds it in the tray with the change and
-collects it:
-
-```mermaid
-sequenceDiagram
-    actor Customer
-    participant API as vending-machine.test
-    Customer->>API: GET /machine
-    API-->>Customer: 200 products, prices, availability, creditCents 0
-    Customer->>API: POST /machine/coins {"coin":"1"}
-    API-->>Customer: 204
-    Customer->>API: POST /machine/selections/WATER
-    API-->>Customer: 204 (409 if sold out, no exact change, not enough credit or a concurrent update)
-    Customer->>API: GET /machine/tray
-    API-->>Customer: 200 {"selectors":["WATER"],"coins":[25,10]}
-    Customer->>API: POST /machine/tray/collect
-    API-->>Customer: 204
-    Note over Customer,API: POST /machine/coin-return drops the inserted coins in the tray instead
-```
-
-The same purchase with curl:
-
-```bash
-curl -X POST https://vending-machine.test/machine/coins -H 'Content-Type: application/json' -d '{"coin": "1"}'
-curl -X POST https://vending-machine.test/machine/selections/WATER
-curl https://vending-machine.test/machine/tray
-# {"selectors":["WATER"],"coins":[25,10]}
-```
-
-A refused request answers with its reason, `{"error": {"code": 409, "message": "..."}}`: `404` for
-an unknown selector; `409` when the credit does not pay the product, it is sold out or the machine
-has no exact change, and also when another request changed the machine at the same time and the
-retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
-malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
-and is logged as critical.
+A refused request answers with its reason, `{"error": {"code": 409, "message": "..."}}`: `404` for an
+unknown selector; `409` when the credit does not pay the product, it is sold out or the machine has
+no exact change, and also when another request changed the machine at the same time and the retries
+ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a malformed
+selector. Anything else, such as a stored machine that breaks one of its rules, answers `500` and is
+logged as critical.
 
 ### The technician's side
 
-A technician (see [Technicians](#technicians)) logs in for a token and sends it as a bearer token
-to the technician's routes. The customer's routes need no token.
+A technician logs in for a token and sends it as a bearer token to these routes:
 
 | Request | What it does | Answer |
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
-| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot (200 units) or a coin tube (500 coins) holds |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot or a coin tube holds |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
@@ -300,92 +217,76 @@ curl -X PUT https://vending-machine.test/machine/service -H "Authorization: Bear
   -H 'Content-Type: application/json' -d '{"units": {"WATER": 20}, "coins": {"0.05": 10, "0.10": 10, "0.25": 15, "1": 0}}'
 ```
 
-From a shell, `vending:technician:token` gives the same token without the login request: it checks
-the credentials with the same `AuthenticateTechnicianQuery` on the query bus and signs the token with
-the same `TechnicianTokenIssuer` as `POST /auth/login`, and prints the token alone on stdout. It asks what `--username` and
-`--password` leave out, the password hidden, on stderr; a wrong or missing credential goes to stderr
-with exit code 1.
-
-```bash
-token=$(make run -- vending:technician:token --username ana)
-# Password:
-curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
-```
-
-`-n --username ana --password ...` works without a prompt, for a script, but a password given as an
-option stays in the shell history (and in `ps` while the command runs): prefer the prompt. The
-console's own log of the command shows `--password=***`.
-
-The login checks the credentials with the same query as the console, `AuthenticateTechnicianQuery`,
-and the token (lexik/jwt-authentication-bundle, RS256) carries the technician's id in its `sub`
-claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its technician: the
-`machine` firewall in `config/packages/security.yaml` builds the user from the token, and its
-`access_control` lists the routes that need the role. A missing, invalid or expired token answers
-401 in the API's error format (`JwtFailureListener`), and a token without the role 403. A token
-that cannot be checked because of the server's own keys (a key file that cannot be read) answers
-500 and is logged as critical, since logging in again would not help. A service over HTTP carries
-the token's technician id in `ServiceMachineCommand`, as the console carries the one it
-authenticates.
+`make run -- vending:technician:token --username ana` prints the same token from a shell, and nothing
+else on stdout, so `token=$(make run -- vending:technician:token --username ana)` works. It asks
+what `--username` and `--password` leave out, the password hidden, on stderr; a wrong or missing
+credential goes to stderr with exit code 1. A missing, invalid or expired token answers `401` in the
+API's error format and a token without the role `403`
+([ADR 18](docs/adr/0018-technician-authentication.md), [design, section 7](docs/design.md#7-security)).
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
-answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
-code, and `tests/Integration/Shared/Infrastructure/OpenApiDocumentTest.php` fails when a route is
-missing from it, a documented route does not exist, or a status that `framework.exceptions` maps is
-documented nowhere. Read it, and try the requests, in Swagger UI at <https://docs.vending-machine.test>
-(the `swagger-ui` service serves the file from `docs/`). The API answers cross-origin requests from
-that origin only (with or without `TRAEFIK_HTTPS_PORT`), through a Traefik headers middleware on its
-router; the `servers` of the document take the host and the port as variables. Swagger UI is static, so Traefik
-reaches it over plain HTTP inside the Docker network, with no re-encryption. PhpStorm renders the
-file too, or paste it into [Swagger Editor](https://editor.swagger.io).
+answers and an example of each. It is written by hand, and `OpenApiDocumentTest` fails when it and
+the routes disagree. Read it, and try the requests, in Swagger UI at
+<https://docs.vending-machine.test>; the API answers cross-origin requests from that origin only.
+PhpStorm renders the file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 
-The API and the console use the same machine, stored in MongoDB: credit inserted over HTTP is credit
-that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
-answers above. The Behat scenarios in `features/customer/` play the statement's examples through
-the API, each from the default machine (`make behat`).
+## Technicians
 
-Each request reaches a controller through Traefik and nginx (see
-[How a request travels](#how-a-request-travels)). The controller sends a command or a query to its
-bus: a command goes through the logging and retry middleware to its handler, which loads the
-machine, asks the aggregate to act and saves it with its version; a query is answered from MongoDB.
+A technician is who services the machine. `vending:technician:create` stores one in the
+`technicians` table with a username (3 to 32 lowercase letters, digits, dots, hyphens or
+underscores, unique), an email (a valid address, unique) and the bcrypt hash of a password of 8
+characters to 4096 bytes, and prints the id it gives the technician:
 
-```mermaid
-flowchart LR
-    C[Client] -->|HTTPS| T[Traefik]
-    T -->|HTTPS, re-encrypted| N[nginx]
-    N --> P[PHP-FPM controller]
-    P -->|command| CB[Command bus: logging, retry]
-    CB --> H[Handler]
-    H --> M[VendingMachine aggregate]
-    H <-->|load, save with version| DB[(MongoDB)]
-    P -->|query| QB[Query bus] --> QH[Query handler] --> DB
+```bash
+make run -- vending:technician:create --username ana --email ana@example.com
+# Password:
+# Technician ana created with id 019a8c5e-....
 ```
+
+It asks what `--username`, `--email` and `--password` leave out, the password hidden; with `-n` the
+three are required. An answer the domain refuses is asked again with the reason, up to three times,
+while a refused option ends the command. The technician logs in by username; the email is only kept.
+A password is never trimmed, so spaces around it count. Given as an option it stays in the shell
+history and shows in `ps`: prefer the prompt.
+
+Servicing, in the console or over HTTP, needs a technician. An unknown username and a wrong password
+are refused with the same message, so a refusal does not tell which usernames exist, and the service
+command carries the technician's id, which the command bus logs: that log tells who serviced the
+machine. The password is never stored or logged in clear ([Logs](#logs)).
+
+## Where the machine lives
+
+MongoDB stores the machine as one document of the `vending_machines` collection, whose `_id` is its
+UUID: `VENDING_MACHINE_ID`, a fixed default in `config/services.yaml` that `.env` can override
+([ADR 16](docs/adr/0016-machine-stored-in-mongodb.md), [ADR 17](docs/adr/0017-uuid-identities.md)).
+It holds the `version` that optimistic locking checks, the `inventory`, the credit and the change
+(`wallet_credit` and `wallet_stock`, the count of each coin by its cents) and the `tray`. To look at
+it:
+
+```bash
+make mongo-shell
+db.vending_machines.findOne()
+```
+
+MySQL holds the technicians and the migrations table, and the `vending_machine` table of
+`DbalVendingMachineRepository`, a second adapter that passes the same contract test and stays empty
+while the machine lives in MongoDB. Switching the machine to it means pointing the aliases of
+`VendingMachineRepository` and `StoredMachineResetter` in `config/services.yaml` at it.
+[Design, section 6](docs/design.md#6-persistence) has the rest.
 
 ## Logs
 
-The command bus logs every command with its name and data: at info when it is handled, at notice
-when the domain refuses it and at error when it fails for any other reason. A command that
-implements `SensitiveCommand` lists the fields it carries that must not be logged as they are,
-each with a `Masking` rule: `Hide` logs a secret such as a password or a token as `***`, and
-`KeepFirstThree` logs personal data such as a technician's username with its first three characters
-and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
-hidden whole. A rule for a field that is not a public property of the command stops its dispatch
-with a `LogicException`, so a misspelt or renamed field is never logged in clear. Symfony logs a
-console command with its input when it fails and when it exits, and `PasswordOptionMaskingProcessor`
-logs a `--password` option there as `***`. Each retry after
-a concurrent update is logged
-at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
-The change computed for a sale is logged at info, and a sale refused for want of exact change at
-notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs
-no logger. It logs when the change is computed, before the sale is saved, so a retried sale logs it
-once per attempt. Symfony logs the exception behind a refused HTTP request (a domain exception or a
-foreign coin) at info, not as a critical error, since nothing failed.
+The command bus logs every command with its name and data: info when handled, notice when the domain
+refuses it, error for anything else, and notice for each retry after a concurrent update. A command
+carrying a secret or personal data implements `SensitiveCommand` and masks those fields: a password
+is logged as `***` and a username as its first three characters (`pau***`), and a console
+`--password` option is masked too. `LoggingChangeMaker` logs the change computed for a sale.
 
-In dev the application's own logs go to a file a day, `var/log/dev-<YYYY-MM-DD>.log`
-(`tail -f var/log/dev-$(date +%F).log`), of which the last seven are kept, and only its warnings
-and errors also reach stderr, so the console shows the machine's output and its refusals
-alone. Symfony's own logs go to stderr as JSON, all but the noisy `event`, `messenger`, `console`
-and `doctrine` channels. In prod the application's logs and Symfony's go to stderr as JSON from
-info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation` channels.
+In dev the application's own logs go to a file a day, `var/log/dev-<YYYY-MM-DD>.log` (the last seven
+are kept; `tail -f var/log/dev-$(date +%F).log`), and only its warnings and errors also reach stderr,
+so the console shows the machine's output alone. In prod everything goes to stderr as JSON from info
+up (`make logs php-fpm`). [Design, section 8](docs/design.md#8-operations) and
+[ADR 14](docs/adr/0014-logging.md) explain it.
 
 ## What the setup changes on your machine
 
