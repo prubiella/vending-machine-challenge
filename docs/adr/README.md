@@ -23,6 +23,7 @@ alternatives considered. All are accepted and built, except where a record says 
 16. [The machine stored in MongoDB](0016-machine-stored-in-mongodb.md): one document with a version, the same mapper, the DBAL adapter kept, the outbox planned.
 17. [UUID identities](0017-uuid-identities.md): UUID v7, a shared `Uuid` base, generation behind a port, the single machine's id from configuration.
 18. [Technician authentication](0018-technician-authentication.md): a `Maintenance` context, one credentials query for the console and HTTP, stateless RS256 tokens, nothing secret in the logs.
+19. [Machine capacities](0019-machine-capacities.md): 200 units a slot and 500 coins a tube bound a service, not a sale.
 
 A new record takes the next number and is never renumbered. A decision that changes gets a new
 record that supersedes the old one, and the old status becomes "Superseded by N".

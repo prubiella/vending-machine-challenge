@@ -15,3 +15,4 @@ security:
     # that TechnicianTokenIssuer puts in every token it makes.
     access_control:
         - { path: ^/machine/status$, methods: [GET], roles: !php/const App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer::TECHNICIAN_ROLE }
+        - { path: ^/machine/service$, methods: [PUT], roles: !php/const App\Maintenance\Infrastructure\Security\TechnicianTokenIssuer::TECHNICIAN_ROLE }

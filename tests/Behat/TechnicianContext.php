@@ -67,6 +67,12 @@ final class TechnicianContext implements Context
         $this->client->request('GET', '/machine/status', server: $this->authHeaders);
     }
 
+    #[When('I service the machine with :units units of :selector and only :count coins of :coin')]
+    public function iServiceTheMachine(int $units, string $selector, int $count, string $coin): void
+    {
+        $this->client->jsonRequest('PUT', '/machine/service', ['units' => [$selector => $units], 'coins' => [$coin => $count]], $this->authHeaders);
+    }
+
     #[Then('I am let in')]
     public function iAmLetIn(): void
     {

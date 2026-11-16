@@ -9,6 +9,7 @@ use App\VendingMachine\Infrastructure\Controller\GetTrayContentsController;
 use App\VendingMachine\Infrastructure\Controller\InsertCoinController;
 use App\VendingMachine\Infrastructure\Controller\ReturnCoinsController;
 use App\VendingMachine\Infrastructure\Controller\SelectProductController;
+use App\VendingMachine\Infrastructure\Controller\ServiceMachineController;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
 return static function (RoutingConfigurator $routes): void {
@@ -45,5 +46,10 @@ return static function (RoutingConfigurator $routes): void {
     $routes->add('get-machine-status', '/machine/status')
         ->controller(GetMachineStatusController::class)
         ->methods(['GET'])
+    ;
+
+    $routes->add('service-machine', '/machine/service')
+        ->controller(ServiceMachineController::class)
+        ->methods(['PUT'])
     ;
 };

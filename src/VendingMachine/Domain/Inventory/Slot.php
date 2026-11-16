@@ -8,6 +8,8 @@ use App\VendingMachine\Domain\Product\Product;
 
 final readonly class Slot
 {
+    public const int CAPACITY = 200;
+
     private function __construct(
         private Product $product,
         private int $units,
@@ -47,8 +49,14 @@ final readonly class Slot
         return new self($this->product, $this->units - 1);
     }
 
-    public function withUnits(int $units): self
+    // Refuses more units than the slot holds. Only a restock is bounded: a sale only takes units out,
+    // so the units of a slot never grow any other way.
+    public function restockedTo(int $units): self
     {
+        if ($units > self::CAPACITY) {
+            throw SlotCapacityExceededException::forSelector($this->product->selector(), $units);
+        }
+
         return self::of($this->product, $units);
     }
 }

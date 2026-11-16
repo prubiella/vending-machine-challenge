@@ -193,6 +193,11 @@ Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
+A slot holds at most 200 units of its product and each coin tube at most 500 coins: `SERVICE`,
+`vending:service` and `PUT /machine/service` refuse more, and change nothing. A sale is not bounded,
+so the customer's coins may take a tube past 500, as the overflow of a real machine drops into its
+cash box ([ADR 19](docs/adr/0019-machine-capacities.md)).
+
 ## Technicians
 
 A technician is who services the machine. `vending:technician:create` stores one in the
@@ -283,12 +288,15 @@ to the technician's routes. The customer's routes need no token.
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product and the count of each coin, by its cents | `200`, `401` without a valid token, `403` without the technician's role |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot (200 units) or a coin tube (500 coins) holds |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
   -d '{"username": "ana", "password": "correct-horse"}' | jq -r .token)
 curl https://vending-machine.test/machine/status -H "Authorization: Bearer $token"
 # {"unitsBySelector":{"WATER":10,"JUICE":10,"SODA":10},"coinStockByCents":{"5":10,"10":10,"25":10,"100":0}}
+curl -X PUT https://vending-machine.test/machine/service -H "Authorization: Bearer $token" \
+  -H 'Content-Type: application/json' -d '{"units": {"WATER": 20}, "coins": {"0.05": 10, "0.10": 10, "0.25": 15, "1": 0}}'
 ```
 
 From a shell, `vending:technician:token` gives the same token without the login request: it checks
@@ -314,8 +322,9 @@ claim and the `ROLE_TECHNICIAN` role. A request needs no database to know its te
 `access_control` lists the routes that need the role. A missing, invalid or expired token answers
 401 in the API's error format (`JwtFailureListener`), and a token without the role 403. A token
 that cannot be checked because of the server's own keys (a key file that cannot be read) answers
-500 and is logged as critical, since logging in again would not help. Servicing the machine stays in
-the console for now.
+500 and is logged as critical, since logging in again would not help. A service over HTTP carries
+the token's technician id in `ServiceMachineCommand`, as the console carries the one it
+authenticates.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
@@ -458,8 +467,8 @@ a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" servi
 scenarios use the test database, so `make migrate` must have run.
 
 `features/technician/` holds the technician's side, with the steps of
-`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token, and
-reading the stock and the change. Each scenario starts with no technician and the default machine,
+`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token,
+reading the stock and the change, and servicing the machine. Each scenario starts with no technician and the default machine,
 and a `Given` creates the technician it logs in as. Every login gives a token with the technician's
 role, so a 403 cannot be reached from a scenario: the kernel tests make a token without the role to
 cover it.
@@ -518,16 +527,17 @@ environment that points `baseUrl` at `https://vending-machine.test`.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
 The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
-`technicianPassword`) and keeps the token for the technician's requests, such as
-`18. Get machine status as a technician`. Create that technician once:
+`technicianPassword`) and keeps the token for the technician's requests, 18 and 19 of the
+`VendingMachine` folder, which run after the customer's story, read the machine's status and set
+the default stock and change back. Create that technician once:
 `make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
 
 The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
 example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
 0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
 request tests its status and its body. Run it in order from a machine with no credit and an empty
-tray, as `make run -- vending:reset` leaves it. A run leaves the machine that way again, with one
-water and its change fewer, so the folder passes again until the water or the change runs out.
+tray, as `make run -- vending:reset` leaves it. A run ends by servicing the machine back to the
+default stock and change, so the folder passes again on every run.
 
 To run it from the command line with newman, reset the machine first and mount `etc/postman/`;
 `--insecure` skips the check of the mkcert certificate:

@@ -244,6 +244,9 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 - **`RETURN-COIN` is not change.** It gives back exactly the coins inserted, a 1 included.
 - **`SERVICE` sets, it does not add.** It returns the pending credit to the tray, then sets units
   and coin counts to the values given ([ADR 10](adr/0010-service-sets-stock-and-returns-credit.md)).
+- **A service is bounded, a sale is not.** A slot holds at most 200 units and each coin tube 500
+  coins: a service past either is refused and changes nothing. A sale may take a tube past 500,
+  since the customer's coins join the stock ([ADR 19](adr/0019-machine-capacities.md)).
 - **Rules live in the domain.** A handler only loads, calls the domain and saves.
 
 ### Why change making is a search and not greedy
@@ -319,8 +322,10 @@ order, reads the tray, prints it and collects it.
 
 ### SERVICE
 
-Servicing is done from the console (`SERVICE` in an interactive session, or `vending:service`).
-The console first logs the technician in: `TechnicianLogin` asks the username and the password
+Servicing is done from the console (`SERVICE` in an interactive session, or `vending:service`),
+or over HTTP with `PUT /machine/service` and a technician's token, which dispatches the same command
+with the token's technician id; the firewall has already checked the token, so the controller only
+turns the coin notation into cents. The console first logs the technician in: `TechnicianLogin` asks the username and the password
 (hidden, never trimmed) that the options leave out and checks them through the
 `TechnicianAuthenticator` port, which `Maintenance` answers with `AuthenticateTechnicianQuery`. A
 wrong or missing credential ends the service before any count is asked. Then the console asks the
@@ -423,11 +428,11 @@ answers `422`.
 
 **Technicians.** The `Maintenance` context keeps the technicians in MySQL: a UUID, a unique
 username, a unique email and the bcrypt hash of the password, never the password itself.
-`vending:technician:create` adds one. Servicing is a console operation that asks for a technician's
-credentials first (see [SERVICE](#service)): `VendingMachine` checks them through the
-`TechnicianAuthenticator` port of `Shared`, since no context uses another, and an unknown username
-and a wrong password are refused with the same message, so a refusal does not tell which usernames
-exist.
+`vending:technician:create` adds one. Servicing asks for a technician's credentials first, in the
+console, or takes a technician's token over HTTP (see [SERVICE](#service)): the console checks them
+through the `TechnicianAuthenticator` port of `Shared`, since no context uses another, and an
+unknown username and a wrong password are refused with the same message, so a refusal does not tell
+which usernames exist.
 
 **Logging in over HTTP.** `POST /auth/login` checks the credentials with the same
 `AuthenticateTechnicianQuery` and answers a JWT (lexik/jwt-authentication-bundle, RS256, one hour)
@@ -435,7 +440,7 @@ whose `sub` claim is the technician's id and whose role is `ROLE_TECHNICIAN`; `T
 signs it for the technician that the query let in, and `vending:technician:token` prints the same token from a shell, its prompts on stderr so
 `token=$(...)` keeps the token alone. The `machine` firewall is stateless: it builds the user from
 the token, so a request needs no database, and its `access_control` lists the technician's routes
-(`GET /machine/status`), the customer's routes staying open. A missing, malformed, badly signed or
+(`GET /machine/status`, `PUT /machine/service`), the customer's routes staying open. A missing, malformed, badly signed or
 expired token answers 401 in the API's error format; a token without the role 403; a token the
 server cannot check because of its own keys 500, logged as critical, since logging in again cannot
 fix it. The key pair is created by `make jwt-keys` and ignored by git. A token stays valid for its
@@ -557,8 +562,9 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it: a
   `MachineServiced` event with the technician's id would replace the command bus log as the record
   of who serviced the machine.
-- **Servicing over HTTP.** A technician's `PUT /machine/service`, next to the status route that
-  [section 7](#7-security) describes.
+- **A cash box for the overflow.** A sale may take a coin tube past its 500 coins; a real machine
+  drops that overflow into a cash box, which the model does not have yet: the stock keeps the extra
+  coins until the next service ([ADR 19](adr/0019-machine-capacities.md)).
 - **Several machines.** The machine already has a UUID, taken from configuration
   ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
   repository would take it. Most of the work is in Infrastructure, since

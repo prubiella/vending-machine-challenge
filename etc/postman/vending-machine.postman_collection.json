@@ -824,9 +824,67 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "19. Service machine back to the default as a technician",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine/status'), header: { Accept: 'application/json', Authorization: pm.variables.replaceIn('Bearer {{technicianToken}}') } }, (error, response) => {",
+									"    pm.test('sets the units and the change', () => {",
+									"        pm.expect(error).to.equal(null);",
+									"        pm.expect(response.json()).to.eql({ unitsBySelector: { WATER: 10, JUICE: 10, SODA: 10 }, coinStockByCents: { 5: 10, 10: 10, 25: 10, 100: 0 } });",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{technicianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"units\": {\"WATER\": 10, \"JUICE\": 10, \"SODA\": 10}, \"coins\": {\"0.05\": 10, \"0.10\": 10, \"0.25\": 10, \"1\": 0}}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/machine/service",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"service"
+							]
+						}
+					},
+					"response": []
 				}
 			],
-			"description": "A customer's session as a story: the statement's last example (1 and GET-WATER give WATER, 0.25 and 0.10), then a returned coin and three refusals. Reset the machine first with `make run -- vending:reset` and run the folder in order. Every request checks its status and body, and the folder ends with no credit and an empty tray, so it passes again until the water or the change runs out."
+			"description": "A customer's session as a story: the statement's last example (1 and GET-WATER give WATER, 0.25 and 0.10), then a returned coin and three refusals. Reset the machine first with `make run -- vending:reset` and run the folder in order. Every request checks its status and body, and the folder ends with no credit and an empty tray, and its last two requests, a technician's, read the machine's status and service it back to the default stock and change, so the folder passes again on every run."
 		}
 	],
 	"variable": [
