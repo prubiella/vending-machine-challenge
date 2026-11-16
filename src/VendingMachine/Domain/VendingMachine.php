@@ -16,6 +16,7 @@ use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\Selector;
+use App\VendingMachine\Domain\Product\UnpayablePriceException;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\Wallet\Wallet;
 
@@ -34,9 +35,10 @@ final class VendingMachine
 
     public static function install(MachineId $id, Product ...$products): self
     {
+        self::refuseUnpayablePrices(...$products);
         $emptySlots = array_map(static fn (Product $product): Slot => Slot::of($product, 0), $products);
 
-        return new self($id, Inventory::of(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
+        return new self($id, Inventory::installing(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
     }
 
     /**
@@ -152,6 +154,17 @@ final class VendingMachine
     {
         if (!$coins->isEmpty()) {
             $this->record(new CreditReturned($coins));
+        }
+    }
+
+    // Product knows no coins, so the machine checks a price where a product enters it.
+    private static function refuseUnpayablePrices(Product ...$products): void
+    {
+        $smallestCoin = Coin::smallest();
+        foreach ($products as $product) {
+            if (0 !== $product->price()->cents() % $smallestCoin->value) {
+                throw UnpayablePriceException::forProduct($product, $smallestCoin);
+            }
         }
     }
 

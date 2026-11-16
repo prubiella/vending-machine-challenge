@@ -7,6 +7,7 @@ namespace App\Tests\Unit\VendingMachine\Domain\Inventory;
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Inventory\DuplicateSelectorException;
 use App\VendingMachine\Domain\Inventory\Inventory;
+use App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException;
 use App\VendingMachine\Domain\Inventory\NegativeUnitsException;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
@@ -162,6 +163,26 @@ final class InventoryTest extends TestCase
         $this->expectException(UnknownSelectorException::class);
 
         $inventory->restockAll(['WATER' => 1, 'COFFEE' => 4]);
+    }
+
+    public function testInstallingRefusesMoreProductsThanItsCapacity(): void
+    {
+        $this->expectException(InventoryCapacityExceededException::class);
+
+        Inventory::installing(...self::slots(Inventory::CAPACITY + 1));
+    }
+
+    public function testInstallingHoldsAsManyProductsAsItsCapacity(): void
+    {
+        self::assertCount(Inventory::CAPACITY, Inventory::installing(...self::slots(Inventory::CAPACITY))->slots());
+    }
+
+    /**
+     * @return list<Slot>
+     */
+    private static function slots(int $count): array
+    {
+        return array_map(static fn (int $number): Slot => Slot::of(self::product('P'.$number, 100), 0), range(1, $count));
     }
 
     private static function product(string $selector, int $cents): Product
