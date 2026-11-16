@@ -18,6 +18,14 @@ enum Coin: int
         return self::tryFrom($cents) ?? throw UnknownCoinException::fromCents($cents);
     }
 
+    public static function smallest(): self
+    {
+        $cases = self::cases();
+        usort($cases, static fn (self $one, self $other): int => $one->value <=> $other->value);
+
+        return $cases[0];
+    }
+
     public function amount(): Money
     {
         return Money::fromCents($this->value);

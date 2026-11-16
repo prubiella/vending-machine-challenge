@@ -54,4 +54,9 @@ final class CoinTest extends TestCase
 
         Coin::fromCents($cents);
     }
+
+    public function testTheSmallestCoinIsTheFiveCents(): void
+    {
+        self::assertSame(Coin::FiveCents, Coin::smallest());
+    }
 }

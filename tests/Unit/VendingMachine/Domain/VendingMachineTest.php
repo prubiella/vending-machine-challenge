@@ -15,6 +15,7 @@ use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Inventory\Inventory;
+use App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException;
 use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
@@ -22,6 +23,7 @@ use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
+use App\VendingMachine\Domain\Product\UnpayablePriceException;
 use App\VendingMachine\Domain\TechnicianId;
 use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
@@ -444,6 +446,35 @@ final class VendingMachineTest extends TestCase
         }
 
         self::assertSame([], $machine->releaseEvents());
+    }
+
+    public function testInstallingAMachineRefusesAPriceTheCoinsCannotPay(): void
+    {
+        $this->expectException(UnpayablePriceException::class);
+        $this->expectExceptionMessage('The price of TEA, 67 cents, is not a multiple of the smallest coin, 5 cents.');
+
+        VendingMachine::install(MachineId::fromString(self::MACHINE_ID), self::product('TEA', 'Tea', 67));
+    }
+
+    public function testInstallingAMachineRefusesMoreProductsThanItsCapacity(): void
+    {
+        $products = array_map(static fn (int $number): Product => self::product('P'.$number, 'Product '.$number, 100), range(1, Inventory::CAPACITY + 1));
+
+        $this->expectException(InventoryCapacityExceededException::class);
+
+        VendingMachine::install(MachineId::fromString(self::MACHINE_ID), ...$products);
+    }
+
+    public function testARestoredMachineKeepsAPriceItCouldNoLongerBeInstalledWith(): void
+    {
+        $machine = VendingMachine::restore(
+            MachineId::fromString(self::MACHINE_ID),
+            Inventory::of(Slot::of(self::product('TEA', 'Tea', 67), 1)),
+            Wallet::stocked(CoinCollection::empty()),
+            Tray::empty(),
+        );
+
+        self::assertSame(67, $machine->inventory()->slotFor(Selector::fromString('TEA'))->product()->price()->cents());
     }
 
     public function testASaleThatLeavesASlotAtTheLowStockThresholdRecordsThatItRunsLow(): void

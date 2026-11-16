@@ -17,8 +17,10 @@ parameters:
         - App\VendingMachine\Domain\Coin\CoinNotInCollectionException
         - App\VendingMachine\Domain\Coin\UnknownCoinException
         - App\VendingMachine\Domain\Inventory\DuplicateSelectorException
+        - App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException
         - App\VendingMachine\Domain\Product\EmptyProductNameException
         - App\VendingMachine\Domain\Product\NonPositivePriceException
+        - App\VendingMachine\Domain\Product\UnpayablePriceException
 
 framework:
     secret: '%env(APP_SECRET)%'

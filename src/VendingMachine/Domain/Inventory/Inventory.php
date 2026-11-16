@@ -8,6 +8,8 @@ use App\VendingMachine\Domain\Product\Selector;
 
 final readonly class Inventory
 {
+    public const int CAPACITY = 40;
+
     /**
      * @param array<string, Slot> $slotsBySelector
      */
@@ -27,6 +29,15 @@ final readonly class Inventory
         }
 
         return new self($slotsBySelector);
+    }
+
+    /**
+     * The slots of a machine being installed, bounded by its capacity. A stored inventory is built
+     * with of(), since loading is not installing (ADR 19).
+     */
+    public static function installing(Slot ...$slots): self
+    {
+        return self::withinCapacity(self::of(...$slots)->slotsBySelector);
     }
 
     public function slotFor(Selector $selector): Slot
@@ -63,6 +74,18 @@ final readonly class Inventory
         }
 
         return $inventory;
+    }
+
+    /**
+     * @param array<string, Slot> $slotsBySelector
+     */
+    private static function withinCapacity(array $slotsBySelector): self
+    {
+        if (\count($slotsBySelector) > self::CAPACITY) {
+            throw InventoryCapacityExceededException::forProducts(\count($slotsBySelector));
+        }
+
+        return new self($slotsBySelector);
     }
 
     private function replacing(Slot $slot): self
