@@ -52,7 +52,8 @@ Every context has the same three layers:
 
 - `Domain`: entities, aggregates, value objects, domain services, repository interfaces and
   domain exceptions. Plain PHP: no Symfony, no Doctrine, no attributes. Depends only on
-  `Shared/Domain`.
+  `Shared/Domain`. To log what a domain service does, decorate it in Infrastructure, as
+  `LoggingChangeMaker` decorates `ChangeMaker` in `config/services.yaml`.
 - `Application`: one folder per use case. `Command/<UseCase>/<UseCase>Command` plus its
   `CommandHandler`, `Query/<UseCase>/<UseCase>Query` plus its `QueryHandler`. Depends only on its
   own Domain, `Shared/Domain` and `Shared/Application`. Handlers are registered on their bus by
@@ -90,6 +91,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   Messenger classes that implement them.
 - Commands return nothing. What a command produces is state that a query reads.
 - `UnpackExceptionMiddleware` rethrows the handler's original exception.
+- `LoggingCommandMiddleware` logs every command: info when handled, notice for a
+  `DomainException`, error for anything else. It comes first on `command.bus`, so it sees the
+  unpacked exception and logs a retried command once.
 - A repository saves with optimistic locking: it throws `ConcurrentUpdateException`
   (`Shared/Application/Persistence`) when another save got in since the load.
   `RetryOnConcurrentUpdateMiddleware` runs the command again, up to three more times, so a handler

@@ -129,6 +129,21 @@ Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
+## Logs
+
+The command bus logs every command with its name and data: at info when it is handled, at notice
+when the domain refuses it and at error when it fails for any other reason. Each retry after a
+concurrent update is logged at notice, and so is each coin or action that `vending:run` rejects.
+The change given in a sale is logged at info, and a sale refused for want of exact change at notice,
+by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs no
+logger.
+
+In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
+warnings and errors also reach stderr, so the console shows the machine's output and its refusals
+alone. Symfony's own logs go to stderr as JSON, all but the noisy `event`, `messenger`, `console`
+and `doctrine` channels. In prod the application's logs and Symfony's go to stderr as JSON from
+info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation` channels.
+
 ## What the setup changes on your machine
 
 `make setup-host` (part of `make first-run`) does two things, both idempotent:

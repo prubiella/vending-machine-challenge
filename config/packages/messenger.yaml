@@ -7,6 +7,7 @@ framework:
                 # right before handle_message, which the defaults would keep apart.
                 default_middleware: false
                 middleware:
+                    - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\LoggingCommandMiddleware'
                     - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware'
                     - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\RetryOnConcurrentUpdateMiddleware'
                     - 'handle_message'
