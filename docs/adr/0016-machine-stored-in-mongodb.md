@@ -2,12 +2,11 @@
 
 ## Status
 
-Accepted. Built and merged: `MongoVendingMachineRepository` stores the machine, and
-`DbalVendingMachineRepository` stays as a second adapter of the port. The embedded outbox is built
-([ADR 20](0020-domain-events-and-outbox.md)): both adapters write the machine's events with its
-state in one write. The history in MySQL is planned. Supersedes ADR 12, whose mapper and DBAL
-adapter this record keeps. `InMemoryVendingMachineRepository` still exists in `src/`; moving it to `tests/` as a test double is
-planned polish. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
+Accepted. Built and merged: `MongoVendingMachineRepository` stores the machine. The record kept
+`DbalVendingMachineRepository` as a second adapter of the port; [ADR 21](0021-machine-lives-only-in-mongodb.md)
+removed it, and the passages below that describe it say how it was when this record was written.
+The embedded outbox is built ([ADR 20](0020-domain-events-and-outbox.md)). The history in MySQL is
+planned. Supersedes ADR 12. [ADR 17](0017-uuid-identities.md) replaced the document's `_id: 1` with the
 machine's UUID.
 
 ## Context
@@ -26,8 +25,8 @@ atomic write as the machine's state, and a document can hold both.
   of the driver's 30 s when mongo does not answer, so requests and the readiness probe answer.
 - `MongoVendingMachineRepository` stores the machine as one document of the `vending_machines`
   collection: `_id: 1`, a `version`, and the parts that ADR 12's row holds as JSON columns, as nested
-  documents. `VendingMachineMapper::toDocument()` builds those parts, and the DBAL adapter encodes the
-  same arrays into its columns, so there is one mapping.
+  documents. `VendingMachineMapper::toDocument()` builds those parts, and the DBAL adapter (since removed)
+  encoded the same arrays into its columns, so there was one mapping.
 - Optimistic locking as in ADR 11: a new machine is an `insertOne`, and a duplicate key there is a
   conflict; a stored one is an `updateOne` with the loaded `version` in its filter that sets the
   parts and the next version (so a field the machine does not own, such as the outbox, survives a
@@ -35,8 +34,7 @@ atomic write as the machine's state, and a document can hold both.
   `ConcurrentUpdateException`, so the retry middleware works unchanged, and the versions live in the
   same kind of `WeakMap`.
 - The store is not configurable: `config/services.yaml` aliases `VendingMachineRepository` and
-  `StoredMachineResetter` to the MongoDB adapter. Going back to MySQL is pointing both aliases at
-  `DbalVendingMachineRepository`.
+  `StoredMachineResetter` to the MongoDB adapter.
 - `vending:reset` forgets the stored machine through `StoredMachineResetter`, a port of
   Infrastructure that each adapter implements: resetting is an operator's console action, not
   something the domain does.
@@ -65,9 +63,9 @@ The outbox and the history wait for domain events, which do not exist yet.
 - The machine and, later, its outbox are one atomic write.
 - Trade-off: the stack runs two databases, MySQL for what is relational and MongoDB for the
   machine. Every `make start`, test run and hook needs both.
-- Trade-off: the DBAL adapter, its table and the JSON half of the mapper stay without being wired.
-  They keep the port honest through the contract test, at the cost of code that production does not
-  run.
+- Trade-off: the DBAL adapter, its table and the JSON half of the mapper stayed without being wired.
+  They kept the port honest through the contract test, at the cost of code that production did not
+  run; ADR 21 removed them.
 - A machine stored in MySQL before the switch is not copied: the first run on MongoDB starts from
   the default machine.
 
@@ -76,6 +74,6 @@ The outbox and the history wait for domain events, which do not exist yet.
 - **The store chosen by an environment variable.** Nothing needs both stores at run time, so a
   switch would be configuration that no deployment uses.
 - **Deleting the DBAL adapter.** Git keeps it, but the contract test would then run against one
-  adapter only and prove nothing about the port.
+  adapter only. Rejected here, and taken in ADR 21.
 - **Keeping MongoDB in a compose profile.** The tests would then skip or fail without it, and the
   store the application uses must always be there.

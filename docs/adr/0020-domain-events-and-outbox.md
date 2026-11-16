@@ -3,7 +3,7 @@
 ## Status
 
 Accepted. Built in steps, one pull request each: the events recorded by the aggregate; the outbox
-written by both repositories; the relay to the history in MySQL and its `outbox-relay` worker; the
+written by the repository; the relay to the history in MySQL and its `outbox-relay` worker; the
 low stock alert. All of them are built.
 
 ## Context
@@ -35,7 +35,7 @@ the command bus log (ADR 18), and what a service collected from the cash box is 
   attempt that committed. The domain gets no clock and no generator in its methods.
 - **The outbox is part of the machine's write.** MongoDB pushes the events into an `outbox` array of
   the machine's document in the same `updateOne` that sets its state, with the version still in the
-  filter; the DBAL adapter writes them to an outbox table in the same transaction as its row. A
+  filter (the DBAL adapter, since removed by [ADR 21](0021-machine-lives-only-in-mongodb.md), wrote them to an outbox table in the same transaction as its row). A
   crash keeps both or neither.
 - **A relay copies them to a history in MySQL.** `vending:outbox:relay` reads the pending events,
   inserts each into `machine_history` keyed by the event's id, ignoring one already there, and then
