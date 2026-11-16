@@ -21,6 +21,7 @@ alternatives considered. All are accepted and built, except where a record says 
 14. [Logging](0014-logging.md): a command bus middleware and decorators in Infrastructure, business facts as events later.
 15. [HTTPS with Traefik](0015-https-with-traefik.md): TLS terminated at Traefik, re-encrypted to nginx with a local CA.
 16. [The machine stored in MongoDB](0016-machine-stored-in-mongodb.md): one document with a version, the same mapper, the DBAL adapter kept, the outbox planned.
+17. [UUID identities](0017-uuid-identities.md): UUID v7, a shared `Uuid` base, generation behind a port, the single machine's id from configuration.
 
 A new record takes the next number and is never renumbered. A decision that changes gets a new
 record that supersedes the old one, and the old status becomes "Superseded by N".

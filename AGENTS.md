@@ -142,6 +142,8 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   their results, request payloads) are data without behaviour: `final readonly` classes with
   public promoted properties.
 - Money is integer cents, never floats: use `Shared\Domain\Money\Money`.
+- An identifier is a `final readonly` class extending `Shared\Domain\Uuid\Uuid` (`MachineId`); a
+  new one comes from the `UuidGenerator` port, never from the domain (ADR 17).
 - A domain exception is a `final` class named after what went wrong and ending in `Exception`
   (`InsufficientMoneyException`), that extends `Shared\Domain\DomainException` and is built
   through a named constructor (`InsufficientMoneyException::toSubtract(...)`). That base is a

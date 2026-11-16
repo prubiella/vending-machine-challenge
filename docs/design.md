@@ -124,6 +124,7 @@ them, and `config/services.yaml` wires the choice.
 | `StoredMachineResetter` | VendingMachine Infrastructure | the Mongo repository (and the DBAL one), used only by `vending:reset` |
 | `ChangeMaker` | VendingMachine Domain | `FewestCoinsChangeMaker`, decorated by `LoggingChangeMaker` |
 | `CommandBus`, `QueryBus` | Shared Application | `MessengerCommandBus`, `MessengerQueryBus` |
+| `UuidGenerator` | Shared Application | `SymfonyUuidGenerator` (UUID v7) |
 | `DatabaseProbe`, `DocumentStoreProbe` | Shared Application | `DbalDatabaseProbe`, `MongoDocumentStoreProbe` |
 
 A request goes from the controller (or the console command) to a bus, then to a handler, which only
@@ -376,8 +377,9 @@ vend twice: the second fails on credit. When the retries run out, the request an
 
 ## 6. Persistence
 
-The machine is one MongoDB document, the document `_id: 1` of the `vending_machines` collection
-([ADR 16](adr/0016-machine-stored-in-mongodb.md)). The aggregate is the consistency boundary, so
+The machine is one MongoDB document of the `vending_machines` collection
+([ADR 16](adr/0016-machine-stored-in-mongodb.md)), whose `_id` is the machine's UUID: the
+`vending_machine.id` parameter, `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)). The aggregate is the consistency boundary, so
 one document is one atomic write. It holds a `version`, the `inventory`, the credit and the change
 in `wallet_credit` and `wallet_stock` (the count of each coin by its cents), and the `tray`.
 
@@ -520,8 +522,9 @@ Trade-offs worth saying out loud:
   sales per product and day are a plain `GROUP BY`. Reporting and audit follow from it.
 - **Technician authentication.** The `Maintenance` context, described in
   [section 7](#7-security), with service and status over HTTP.
-- **Several machines.** The machine id becomes a UUID instead of the constant 1, routes carry it
-  (`/machines/{id}/...`), and the repository takes it. Most of the work is in Infrastructure, since
+- **Several machines.** The machine already has a UUID, taken from configuration
+  ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
+  repository would take it. Most of the work is in Infrastructure, since
   the aggregate does not know its own storage.
 - **Web database clients.** A browser tool for MongoDB and MySQL next to Swagger UI, for people who
   do not want a desktop client.
