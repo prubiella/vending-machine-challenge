@@ -827,7 +827,120 @@
 					"response": []
 				},
 				{
-					"name": "19. Service machine back to the default as a technician",
+					"name": "19. Replace SODA by TEA as a technician",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204', () => pm.response.to.have.status(204));",
+									"pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}/machine/status'), header: { Accept: 'application/json', Authorization: pm.variables.replaceIn('Bearer {{technicianToken}}') } }, (error, response) => {",
+									"    pm.test('sells TEA instead of SODA', () => {",
+									"        pm.expect(error).to.equal(null);",
+									"        pm.expect(response.json().unitsBySelector).to.eql({ WATER: 10, JUICE: 10, TEA: 12 });",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{technicianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"units\": {\"WATER\": 10}, \"coins\": {\"0.05\": 10, \"0.10\": 10, \"0.25\": 10, \"1\": 0}, \"install\": [{\"selector\": \"TEA\", \"name\": \"Green tea\", \"priceCents\": 120, \"units\": 12}], \"retire\": [\"SODA\"]}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/machine/service",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"service"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "20. Refuse a price the coins cannot pay",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 422', () => pm.response.to.have.status(422));",
+									"pm.test('says why', () => {",
+									"    pm.expect(pm.response.json().error.message).to.equal('The price of COFFEE, 67 cents, is not a multiple of the smallest coin, 5 cents.');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{technicianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"units\": {}, \"coins\": {\"0.05\": 10, \"0.10\": 10, \"0.25\": 10, \"1\": 0}, \"install\": [{\"selector\": \"COFFEE\", \"name\": \"Coffee\", \"priceCents\": 67, \"units\": 5}]}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/machine/service",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"service"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "21. Service machine back to the default as a technician",
 					"event": [
 						{
 							"listen": "test",
@@ -869,7 +982,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"units\": {\"WATER\": 10, \"JUICE\": 10, \"SODA\": 10}, \"coins\": {\"0.05\": 10, \"0.10\": 10, \"0.25\": 10, \"1\": 0}}"
+							"raw": "{\"units\": {\"WATER\": 10, \"JUICE\": 10}, \"coins\": {\"0.05\": 10, \"0.10\": 10, \"0.25\": 10, \"1\": 0}, \"install\": [{\"selector\": \"SODA\", \"name\": \"Soda\", \"priceCents\": 150, \"units\": 10}], \"retire\": [\"TEA\"]}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/machine/service",
