@@ -141,8 +141,9 @@ notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's 
 no logger. It logs when the change is computed, before the sale is saved, so a retried sale logs it
 once per attempt.
 
-In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
-warnings and errors also reach stderr, so the console shows the machine's output and its refusals
+In dev the application's own logs go to a file a day, `var/log/dev-<YYYY-MM-DD>.log`
+(`tail -f var/log/dev-$(date +%F).log`), of which the last seven are kept, and only its warnings
+and errors also reach stderr, so the console shows the machine's output and its refusals
 alone. Symfony's own logs go to stderr as JSON, all but the noisy `event`, `messenger`, `console`
 and `doctrine` channels. In prod the application's logs and Symfony's go to stderr as JSON from
 info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation` channels.

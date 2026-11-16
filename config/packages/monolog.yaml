@@ -20,8 +20,9 @@ when@dev:
                 formatter: 'monolog.formatter.json'
                 channels: [ "app" ]
             app_file:
-                type: stream
+                type: rotating_file
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
+                max_files: 7
                 level: debug
                 formatter: 'monolog.formatter.json'
                 channels: [ "app" ]
