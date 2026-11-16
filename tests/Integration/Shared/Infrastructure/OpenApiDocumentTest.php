@@ -45,18 +45,18 @@ final class OpenApiDocumentTest extends KernelTestCase
     public function testGivesEveryBodyASchemaAndAnExample(): void
     {
         foreach (self::operations() as $operation => $definition) {
-            foreach (self::mediaTypesByBody($operation, $definition) as $body => $mediaTypes) {
+            foreach (self::mediaTypesByLocation($operation, $definition) as $location => $mediaTypes) {
                 foreach ($mediaTypes as $mediaType) {
-                    self::assertHasSchemaAndExample($body, self::node($mediaType));
+                    self::assertHasSchemaAndExample($location, self::node($mediaType));
                 }
             }
         }
     }
 
-    public function testEveryOperationOfTheMachineDocumentsTheStatusesAnyOfThemCanAnswer(): void
+    public function testEveryMachineOperationDocumentsA500AndEveryMachineChangeA409(): void
     {
         foreach (self::operations() as $operation => $definition) {
-            if (!str_contains($operation, ' /machine')) {
+            if (!self::isMachineOperation($operation)) {
                 continue;
             }
             $statuses = array_map('strval', array_keys(self::at($definition, 'responses')));
@@ -107,6 +107,11 @@ final class OpenApiDocumentTest extends KernelTestCase
         return $operations;
     }
 
+    private static function isMachineOperation(string $operation): bool
+    {
+        return str_contains($operation, ' /machine');
+    }
+
     /**
      * @return array<string, array<mixed>> the operations by "METHOD /path"
      */
@@ -136,9 +141,9 @@ final class OpenApiDocumentTest extends KernelTestCase
     /**
      * @param array<mixed> $operation
      *
-     * @return array<string, array<mixed>> the media types of the request and of each response, by where they are
+     * @return array<string, array<mixed>> the media types of the request and of each response, by where they are, such as "POST /machine/coins 200"
      */
-    private static function mediaTypesByBody(string $name, array $operation): array
+    private static function mediaTypesByLocation(string $name, array $operation): array
     {
         $bodies = [$name.' request' => self::at($operation, 'requestBody', 'content')];
         foreach (self::at($operation, 'responses') as $status => $response) {
@@ -151,10 +156,10 @@ final class OpenApiDocumentTest extends KernelTestCase
     /**
      * @param array<mixed> $mediaType
      */
-    private static function assertHasSchemaAndExample(string $body, array $mediaType): void
+    private static function assertHasSchemaAndExample(string $location, array $mediaType): void
     {
-        self::assertArrayHasKey('schema', $mediaType, $body.' has no schema');
-        self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $body.' has no example');
+        self::assertArrayHasKey('schema', $mediaType, $location.' has no schema');
+        self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $location.' has no example');
     }
 
     /**
