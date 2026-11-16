@@ -288,13 +288,109 @@ so the console shows the machine's output alone. In prod everything goes to stde
 up (`make logs php-fpm`). [Design, section 8](docs/design.md#8-operations) and
 [ADR 14](docs/adr/0014-logging.md) explain it.
 
-## What the setup changes on your machine
+## Checks and CI
 
-`make setup-host` (part of `make first-run`) does two things, both idempotent:
+| Command | What it does |
+|---|---|
+| `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
+| `make behat` | The customer and technician scenarios of `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel: no server, no hosts entry, no TLS |
+| `make coverage` | The tests with an HTML coverage report in `var/coverage` |
+| `make phpstan` | Static analysis at the max level |
+| `make deptrac` | The rules between layers and contexts, and that every class belongs to a layer |
+| `make cs-fixer` / `make cs-check` | Fixes the coding standard / checks it without changing files |
+| `make lint-container` | Compiles the service container and checks that every service is wired |
+| `make code-check` | All of the above except coverage, the coding standard in check mode |
+
+The tests that use a database need the containers started and `make migrate` run (`make first-run`
+does it). [Design, section 9](docs/design.md#9-testing-strategy) explains the test strategy.
+
+`features/customer/` and `features/technician/` hold Gherkin scenarios that a non-developer can
+read, such as "When I insert 0.25 / And I select SODA / Then the tray holds SODA and no coins". Their
+steps live in `tests/Behat/`, and each scenario starts from the default machine.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
+`master`, on GitHub-hosted runners, in the project's own PHP image. Each check runs as a parallel
+job, so a failing one does not hide the others, and branch protection requires the last job,
+`All checks passed`.
+
+`make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`, which runs inside the
+PHP image: `pre-commit` checks the branch name and, when code, configuration or tooling is staged,
+runs the coding standard, the container lint, PHPStan, deptrac, the tests and the scenarios (and the
+skill check when a Claude Code skill or `AGENTS.md` is staged). It refuses a commit whose checked
+files also have unstaged changes, since the checks read the disk. `commit-msg` requires
+[Conventional Commits](https://www.conventionalcommits.org/), and `post-checkout` runs
+`composer install` in a checkout without `vendor/`, such as a new git worktree.
+
+## Development tools
+
+**Xdebug and PhpStorm.** Xdebug is installed in the PHP image, and `.env` enables it
+(`XDEBUG_MODE=develop,debug,coverage`, `start_with_request=yes`), so every PHP process tries to reach
+the IDE on port 9003. Set `XDEBUG_MODE=off` in `.env`, or start with `XDEBUG_MODE=off make start`,
+when you do not need it. In Settings > PHP > Servers add a server named `vending-machine.test`, host
+`vending-machine.test`, port 443, mapping the project root to `/var/www`; listen for debug
+connections, set a breakpoint and send a request, or run
+`make run-debug -- <command> <options>` for a console command.
+
+**Database clients.** Both databases publish a port on localhost, so a desktop client (PhpStorm's
+Database window, DBeaver, MongoDB Compass) reaches them with the credentials of `.env`: host
+`127.0.0.1`, `MYSQL_PORT` (`3307`) and `MYSQL_USER` / `MYSQL_PASSWORD` for MySQL, `MONGO_PORT`
+(`27018`) and `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` with authentication database `admin` for
+MongoDB; databases `app`, and `app_test` for the tests. `make db-shell` and `make mongo-shell` open
+a shell inside the containers instead.
+
+**In a browser.** `make tools` starts phpMyAdmin at <https://pma.vending-machine.test> and
+mongo-express at <https://mongo.vending-machine.test> (basic auth `admin` / `admin`, from `.env`),
+behind Traefik with the same certificate and no published port. They are for local development
+only, since they open the databases with powerful credentials. `make tools-stop` removes them.
+
+## Postman
+
+`etc/postman/` holds a collection with every endpoint, one folder per bounded context, and an
+environment that points `baseUrl` at `https://vending-machine.test`.
+
+1. Import both files (File > Import).
+2. Settings > Certificates: turn on CA certificates and select `etc/infrastructure/certs/rootCA.pem`,
+   so Postman trusts the mkcert certificate.
+3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
+
+The `VendingMachine` folder tells a customer's session as a story: the statement's last example
+(`1, GET-WATER`) with the credit and the tray checked after each step, a returned coin and three
+refusals, and every request tests its status and body. Run it in order from a machine with no credit
+and an empty tray, as `make run -- vending:reset` leaves it. Its last two requests log in as a
+technician (the `Maintenance` folder keeps the token), read the status and service the machine back
+to the default stock and change, so it passes again on every run. Create that technician once:
+`make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
+
+From the command line with newman, reset the machine first; `--insecure` skips the check of the
+mkcert certificate:
+
+```bash
+make run -- vending:reset
+docker run --rm --network host -v "$PWD/etc/postman:/etc/newman" postman/newman:6.1.3-alpine \
+  run vending-machine.postman_collection.json -e vending-machine.test.postman_environment.json --insecure
+```
+
+The repository is the source of the collection: after changing it in Postman, export it (v2.1) over
+the file. If you change `TRAEFIK_HTTPS_PORT` in `.env`, add the port to `baseUrl`.
+
+## Infrastructure
+
+```
+client --HTTPS--> Traefik --HTTPS--> nginx --FastCGI--> php-fpm (Symfony)
+```
+
+Traefik terminates TLS with a mkcert certificate, redirects HTTP to HTTPS and logs every request
+(`make logs traefik`). It opens a new TLS connection to nginx and verifies nginx's certificate
+against the mkcert authority, so traffic is encrypted inside the Docker network too
+([ADR 15](docs/adr/0015-https-with-traefik.md)). Swagger UI is static, so Traefik reaches it over
+plain HTTP. Symfony trusts the proxies in the private address ranges (`TRUSTED_PROXIES`), so it
+sees the original scheme and client address. The PHP container runs as your user, so files it
+writes through the bind mount stay yours.
+
+`make setup-host` (part of `make first-run`) changes two things on your machine, both idempotent:
 
 1. `etc/infrastructure/setup-hostname.sh` appends one line per host to `/etc/hosts` (asks for
-   sudo), the API, its Swagger UI and the two optional database tools, since `/etc/hosts` has no
-   wildcards:
+   sudo), since `/etc/hosts` has no wildcards:
 
    ```
    127.0.0.1 vending-machine.test
@@ -306,220 +402,34 @@ up (`make logs php-fpm`). [Design, section 8](docs/design.md#8-operations) and
    `.test` is a top-level domain reserved for testing, so it never clashes with a real site.
 
 2. `etc/infrastructure/setup-ssl.sh` runs `mkcert -install`, which creates a local certificate
-   authority on your machine and adds it to the system and browser trust stores, then issues a
-   certificate for `vending-machine.test`, `*.vending-machine.test` and `nginx`. The certificate,
-   its key and a copy of the authority's public certificate go to `etc/infrastructure/certs/`, which
-   git ignores.
+   authority and adds it to the system and browser trust stores, then issues a certificate for
+   `vending-machine.test`, `*.vending-machine.test` and `nginx`. The certificate, its key and a copy
+   of the authority's public certificate go to `etc/infrastructure/certs/`, which git ignores.
 
 To undo both: remove the lines from `/etc/hosts`, and run `mkcert -uninstall` (only if no other
 project of yours uses mkcert).
 
-## How a request travels
-
-```
-client --HTTPS--> Traefik --HTTPS--> nginx --FastCGI--> php-fpm (Symfony)
-```
-
-Traefik terminates TLS with the mkcert certificate, redirects HTTP to HTTPS and logs every request
-(`make logs traefik`). It then opens a new TLS connection to nginx and verifies nginx's certificate
-against the mkcert authority, so traffic is encrypted inside the Docker network too. Traefik finds
-nginx through its Docker labels, which is why it mounts the Docker socket read-only. Symfony trusts
-the proxies in the private address ranges (`TRUSTED_PROXIES`), so it sees the original scheme and
-client address. Errors always come back as JSON: `{"error": {"code": 404, "message": "..."}}`.
-
-## Quality checks
-
-| Command | What it does |
-|---|---|
-| `make test` | Unit and integration tests (`make test -- --testsuite unit` for one suite) |
-| `make behat` | The customer and technician scenarios in `features/` (`make behat -- --name "sold out"` for one), run against the Symfony kernel through BrowserKit: no server, no hosts entry, no TLS |
-| `make coverage` | The tests with an HTML coverage report in `var/coverage` |
-| `make phpstan` | Static analysis at the max level, with the Symfony and PHPUnit extensions |
-| `make deptrac` | Per bounded context: Domain depends only on shared Domain, Application only on Domain and shared code, only Infrastructure uses the framework, no context reaches into another, and every class belongs to a layer |
-| `make cs-fixer` | Fixes the coding standard |
-| `make cs-check` | Checks the coding standard without changing files |
-| `make lint-container` | Compiles the service container and checks that every service is wired |
-| `make code-check` | The tests, the scenarios, PHPStan, deptrac, the coding standard in check mode and the container lint (no coverage) |
-
-GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
-`master`, in the project's own PHP image on GitHub-hosted runners. One job builds the image into
-the Actions cache; then each static check, the unit tests, the integration tests and the scenarios
-run as parallel jobs that load it, so a failing check does not hide the others, and only the tests
-that need a database start one. It also runs the skill check and validates `composer.lock`. Branch
-protection requires the last job, `All checks passed`, which fails unless every other job passed.
-
-`make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
-the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
-configuration or tooling is staged, runs the coding standard, a container lint, PHPStan, deptrac,
-the tests and the scenarios. The hooks join the containers' network when it exists, so the tests that use MySQL or
-MongoDB need the containers started (`make start`). The checks read the files on disk, so `pre-commit` refuses a commit whose checked files
-also have unstaged changes: stage them too, or set those changes aside first. When a Claude Code
-skill or `AGENTS.md` is staged, it first checks the skills (`.claude/scripts/skill-check.sh`),
-with the same refusal. `commit-msg` accepts
-[Conventional Commits](https://www.conventionalcommits.org/), plus git's own merge, revert, fixup,
-squash and amend messages. `post-checkout` runs `composer install` in a checkout without `vendor/`,
-such as a new git worktree.
-
-### Scenarios
-
-`features/customer/` holds the customer's use cases as Gherkin scenarios that a non-developer can
-read, such as "When I insert 0.25 / And I select SODA / Then the tray holds SODA and no coins". The
-steps live in `tests/Behat/CustomerContext.php`. Each scenario starts from the default machine, and
-a `Given` such as "SODA is sold out" or "the machine has 10 coins of 0.25" services it first. The
-scenarios use the test database, so `make migrate` must have run.
-
-`features/technician/` holds the technician's side, with the steps of
-`tests/Behat/TechnicianContext.php`: logging in, the 401 of a wrong password or of no token,
-reading the stock and the change, and servicing the machine. Each scenario starts with no technician and the default machine,
-and a `Given` creates the technician it logs in as. Every login gives a token with the technician's
-role, so a 403 cannot be reached from a scenario: the kernel tests make a token without the role to
-cover it.
-
-## Debugging with PhpStorm
-
-Xdebug is installed in the PHP image. `.env` enables it with `XDEBUG_MODE=develop,debug,coverage`
-and `start_with_request=yes`, so every PHP process tries to reach the IDE on port 9003. Set
-`XDEBUG_MODE=off` in `.env`, or start with `XDEBUG_MODE=off make start`, when you do not need it.
-
-1. Settings > PHP > Servers: add a server named `vending-machine.test`, host `vending-machine.test`,
-   port 443, and map the project root to `/var/www`. The container sends that name through
-   `PHP_IDE_CONFIG`.
-2. Listen for debug connections (port 9003, the default).
-3. Set a breakpoint and send a request, or run a console command with `make run-debug -- <command> <options>`.
-   `make run-debug -- app:health-check` steps through the project's own code from the CLI: put the
-   breakpoint in `HealthCheckQueryHandler`.
-
-### Connecting a database client
-
-Both databases publish a port on localhost, so a desktop client reaches them with the credentials
-of `.env`. In PhpStorm, open the Database tool window and add a data source for each (PhpStorm
-downloads the driver the first time):
-
-| | MySQL | MongoDB |
-|---|---|---|
-| Host and port | `127.0.0.1` and `MYSQL_PORT` (`3307`) | `127.0.0.1` and `MONGO_PORT` (`27018`) |
-| User and password | `MYSQL_USER` and `MYSQL_PASSWORD` (`app` / `app`) | `MONGO_ROOT_USER` and `MONGO_ROOT_PASSWORD` (`root` / `root`) |
-| Authentication database | | `admin` |
-| Database | `app`, and `app_test` for the tests | `app`, and `app_test` for the tests |
-
-MongoDB holds the machine, as the document of `vending_machines` whose `_id` is
-`VENDING_MACHINE_ID`. MySQL holds the migrations table, the `technicians` table and the
-`vending_machine` table of the DBAL adapter, empty while the machine lives in MongoDB. The same
-settings work in any other client (DBeaver, MongoDB
-Compass, the `mysql` and `mongosh` command lines); `make db-shell` and `make mongo-shell` open a
-shell inside the containers without installing anything.
-
-To look at the data in a browser instead, `make tools` starts phpMyAdmin at
-`https://pma.vending-machine.test` (already logged in as `MYSQL_USER`) and mongo-express at
-`https://mongo.vending-machine.test` (connected as the MongoDB root user; its own basic auth is
-`MONGO_EXPRESS_USER` and `MONGO_EXPRESS_PASSWORD`, `admin` / `admin` by default). They sit behind
-Traefik with the same certificate as the API and publish no port. They are for local development
-only, never for production: they open the databases with powerful credentials and weak or no
-login. `make tools-stop` removes them. Run `make setup-host` again once so `/etc/hosts` gets the
-two new hosts lines.
-
-## Trying the API with Postman
-
-`etc/postman/` holds a collection with every endpoint, one folder per bounded context, and an
-environment that points `baseUrl` at `https://vending-machine.test`.
-
-1. Import both files (File > Import).
-2. Settings > Certificates: turn on CA certificates and select `etc/infrastructure/certs/rootCA.pem`,
-   so Postman trusts the mkcert certificate.
-3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
-
-The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
-`technicianPassword`) and keeps the token for the technician's requests, 18 and 19 of the
-`VendingMachine` folder, which run after the customer's story, read the machine's status and set
-the default stock and change back. Create that technician once:
-`make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
-
-The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
-example, `1, GET-WATER`, checking the credit and the tray after each step (the water with 0.25 and
-0.10, then the empty tray once collected); then it returns a coin and checks three refusals. Every
-request tests its status and its body. Run it in order from a machine with no credit and an empty
-tray, as `make run -- vending:reset` leaves it. A run ends by servicing the machine back to the
-default stock and change, so the folder passes again on every run.
-
-To run it from the command line with newman, reset the machine first and mount `etc/postman/`;
-`--insecure` skips the check of the mkcert certificate:
-
-```
-make run -- vending:reset
-docker run --rm --network host -v "$PWD/etc/postman:/etc/newman" postman/newman:6.1.3-alpine \
-  run vending-machine.postman_collection.json -e vending-machine.test.postman_environment.json --insecure
-```
-
-The repository is the source of the collection: after changing it in Postman, export it (v2.1)
-over the file in `etc/postman/`. If you change `TRAEFIK_HTTPS_PORT` in `.env`, add the port to
-`baseUrl`.
-
 ## Project layout
-
-The code is split by bounded context first and by layer second:
 
 ```
 src/
   Kernel.php
-  Shared/            Shared kernel: small, stable, used by every context, uses none.
-    Domain/          Money and DomainException, the base of every domain exception.
-    Application/     The Command and Query interfaces, the bus ports, the health check query,
-                     the TechnicianAuthenticator port that VendingMachine logs technicians in with.
-    Infrastructure/  Messenger buses, BaseController, JSON errors, health check entry points,
-                     the JSON answer to a missing or invalid token.
+  Shared/            Shared kernel, used by every context and using none: Money, the base
+                     domain exception, the bus ports, the health check, the Messenger buses.
   VendingMachine/    The machine of the statement.
-    Domain/          Business rules. Plain PHP.
+  Maintenance/       The technicians who service the machine and the check of their credentials.
+    Domain/          Business rules. Plain PHP.            (each context has the same layers)
     Application/     Use cases: commands, queries and their handlers.
     Infrastructure/  Symfony, controllers, console commands, persistence.
-  Maintenance/       The technicians who service the machine.
-    Domain/          Technician, its username and password rules, the repository and hasher ports.
-    Application/     Use cases: creating a technician, checking its credentials.
-    Infrastructure/  The technicians table, the Symfony password hasher, console commands, the
-                     TechnicianAuthenticator adapter over the credentials query, login.
 config/              Symfony configuration; routes in config/routes/<context>.php.
-tests/Unit/          Unit tests, mirroring src/ (tests/Unit/<Context>/...).
-tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...).
-etc/infrastructure   Docker images and the host setup scripts.
-etc/git              Git hooks.
-etc/postman          Postman collection and environment.
-docs/                The OpenAPI document of the HTTP API.
+features/            Behat scenarios of the customer and the technician.
+tests/               Unit/ and Integration/ mirror src/<Context>/; Behat/ holds the scenario steps.
+docs/                Design document, ADRs, development notes and the OpenAPI document.
+etc/                 Docker images and host setup (infrastructure), git hooks, Postman.
 ```
 
-Folders exist only once they hold code.
-
-deptrac checks the rules between layers and contexts:
-
-- Domain depends only on `Shared/Domain`.
-- Application depends only on its own Domain, `Shared/Domain` and `Shared/Application`.
-- Only Infrastructure uses the framework (Symfony, Doctrine, PSR, MongoDB).
-- Every context may use `Shared`; `Shared` uses no context; a context never uses another
-  context's Domain.
-- Every class in `src/` belongs to a layer, and every dependency points to a layer: a class of an
-  undeclared context, or a library outside the `Framework` layer, fails the check.
-
-Commands and queries go through two synchronous Messenger buses, behind the `CommandBus` and
-`QueryBus` ports of `Shared/Application/Bus`. Command and query handlers of every context are
-registered on `command.bus` and `query.bus` by their `CommandHandler` and `QueryHandler` suffixes
-in `config/services.yaml`, so the Application layer needs no framework attributes.
-
-The machine is saved with optimistic locking: its stored document has a version, and a save that
-finds another version than the one it loaded fails with a `ConcurrentUpdateException`. The command
-bus then runs the command again on the fresh machine, up to three more times, before it gives up.
-
-### Adding a bounded context
-
-1. Create `src/<Context>/` with the layers that have code, and its tests under
-   `tests/Unit/<Context>/` and `tests/Integration/<Context>/`.
-2. Add `<Context>Domain`, `<Context>Application` and `<Context>Infrastructure` layers and their
-   rules to `deptrac.yaml`, following the `VendingMachine` entries. Until then `make deptrac`
-   fails and lists the context's classes as unassigned.
-3. Put its routes in `config/routes/<context>.php`; the kernel imports every file in that folder.
-4. `config/services.yaml` needs nothing: its globs
-   (`src/*/Application/Command/**/*CommandHandler.php`,
-   `src/*/Application/Query/**/*QueryHandler.php` and the matching exclusions) already cover any
-   context.
-
-### Conventions
-
-`AGENTS.md` holds the conventions for anyone working on the code, human or agent; `CLAUDE.md`
-imports it.
+deptrac keeps the layers inward-looking and the contexts apart: Domain depends only on
+`Shared/Domain`, Application on its own Domain and `Shared`, only Infrastructure uses the
+framework, and no context uses another ([design, section 3](docs/design.md#3-architecture)).
+[AGENTS.md](AGENTS.md) holds the conventions for anyone working on the code, human or agent,
+including how to add a bounded context or a use case; `CLAUDE.md` imports it.
