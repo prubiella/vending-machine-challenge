@@ -10,6 +10,7 @@ use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -29,6 +30,7 @@ final readonly class VendingRunCommand
         private TokenParser $parser,
         private ServiceForm $serviceForm,
         private TrayPrinter $trayPrinter,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -145,7 +147,10 @@ final readonly class VendingRunCommand
     {
         try {
             $this->commandBus->dispatch($this->parser->parse($token));
-        } catch (RejectedTokenException|DomainException $refusal) {
+        } catch (RejectedTokenException $rejection) {
+            $this->logger->notice(\sprintf('Rejected "%s": %s', $token, $rejection->getMessage()), ['token' => $token]);
+            $io->getErrorStyle()->writeln($rejection->getMessage());
+        } catch (DomainException $refusal) {
             $io->getErrorStyle()->writeln($refusal->getMessage());
         }
     }
