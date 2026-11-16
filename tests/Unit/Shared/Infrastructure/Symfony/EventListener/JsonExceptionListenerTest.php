@@ -26,24 +26,14 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertSame(['error' => ['code' => 405, 'message' => 'Method not allowed']], $this->body($response));
     }
 
-    public function testAnswersAMappedExceptionWithItsStatus(): void
+    public function testTurnsAnyDomainExceptionIntoA500(): void
     {
-        $exception = new \InvalidArgumentException('Not a coin');
+        $exception = new class('A broken invariant') extends DomainException {};
 
-        $response = $this->handle($exception, debug: false, statusByException: [\InvalidArgumentException::class => 422]);
+        $response = $this->handle($exception, debug: false);
 
-        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        self::assertSame(['error' => ['code' => 422, 'message' => 'Not a coin']], $this->body($response));
-    }
-
-    public function testAnswersAnUnmappedDomainExceptionWithA400(): void
-    {
-        $exception = new class('Refused by a business rule') extends DomainException {};
-
-        $response = $this->handle($exception, debug: false, statusByException: [\InvalidArgumentException::class => 422]);
-
-        self::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        self::assertSame(['error' => ['code' => 400, 'message' => 'Refused by a business rule']], $this->body($response));
+        self::assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+        self::assertSame(['error' => ['code' => 500, 'message' => 'Internal server error']], $this->body($response));
     }
 
     public function testTurnsAnyOtherExceptionIntoA500(): void
@@ -78,10 +68,7 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertSame(['error' => ['code' => 404, 'message' => 'No route found']], $this->body($response));
     }
 
-    /**
-     * @param array<class-string<\Throwable>, int> $statusByException
-     */
-    private function handle(\Throwable $exception, bool $debug, array $statusByException = []): Response
+    private function handle(\Throwable $exception, bool $debug): Response
     {
         $event = new ExceptionEvent(
             $this->createStub(HttpKernelInterface::class),
@@ -90,7 +77,7 @@ final class JsonExceptionListenerTest extends TestCase
             $exception,
         );
 
-        new JsonExceptionListener($debug, $statusByException)($event);
+        new JsonExceptionListener($debug)($event);
 
         $response = $event->getResponse();
         self::assertNotNull($response);

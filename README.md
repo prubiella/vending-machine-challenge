@@ -184,7 +184,7 @@ sequenceDiagram
     Customer->>API: POST /machine/coins {"coin":"1"}
     API-->>Customer: 204
     Customer->>API: POST /machine/selections/WATER
-    API-->>Customer: 204 (409 if sold out, no exact change or not enough credit)
+    API-->>Customer: 204 (409 if sold out, no exact change, not enough credit or a concurrent update)
     Customer->>API: GET /machine/tray
     API-->>Customer: 200 {"selectors":["WATER"],"coins":[25,10]}
     Customer->>API: POST /machine/tray/collect
@@ -203,16 +203,19 @@ curl https://vending-machine.test/machine/tray
 
 A refused request answers with its reason, `{"error": {"code": 409, "message": "..."}}`: `404` for
 an unknown selector; `409` when the credit does not pay the product, it is sold out or the machine
-has no exact change; `422` for a foreign coin, a body without a coin as a string or a malformed
-selector. Servicing the machine stays in the console until technicians can log in.
+has no exact change, and also when another request changed the machine at the same time and the
+retries ran out (send it again); `422` for a foreign coin, a body without a coin as a string or a
+malformed selector. Anything else, such as a stored machine that breaks one of its rules, answers `500`
+and is logged as critical. Servicing the machine stays in the console until technicians can log in.
 
 [`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
 answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
 code, and `tests/Integration/Shared/Infrastructure/OpenApiDocumentTest.php` fails when a route is
-missing from it, a documented route does not exist, or a status the exception listener maps is
+missing from it, a documented route does not exist, or a status that `framework.exceptions` maps is
 documented nowhere. Read it, and try the requests, in Swagger UI at <https://docs.vending-machine.test>
 (the `swagger-ui` service serves the file from `docs/`). The API answers cross-origin requests from
-that origin only, through a Traefik headers middleware on its router. Swagger UI is static, so Traefik
+that origin only (with or without `TRAEFIK_HTTPS_PORT`), through a Traefik headers middleware on its
+router; the `servers` of the document take the host and the port as variables. Swagger UI is static, so Traefik
 reaches it over plain HTTP inside the Docker network, with no re-encryption. PhpStorm renders the
 file too, or paste it into [Swagger Editor](https://editor.swagger.io).
 

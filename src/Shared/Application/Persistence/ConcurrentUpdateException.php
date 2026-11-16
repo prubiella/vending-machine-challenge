@@ -10,6 +10,6 @@ final class ConcurrentUpdateException extends \RuntimeException
 {
     public static function sinceLoaded(string $aggregate, int $loadedVersion): self
     {
-        return new self(\sprintf('The %s changed since it was loaded at version %d.', $aggregate, $loadedVersion));
+        return new self(\sprintf('The %s was changed by another request since it was loaded at version %d. The request can be retried.', $aggregate, $loadedVersion));
     }
 }

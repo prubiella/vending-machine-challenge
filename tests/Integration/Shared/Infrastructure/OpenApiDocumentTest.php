@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Shared\Infrastructure;
 
-use App\Shared\Infrastructure\Symfony\EventListener\JsonExceptionListener;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -29,7 +28,7 @@ final class OpenApiDocumentTest extends KernelTestCase
         }
     }
 
-    public function testDocumentsEveryStatusThatTheExceptionListenerMaps(): void
+    public function testDocumentsEveryStatusThatFrameworkExceptionsMap(): void
     {
         $documented = [];
         foreach (self::operations() as $definition) {
@@ -38,25 +37,33 @@ final class OpenApiDocumentTest extends KernelTestCase
             }
         }
 
-        foreach (array_unique(self::statusesMappedByTheListener()) as $status) {
-            self::assertArrayHasKey((string) $status, $documented, \sprintf('No operation documents the %d the listener maps', $status));
+        foreach (array_unique(self::statusesMappedByFramework()) as $status) {
+            self::assertArrayHasKey((string) $status, $documented, \sprintf('No operation documents the %d the exceptions mapping has', $status));
         }
     }
 
     public function testGivesEveryBodyASchemaAndAnExample(): void
     {
         foreach (self::operations() as $operation => $definition) {
-            $bodies = [$operation.' request' => self::at($definition, 'requestBody', 'content')];
-            foreach (self::at($definition, 'responses') as $status => $response) {
-                $bodies[$operation.' '.$status] = self::at(self::resolve(self::node($response)), 'content');
-            }
-
-            foreach ($bodies as $where => $mediaTypes) {
+            foreach (self::mediaTypesByLocation($operation, $definition) as $location => $mediaTypes) {
                 foreach ($mediaTypes as $mediaType) {
-                    $mediaType = self::node($mediaType);
-                    self::assertArrayHasKey('schema', $mediaType, $where.' has no schema');
-                    self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $where.' has no example');
+                    self::assertHasSchemaAndExample($location, self::node($mediaType));
                 }
+            }
+        }
+    }
+
+    public function testEveryMachineOperationDocumentsA500AndEveryMachineChangeA409(): void
+    {
+        foreach (self::operations() as $operation => $definition) {
+            if (!self::isMachineOperation($operation)) {
+                continue;
+            }
+            $statuses = array_map('strval', array_keys(self::at($definition, 'responses')));
+
+            self::assertContains('500', $statuses, $operation.' documents no 500');
+            if (str_starts_with($operation, 'POST ')) {
+                self::assertContains('409', $statuses, $operation.' changes the machine and documents no 409 for a concurrent update');
             }
         }
     }
@@ -85,11 +92,12 @@ final class OpenApiDocumentTest extends KernelTestCase
     {
         self::bootKernel();
         $operations = [];
-        foreach (self::getContainer()->get('router')->getRouteCollection() as $route) {
+        foreach (self::getContainer()->get('router')->getRouteCollection() as $name => $route) {
             $controller = $route->getDefault('_controller');
             if (!\is_string($controller) || !str_starts_with($controller, 'App\\')) {
                 continue;
             }
+            self::assertNotSame([], $route->getMethods(), \sprintf('The route %s declares no method, so the document cannot be checked against it', $name));
             foreach ($route->getMethods() as $method) {
                 $operations[] = $method.' '.$route->getPath();
             }
@@ -99,21 +107,59 @@ final class OpenApiDocumentTest extends KernelTestCase
         return $operations;
     }
 
+    private static function isMachineOperation(string $operation): bool
+    {
+        return str_contains($operation, ' /machine');
+    }
+
     /**
      * @return array<string, array<mixed>> the operations by "METHOD /path"
      */
     private static function operations(): array
     {
         $operations = [];
-        foreach (self::at(self::document(), 'paths') as $path => $item) {
-            foreach (self::node($item) as $method => $definition) {
-                if (\in_array($method, self::HTTP_METHODS, true)) {
-                    $operations[strtoupper((string) $method).' '.$path] = self::node($definition);
-                }
+        foreach (self::at(self::document(), 'paths') as $path => $pathItem) {
+            foreach (self::httpOperationsOf(self::node($pathItem)) as $method => $definition) {
+                $operations[strtoupper($method).' '.$path] = $definition;
             }
         }
 
         return $operations;
+    }
+
+    /**
+     * @param array<mixed> $pathItem
+     *
+     * @return array<string, array<mixed>> the operations by method; a path item also holds keys that are not
+     *                                     operations, such as `parameters` and `summary`
+     */
+    private static function httpOperationsOf(array $pathItem): array
+    {
+        return array_map(self::node(...), array_intersect_key($pathItem, array_flip(self::HTTP_METHODS)));
+    }
+
+    /**
+     * @param array<mixed> $operation
+     *
+     * @return array<string, array<mixed>> the media types of the request and of each response, by where they are, such as "POST /machine/coins 200"
+     */
+    private static function mediaTypesByLocation(string $name, array $operation): array
+    {
+        $bodies = [$name.' request' => self::at($operation, 'requestBody', 'content')];
+        foreach (self::at($operation, 'responses') as $status => $response) {
+            $bodies[$name.' '.$status] = self::at(self::resolve(self::node($response)), 'content');
+        }
+
+        return $bodies;
+    }
+
+    /**
+     * @param array<mixed> $mediaType
+     */
+    private static function assertHasSchemaAndExample(string $location, array $mediaType): void
+    {
+        self::assertArrayHasKey('schema', $mediaType, $location.' has no schema');
+        self::assertTrue(isset($mediaType['example']) || isset($mediaType['examples']), $location.' has no example');
     }
 
     /**
@@ -164,12 +210,21 @@ final class OpenApiDocumentTest extends KernelTestCase
     /**
      * @return list<int>
      */
-    private static function statusesMappedByTheListener(): array
+    private static function statusesMappedByFramework(): array
     {
-        $services = self::node(Yaml::parseFile(self::projectDir().'/config/services.yaml'));
-        $map = self::at($services, 'services', JsonExceptionListener::class, 'arguments', '$statusByException');
+        $framework = self::node(Yaml::parseFile(self::projectDir().'/config/packages/framework.yaml'));
+        $mapping = self::at($framework, 'framework', 'exceptions');
 
-        return array_values(array_map(static fn (mixed $status): int => \is_int($status) ? $status : self::fail('A mapped status is not an integer'), $map));
+        self::assertNotSame([], $mapping, 'framework.exceptions maps no exception');
+
+        $statuses = [];
+        foreach ($mapping as $class => $config) {
+            $status = self::node($config)['status_code'] ?? null;
+            self::assertIsInt($status, $class.' maps no status');
+            $statuses[] = $status;
+        }
+
+        return $statuses;
     }
 
     /**
