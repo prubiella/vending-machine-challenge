@@ -87,6 +87,13 @@ final class SlotTest extends TestCase
         Slot::of(self::water(), 2)->restockedTo(Slot::CAPACITY + 1);
     }
 
+    public function testRunsLowAtTheThresholdAndUnderIt(): void
+    {
+        self::assertFalse(Slot::of(self::water(), Slot::LOW_STOCK_THRESHOLD + 1)->isRunningLow());
+        self::assertTrue(Slot::of(self::water(), Slot::LOW_STOCK_THRESHOLD)->isRunningLow());
+        self::assertTrue(Slot::of(self::water(), 0)->isRunningLow());
+    }
+
     private static function water(): Product
     {
         return Product::of(Selector::fromString('WATER'), ProductName::fromString('Water'), Money::fromCents(65));

@@ -261,10 +261,13 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 The machine records what happened to it ([ADR 20](adr/0020-domain-events-and-outbox.md)):
 `ProductSold` with the product and the change given, `CreditReturned` with the coins given back
 (by `RETURN-COIN` or by a service, only when there were any) and `MachineServiced` with the
-technician's id, the counts set and the coins collected from the cash box. A refusal records
-nothing. `releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId`
-of this context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default
-machine is built by `installStocked()`, which records no service.
+technician's id, the counts set and the coins collected from the cash box. A sale that leaves a
+slot at or under `Slot::LOW_STOCK_THRESHOLD` (5 units), coming from above it, also records
+`StockRunningLow` with the selector and the units left: once per crossing, not on every later
+sale, and never for a service, since the technician chose that stock. A refusal records nothing.
+`releaseEvents()` hands them over once, oldest first. The technician is a `TechnicianId` of this
+context over the shared `Uuid`, so `VendingMachine` does not use `Maintenance`. The default machine
+is built by `installStocked()`, which records no service.
 
 ### Why change making is a search and not greedy
 
