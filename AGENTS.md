@@ -97,7 +97,7 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 2. Application: the command or query and its handler, which only loads, calls the domain and saves.
 3. Infrastructure: the adapter (controller, console command, repository). `config/services.yaml`
    leaves `Domain` out of autowiring, so alias a domain port to its adapter there
-   (`VendingMachineRepository` to `InMemoryVendingMachineRepository`).
+   (`VendingMachineRepository` to `DbalVendingMachineRepository`).
 4. HTTP: one invokable controller per endpoint, extending `BaseController`. The route goes in
    the context's `config/routes/<context>.php`, not in a `#[Route]` attribute. Bind bodies with
    `#[MapRequestPayload]`. Map each domain exception to an HTTP status in `JsonExceptionListener`
@@ -130,9 +130,13 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 ## Checks
 
 `make test`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or `make code-check` for
-all of them. They must pass before committing. `make hooks` (part of `make first-run`) enables the
-git hooks: pre-commit runs the checks when code, configuration or tooling is staged, and refuses
-the commit when those staged files also have unstaged changes, since the checks read the disk.
+all of them. They must pass before committing. The integration tests use the `app_test` database:
+`make migrate` brings it up to date (from a worktree, `bin/console doctrine:migrations:migrate -n
+--env=test` through `run-in-php-image.sh`), and a kernel test that touches the machine uses
+`StartsWithNoStoredMachine`, so it starts from the default machine. `make hooks` (part of
+`make first-run`) enables the git hooks: pre-commit runs the checks when code, configuration or
+tooling is staged, and refuses the commit when those staged files also have unstaged changes, since
+the checks read the disk.
 
 `/vm-review [<pr-number>|<range>]` reviews a change in a headless `claude -p` session in the
 background and writes the report to `.audit/vm-review/`; the lenses live in

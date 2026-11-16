@@ -10,13 +10,17 @@ use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Change\NoExactChangeException;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Inventory\Inventory;
+use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Inventory\UnknownSelectorException;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
+use App\VendingMachine\Domain\Tray\Tray;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\Wallet\InsufficientCreditException;
+use App\VendingMachine\Domain\Wallet\Wallet;
 use PHPUnit\Framework\TestCase;
 
 final class VendingMachineTest extends TestCase
@@ -222,6 +226,21 @@ final class VendingMachineTest extends TestCase
         } catch (UnknownSelectorException) {
             self::assertSame($before, self::snapshot($machine));
         }
+    }
+
+    public function testARestoredMachineCarriesOnFromTheGivenParts(): void
+    {
+        $inventory = Inventory::of(Slot::of(self::product('WATER', 'Water', 65), 3));
+        $wallet = Wallet::of(CoinCollection::of(Coin::OneHundredCents), CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents));
+        $tray = Tray::empty()->addProduct(self::product('SODA', 'Soda', 150));
+
+        $machine = VendingMachine::restore($inventory, $wallet, $tray);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        self::assertSame(2, self::unitsOf($machine, 'WATER'));
+        self::assertSame(['Soda', 'Water'], self::productsInTray($machine));
+        self::assertTrue($machine->tray()->coins()->equals(CoinCollection::of(Coin::TwentyFiveCents, Coin::TenCents)));
+        self::assertTrue($machine->wallet()->stock()->equals(CoinCollection::of(Coin::OneHundredCents)));
     }
 
     /**

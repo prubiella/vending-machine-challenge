@@ -6,6 +6,7 @@ namespace App\Tests\Integration\VendingMachine\Application\Query\GetMachineStatu
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
@@ -13,6 +14,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class GetMachineStatusQueryHandlerTest extends KernelTestCase
 {
+    use StartsWithNoStoredMachine;
+
     public function testTheBusAnswersWithTheUnitsAndTheCoinStock(): void
     {
         $container = self::getContainer();

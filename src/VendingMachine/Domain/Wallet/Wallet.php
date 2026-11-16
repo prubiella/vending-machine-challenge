@@ -20,6 +20,11 @@ final readonly class Wallet
         return new self(CoinCollection::empty(), $stock);
     }
 
+    public static function of(CoinCollection $credit, CoinCollection $stock): self
+    {
+        return new self($credit, $stock);
+    }
+
     public function insert(Coin $coin): self
     {
         return new self($this->credit->add($coin), $this->stock);
