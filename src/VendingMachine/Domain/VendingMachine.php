@@ -30,6 +30,11 @@ final class VendingMachine
         return new self(Inventory::of(...$emptySlots), Wallet::stocked(CoinCollection::empty()), Tray::empty());
     }
 
+    public static function restore(Inventory $inventory, Wallet $wallet, Tray $tray): self
+    {
+        return new self($inventory, $wallet, $tray);
+    }
+
     public function insertCoin(Coin $coin): void
     {
         $this->wallet = $this->wallet->insert($coin);
