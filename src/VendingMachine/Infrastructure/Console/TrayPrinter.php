@@ -9,6 +9,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
 use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 final readonly class TrayPrinter

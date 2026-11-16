@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\VendingMachine\Infrastructure\Console;
+namespace App\VendingMachine\Infrastructure\Notation;
 
 use App\VendingMachine\Domain\Coin\Coin;
 
@@ -28,6 +28,13 @@ final readonly class MoneyNotation
         }
 
         return null;
+    }
+
+    public static function coinTokensEndingWith(string $lastSeparator): string
+    {
+        $tokens = array_map(static fn (Coin $coin): string => self::coinToken($coin->value), Coin::cases());
+
+        return implode(', ', \array_slice($tokens, 0, -1)).$lastSeparator.end($tokens);
     }
 
     public static function twoDecimals(int $cents): string

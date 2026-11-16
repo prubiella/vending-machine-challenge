@@ -8,7 +8,8 @@ use App\Shared\Application\Bus\Command;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
-use App\VendingMachine\Domain\Coin\Coin;
+use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 
 final readonly class TokenParser
 {
@@ -46,19 +47,7 @@ final readonly class TokenParser
 
     private static function coinsAsChoice(): string
     {
-        return self::coinTokensEndingWith(' or ');
-    }
-
-    private static function coinsAsList(): string
-    {
-        return self::coinTokensEndingWith(' and ');
-    }
-
-    private static function coinTokensEndingWith(string $lastSeparator): string
-    {
-        $tokens = array_map(static fn (Coin $coin): string => MoneyNotation::coinToken($coin->value), Coin::cases());
-
-        return implode(', ', \array_slice($tokens, 0, -1)).$lastSeparator.end($tokens);
+        return MoneyNotation::coinTokensEndingWith(' or ');
     }
 
     private static function isSelection(string $token): bool
@@ -68,6 +57,6 @@ final readonly class TokenParser
 
     private static function coinCents(string $token): int
     {
-        return MoneyNotation::coinCents($token) ?? throw RejectedTokenException::foreignCoin($token, self::coinsAsList());
+        return MoneyNotation::coinCents($token) ?? throw ForeignCoinException::fromToken($token);
     }
 }

@@ -10,6 +10,8 @@ use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
+use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -139,7 +141,7 @@ final readonly class VendingRunCommand
     {
         try {
             $this->commandBus->dispatch($this->parser->parse($token));
-        } catch (RejectedTokenException $rejection) {
+        } catch (RejectedTokenException|ForeignCoinException $rejection) {
             $this->logger->notice(\sprintf('Rejected "%s": %s', $token, $rejection->getMessage()), ['token' => $token]);
             $io->getErrorStyle()->writeln($rejection->getMessage());
         } catch (DomainException $refusal) {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\VendingMachine\Infrastructure\Console;
+namespace App\Tests\Unit\VendingMachine\Infrastructure\Notation;
 
-use App\VendingMachine\Infrastructure\Console\MoneyNotation;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -42,6 +42,7 @@ final class MoneyNotationTest extends TestCase
         yield 'a coin without its trailing zero' => ['0.1'];
         yield 'a coin with decimals the statement leaves out' => ['1.00'];
         yield 'a word' => ['WATER'];
+        yield 'nothing' => [''];
     }
 
     #[DataProvider('notCoins')]
