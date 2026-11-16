@@ -118,6 +118,10 @@ by the service: service the machine while nobody else is using it.
 
 The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
 exits with 1, the only case besides an unexpected error where it does not exit with 0.
+`vending:service` exits with 0 once the machine is serviced and with 1 whenever it is not, since
+then the technician's service did not happen: an option it cannot read (not a pair, given twice, a
+foreign coin, or a selector the machine lacks, which it checks before asking anything), input that
+ends before the last answer, or a service the machine refuses.
 
 The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
 the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
