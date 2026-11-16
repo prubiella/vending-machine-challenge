@@ -8,6 +8,7 @@ use App\Shared\Application\Uuid\UuidGenerator;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductSold;
+use App\VendingMachine\Domain\Event\StockRunningLow;
 use App\VendingMachine\Domain\Event\VendingMachineEvent;
 use App\VendingMachine\Domain\VendingMachine;
 use Psr\Clock\ClockInterface;
@@ -18,6 +19,8 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class OutboxEventFactory
 {
+    public const string STOCK_RUNNING_LOW = 'stock_running_low';
+
     public function __construct(
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
@@ -59,6 +62,10 @@ final readonly class OutboxEventFactory
                 'units' => $event->unitsBySelector(),
                 'coins' => $event->coins()->countsByCents(),
                 'collected_from_cash_box' => $event->collectedFromCashBox()->countsByCents(),
+            ]],
+            $event instanceof StockRunningLow => [self::STOCK_RUNNING_LOW, [
+                'selector' => $event->selector()->value(),
+                'units_left' => $event->unitsLeft(),
             ]],
             default => throw new \LogicException(\sprintf('The outbox has no type for %s.', $event::class)),
         };

@@ -70,6 +70,8 @@ services:
     App\VendingMachine\Application\Command\ServiceMachine\CashBoxCollectionLog: '@App\VendingMachine\Infrastructure\CashBox\RememberingCashBoxCollectionLog'
 
     App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
+    App\VendingMachine\Infrastructure\Outbox\MachineOutbox: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
+    App\VendingMachine\Infrastructure\Notification\LowStockNotifier: '@App\VendingMachine\Infrastructure\Notification\LoggingLowStockNotifier'
 
     App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
         arguments:

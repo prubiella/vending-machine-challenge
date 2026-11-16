@@ -88,6 +88,11 @@ final readonly class MongoVendingMachineRepository implements VendingMachineRepo
         return array_values(array_map($this->outboxEventMapper->fromDocument(...), $outbox));
     }
 
+    public function remove(array $ids): void
+    {
+        $this->machines->updateOne(['_id' => $this->machineId->value()], ['$pull' => ['outbox' => ['id' => ['$in' => $ids]]]]);
+    }
+
     public function reset(): void
     {
         $this->machines->deleteMany(['_id' => ['$in' => [$this->machineId->value(), self::LEGACY_MACHINE_ID]]]);

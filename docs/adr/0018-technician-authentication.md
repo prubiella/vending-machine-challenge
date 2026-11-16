@@ -5,7 +5,8 @@
 Accepted. Built: the `Maintenance` context, the console credentials of `SERVICE` and
 `vending:service`, `POST /auth/login`, `vending:technician:token`, the protected technician routes
 and the readiness probe of the key pair. [ADR 20](0020-domain-events-and-outbox.md) turns the
-technician's id into a `MachineServiced` event that the machine records.
+technician's id into a `MachineServiced` event that the machine records and `machine_history`
+keeps: the history, not the log, is now the audit trail of who serviced the machine.
 
 ## Context
 
