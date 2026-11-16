@@ -2,29 +2,34 @@
 
 [![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
 
-A vending machine modelled in PHP: it accepts coins (0.05, 0.10, 0.25 and 1), sells products
-(Water 0.65, Juice 1.00, Soda 1.50), gives change, returns the inserted coins on request and lets
-a technician service it by setting the available change and the stock of each product.
+A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, CQRS and a hexagonal architecture.
+It accepts coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50),
+gives change, returns the inserted coins on request and lets a technician service it by setting the
+available change and the stock of each product. A console command and a JSON API drive the same
+machine, which is stored in MongoDB. Everything runs in Docker: the host needs no PHP or Composer.
 
-Work in progress: the project is being built in small pull requests, infrastructure first.
+- [Design document](docs/design.md): architecture, domain model and main flows, with diagrams.
+- [Architecture decision records](docs/adr/README.md): one short record per decision.
+- [How it was built](docs/development.md): Claude Code sessions, reviews and CI.
+- [`docs/openapi.yaml`](docs/openapi.yaml): the HTTP API, also in Swagger UI at
+  <https://docs.vending-machine.test> once it runs.
+- [Postman collection](etc/postman/vending-machine.postman_collection.json), see [Postman](#postman).
 
-## Design
+## Contents
 
-The code is split by bounded context and then by layer, and the layers may only depend inwards
-(deptrac enforces it). [docs/design.md](docs/design.md) explains the architecture, the domain
-model and the main flows with diagrams; [docs/adr](docs/adr/README.md) has one record per decision.
-[docs/development.md](docs/development.md) tells how it was built: Claude Code sessions in their
-own worktrees, the developer deciding and testing each change, reviews and CI.
-
-## Stack
-
-- PHP 8.5 (FPM, with Xdebug) and Symfony 8.1
-- MySQL 8.4
-- MongoDB 9.0
-- nginx behind Traefik 3.7, HTTPS end to end
-- PHPUnit 13, PHPStan 2 (max level), deptrac, php-cs-fixer
-
-Everything runs in Docker: the host needs no PHP, Composer or MySQL.
+- [Requirements](#requirements)
+- [Running it](#running-it)
+- [The statement's examples](#the-statements-examples)
+- [Console](#console)
+- [HTTP API](#http-api)
+- [Technicians](#technicians)
+- [Where the machine lives](#where-the-machine-lives)
+- [Logs](#logs)
+- [Checks and CI](#checks-and-ci)
+- [Development tools](#development-tools)
+- [Postman](#postman)
+- [Infrastructure](#infrastructure)
+- [Project layout](#project-layout)
 
 ## Requirements
 
@@ -35,16 +40,16 @@ Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 - Free ports on localhost: 80, 443, 8080 (Traefik dashboard), 3307 (MySQL) and 27018 (MongoDB).
   They can be changed in `.env`.
 
-## First run
+## Running it
 
 ```bash
 make first-run
 ```
 
-It creates `.env` from `.env.dist`, writes your user and group ids into it, prepares the host (see
-below), builds and starts the containers, installs the Composer dependencies, creates the key pair that signs the technicians' tokens
-(`make jwt-keys`, in `config/jwt/`, which git ignores), runs the database migrations and enables
-the git hooks. Then:
+It creates `.env` from `.env.dist`, prepares the host (`make setup-host`, see
+[Infrastructure](#infrastructure) for what it changes), builds and starts the containers, installs
+the Composer dependencies, creates the key pair that signs the technicians' tokens (`make jwt-keys`,
+in `config/jwt/`, which git ignores), runs the database migrations and enables the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
@@ -53,75 +58,71 @@ make run -- app:health-check
 # {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
 ```
 
-The same use case has two entry points: the controllers behind `/health-check` and
-`/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
-the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
-its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL, `document_store` is MongoDB
-and `jwt_keys` is the key pair that signs the technicians' tokens, checked by signing a throwaway
-token and verifying it, so a missing or unreadable key, or a public key of another pair, is `ko`. A
-`ko` dependency logs a warning with the reason it did not answer.
+`/health-check` and `app:health-check` answer 200 and exit 0 even when a dependency is `ko`
+(liveness); `/health-check/ready` and `app:health-check --ready` answer 503 and exit 1
+(readiness). [Design, section 8](docs/design.md#8-operations) has the details.
 
-- Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
-  `ko`, so a database that does not answer never marks the application itself as down.
-- Readiness: `/health-check/ready` answers 503 and `app:health-check --ready` exits 1 when any
-  dependency is `ko`, so a Docker healthcheck can wait for the databases.
-
-Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
-`make run -- <command> <options>` runs a Symfony console command, for example
-`make run -- debug:router --format json`. The `--` keeps make from reading the options as its own.
-Give an option its value after a space: make takes a word with `=` (`--format=json`) as a variable
-and drops it.
-
-A checkout from before HTTPS was added needs `make setup-host` once: `make start` stops with a
-message until the certificate files exist in `etc/infrastructure/certs/`. A checkout from before the
-database was used needs the `DATABASE_URL` line of `.env.dist` copied into its `.env`, then
-`make migrate`, which creates the tables in the dev and test databases (run it again after pulling a
-new migration).
+Afterwards `make start` and `make stop` are enough, and `make help` lists every target.
+`make run -- <command> <options>` runs a Symfony console command. The `--` keeps make from reading
+the options as its own, and an option takes its value after a space (`--format json`): make takes a
+word with `=` as a variable and drops it.
 
 | Service | Where |
 |---|---|
-| Web | <https://vending-machine.test> |
+| Web and API | <https://vending-machine.test> |
 | API documentation (Swagger UI) | <https://docs.vending-machine.test> |
 | Traefik dashboard | <http://127.0.0.1:8080> |
-| MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
-| MongoDB | `127.0.0.1:27018`, databases `app` and `app_test`, user `root` and password `root` as set in `.env` (`make mongo-shell`) |
+| MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user and password `app` (`make db-shell`) |
+| MongoDB | `127.0.0.1:27018`, databases `app` and `app_test`, user and password `root` (`make mongo-shell`) |
 
-All ports bind to localhost only. The PHP container runs as your user, so files it writes through
-the bind mount stay yours.
+The credentials are the ones in `.env`. All ports bind to localhost only.
 
-### MongoDB
+## The statement's examples
 
-MongoDB stores the vending machine as one document, and will hold its outbox too, while MySQL will
-keep the technicians and the history ([ADR 16](docs/adr/0016-machine-stored-in-mongodb.md)).
-`make start` starts it with the rest of the stack, and the PHP container waits until it is healthy.
-Its data lives in the `mongo-data` volume. Copy the `MONGO_*` and `MONGODB_*` variables from
-`.env.dist` into an existing `.env`: the `mongo` image creates its root user only when it starts on
-an empty volume, so a volume first started without them needs `docker compose rm -sf mongo` and
-`docker volume rm vending-machine-challenge_mongo-data` before `make start`.
-
-To look at the stored machine:
+Start from the default machine, with `make run -- vending:reset`. The console prints what drops
+into the tray, the products first, then the coins from the largest:
 
 ```bash
-make mongo-shell
-db.vending_machines.findOne()
+make run -- vending:run "1, 0.25, 0.25, GET-SODA"
+# SODA
+make run -- vending:run "0.10, 0.10, RETURN-COIN"
+# 0.10, 0.10
+make run -- vending:run "1, GET-WATER"
+# WATER, 0.25, 0.10
 ```
 
-Its `_id` is the machine's UUID, `VENDING_MACHINE_ID` (ADR 17), and it holds its `version`
-(optimistic locking, ADR 11), `inventory`, the credit and the change in `wallet_credit` and
-`wallet_stock` (the count of each coin by its cents) and the `tray`. The application reaches it through `MONGODB_URL` and `MONGODB_DATABASE`; the test
-environment adds `_test` to the database name.
+The same three over HTTP. Commands answer `204` with no body; the tray is read with a query, as a
+list of selectors and the cents of each coin, from the largest:
 
-`VENDING_MACHINE_ID` names the one machine: the default machine gets that id, and the repository
-loads the machine stored under it. `config/services.yaml` gives it a fixed default UUID, and `.env.dist` keeps the variable commented:
-uncomment it in `.env` to run the machine under another id. The machine stored under
-`_id: 1` before machines had a UUID is no longer loaded; `make run -- vending:reset` deletes it, or
-`db.vending_machines.deleteOne({_id: 1})` in `make mongo-shell`.
+```bash
+api=https://vending-machine.test/machine
+json='Content-Type: application/json'
 
-The machine's store is the alias of `VendingMachineRepository` and `StoredMachineResetter` in
-`config/services.yaml`. Pointing both at `DbalVendingMachineRepository` stores it in the MySQL
-table `vending_machine` instead; both adapters pass the same contract test.
+# 1, 0.25, 0.25, GET-SODA
+for coin in 1 0.25 0.25; do curl -X POST $api/coins -H "$json" -d "{\"coin\": \"$coin\"}"; done
+curl -X POST $api/selections/SODA
+curl $api/tray
+# {"selectors":["SODA"],"coins":[]}
+curl -X POST $api/tray/collect
 
-The PHP image carries the `mongodb` extension, installed through PECL like Xdebug.
+# 0.10, 0.10, RETURN-COIN
+for coin in 0.10 0.10; do curl -X POST $api/coins -H "$json" -d "{\"coin\": \"$coin\"}"; done
+curl -X POST $api/coin-return
+curl $api/tray
+# {"selectors":[],"coins":[10,10]}
+curl -X POST $api/tray/collect
+
+# 1, GET-WATER
+curl -X POST $api/coins -H "$json" -d '{"coin": "1"}'
+curl -X POST $api/selections/WATER
+curl $api/tray
+# {"selectors":["WATER"],"coins":[25,10]}
+curl -X POST $api/tray/collect
+```
+
+If curl does not trust the certificate, add `--cacert etc/infrastructure/certs/rootCA.pem`. The API
+and the console share one machine: credit inserted over HTTP is credit that `vending:run` sees,
+and the other way round.
 
 ## Using the machine from the console
 
