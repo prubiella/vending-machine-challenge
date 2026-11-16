@@ -8,8 +8,8 @@ set -a
 source .env
 set +a
 
-# /etc/hosts has no wildcards: the API and its Swagger UI each need a line.
-for host in "${PROJECT_HOSTNAME}" "docs.${PROJECT_HOSTNAME}"; do
+# /etc/hosts has no wildcards: the API, its Swagger UI and the database tools each need a line.
+for host in "${PROJECT_HOSTNAME}" "docs.${PROJECT_HOSTNAME}" "pma.${PROJECT_HOSTNAME}" "mongo.${PROJECT_HOSTNAME}"; do
   host_entry="127.0.0.1 ${host}"
   hostname_pattern="${host//./\\.}"
 
