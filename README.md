@@ -122,7 +122,9 @@ exits with 1, the only case besides an unexpected error where it does not exit w
 The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
 the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
 the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
-coins of 0.05, 0.10 and 0.25 for change). Credit left at the end of a sequence stays in the machine
+coins of 0.05, 0.10 and 0.25 for change). The default is read only while no machine is stored: a
+stored machine wins over a change to `vending_machine.default_products` until `vending:reset`
+removes it. Credit left at the end of a sequence stays in the machine
 until `RETURN-COIN` gives it back, as on a real one, also from a later run.
 
 Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
