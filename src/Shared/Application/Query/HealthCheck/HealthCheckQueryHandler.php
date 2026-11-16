@@ -14,15 +14,15 @@ final readonly class HealthCheckQueryHandler
     public function __invoke(HealthCheckQuery $query): HealthCheckResponse
     {
         return new HealthCheckResponse(HealthCheckResponse::OK, [
-            'database' => self::check($this->databaseProbe->isReachable()),
+            'database' => self::statusOf($this->databaseProbe->isReachable()),
         ]);
     }
 
     /**
      * @return HealthCheckResponse::OK|HealthCheckResponse::KO
      */
-    private static function check(bool $up): string
+    private static function statusOf(bool $reachable): string
     {
-        return $up ? HealthCheckResponse::OK : HealthCheckResponse::KO;
+        return $reachable ? HealthCheckResponse::OK : HealthCheckResponse::KO;
     }
 }
