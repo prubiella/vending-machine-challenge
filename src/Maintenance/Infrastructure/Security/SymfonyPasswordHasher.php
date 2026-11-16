@@ -7,14 +7,16 @@ namespace App\Maintenance\Infrastructure\Security;
 use App\Maintenance\Domain\Technician\HashedPassword;
 use App\Maintenance\Domain\Technician\PasswordHasher;
 use App\Maintenance\Domain\Technician\PlainPassword;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 
-final class SymfonyPasswordHasher implements PasswordHasher
+final readonly class SymfonyPasswordHasher implements PasswordHasher
 {
-    private ?HashedPassword $hashOfNoOne = null;
+    private const string CACHE_KEY = 'maintenance.hash_of_no_technician';
 
     public function __construct(
-        private readonly PasswordHasherInterface $hasher,
+        private PasswordHasherInterface $hasher,
+        private CacheItemPoolInterface $cache,
     ) {
     }
 
@@ -30,10 +32,25 @@ final class SymfonyPasswordHasher implements PasswordHasher
 
     public function verifyAgainstNoTechnician(#[\SensitiveParameter] string $password): void
     {
-        // Hashed with the configured hasher, so it costs what a real verification costs; once per
-        // instance, so only the first refusal pays for the hash as well.
-        $this->hashOfNoOne ??= HashedPassword::fromString($this->hasher->hash('no technician has this password'));
+        $this->hasher->verify($this->hashOfNoTechnician(), $password);
+    }
 
-        $this->hasher->verify($this->hashOfNoOne->value(), $password);
+    /**
+     * Hashed with the configured hasher, so verifying it costs what a real verification costs. It is
+     * kept in the cache because PHP-FPM builds this class again on every request: hashing it there
+     * would make an unknown username slower than a known one.
+     */
+    private function hashOfNoTechnician(): string
+    {
+        $item = $this->cache->getItem(self::CACHE_KEY);
+        if (!$item->isHit()) {
+            $item->set($this->hasher->hash('no technician has this password'));
+            $this->cache->save($item);
+        }
+
+        $hash = $item->get();
+        \assert(\is_string($hash));
+
+        return $hash;
     }
 }

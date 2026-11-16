@@ -55,6 +55,7 @@ check. `VendingMachine` must not depend on whatever keeps the technicians
   "Wrong username or password.", and a username the format rejects is refused the same way, so a
   refusal does not tell which usernames exist. It also costs the same time: an unknown or malformed
   username verifies the password against a hash no one owns, made with the configured hasher
+  and kept in the application cache, since each request builds the adapter again
   (`PasswordHasher::verifyAgainstNoTechnician()`), so the response time does not tell either.
 - **A password is never trimmed**, at a prompt as in an option or a login body, so the spaces typed
   are part of it; only the line ending that closes an answer goes.
