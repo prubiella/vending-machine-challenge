@@ -153,9 +153,15 @@ flowchart LR
     C -->|query| QB[Query bus] --> QH[Query handler] --> R
 ```
 
-Commands return nothing, and what a command produces is state that a query reads
-([ADR 7](adr/0007-tray-and-strict-cqrs.md)). That is why the drop of a purchase is a `Tray` that a
-query reads and a command empties.
+Commands and queries go through two buses, and commands return nothing: what a command produces is
+state that a query reads ([ADR 7](adr/0007-tray-and-strict-cqrs.md)). That is why the drop of a
+purchase is a `Tray` that a query reads and a command empties. It is command and query separation
+over one model, not CQRS with a read model: the query handlers load the same `VendingMachine`
+aggregate through `VendingMachineRepository`. A read model, a projection that the events keep up to
+date and that queries read without loading the aggregate, earns its place when reads outnumber
+writes enough to matter, or when a query needs a shape the aggregate lacks, such as sales per
+product and day. The events and `machine_history` ([ADR 20](adr/0020-domain-events-and-outbox.md))
+are where it would start. For one machine and one customer, a query is one document read.
 
 ## 4. Domain model
 
@@ -494,8 +500,14 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
   and the time from the clock. MongoDB pushes them into the document's `outbox` array in the same
   `updateOne` that sets the state, the version still in the filter, so a conflict writes neither;
   `MachineOutbox::pending()` reads them back, oldest first.
-- **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
-  `vending:reset` deletes the stored document.
+- **No machine stored means the default machine, a known trade-off.** When no document exists,
+  `get()` returns the machine `DefaultVendingMachineFactory` builds from `config/services.yaml`, and
+  the first `save()` inserts it. So a read can return an aggregate that was never saved, and the
+  rule of what an uninstalled machine is lives in the adapters: the Mongo repository and the
+  in-memory fake each repeat it. It lets the statement's examples run on an empty database with no
+  setup step. The alternative is a use case that installs the machine explicitly, run once by
+  `make first-run` or a technician, with `get()` refusing when nothing is stored: one place for the
+  rule, at the cost of a step before the first coin. `vending:reset` deletes the stored document.
 - **A reset loses the events not yet relayed, a known trade-off.** `vending:reset` deletes the whole
   document, outbox included, so what happened since the relay's last pass never reaches
   `machine_history`. It is a development tool; a reset that kept the history would relay the outbox
@@ -623,7 +635,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | `Selector` as a value object | An enum, which would make products code | [ADR 4](adr/0004-selector-as-a-value-object.md) |
 | One shared exception base that is a `\RuntimeException` | A `\LogicException`, or no base | [ADR 5](adr/0005-domain-exceptions.md) |
 | One aggregate with immutable parts, compute then apply | A `SaleService` that mutates parts | [ADR 6](adr/0006-vending-machine-aggregate.md) |
-| A tray read by a query and strict CQRS | Commands that return what they dispensed | [ADR 7](adr/0007-tray-and-strict-cqrs.md) |
+| Commands that return nothing, a tray read by a query, two buses over one model | Commands that return what they dispensed | [ADR 7](adr/0007-tray-and-strict-cqrs.md) |
 | A bounded search behind `ChangeMaker` | Greedy, which fails with finite stock | [ADR 8](adr/0008-change-making.md) |
 | The change maker passed to `select()` | A service held by the aggregate | [ADR 9](adr/0009-change-maker-as-an-argument.md) |
 | `SERVICE` sets the counts and returns the credit | Adding to the stock | [ADR 10](adr/0010-service-sets-stock-and-returns-credit.md) |
@@ -661,10 +673,13 @@ Trade-offs worth saying out loud:
   transport, and the history and the low stock alert would become consumers with their own retries
   ([ADR 20](adr/0020-domain-events-and-outbox.md)). Reports over `machine_history` (sales per
   product and day) and an endpoint to read it come with them.
-- **Several machines.** The machine already has a UUID, taken from configuration
-  ([ADR 17](adr/0017-uuid-identities.md)); routes would carry it (`/machines/{id}/...`), and the
-  repository would take it. Most of the work is in Infrastructure, since
-  the aggregate does not know its own storage.
+- **Several machines.** The machine already has a UUID, from configuration
+  ([ADR 17](adr/0017-uuid-identities.md)), and the aggregate carries it, but nothing above the
+  adapter asks for it: `VendingMachineRepository::get()` takes no id. Several machines change every
+  layer but the rules: the port (`get(MachineId)`), every command and query (a machine id), every
+  handler, every route (`/machines/{id}/...`) and console command (a `--machine` option), the OpenAPI
+  document and Postman, and the default machine ([section 6](#6-persistence)). The history already
+  stores `machine_id`. Tokens change too if a technician may service only some machines.
 - **MongoDB migrations.** There is no migration command. One change of shape is handled lazily: the
   mapper reads a document stored before the cash box as one with an empty cash box. The document
   now holds what configuration cannot rebuild (the products a technician installed, the events not

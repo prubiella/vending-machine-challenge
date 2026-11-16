@@ -2,12 +2,13 @@
 
 [![CI](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/prubiella/vending-machine-challenge/actions/workflows/ci.yml)
 
-A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, CQRS and a hexagonal architecture.
-It accepts coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50 to
-start with), gives change, returns the inserted coins on request and lets a technician service it by
-setting the available change and the stock of each product, and by adding, retiring or repricing
-products. A console command and a JSON API drive the same
-machine, which is stored in MongoDB. Everything runs in Docker: the host needs no PHP or Composer.
+A vending machine modelled in PHP 8.5 and Symfony 8.1 with DDD, a hexagonal architecture, and
+commands and queries on two buses over one model (CQRS without a separate read model). It accepts
+coins (0.05, 0.10, 0.25 and 1), sells products (Water 0.65, Juice 1.00, Soda 1.50 to start with),
+gives change, returns the inserted coins on request and lets a technician service it by setting the
+available change and the stock of each product, and by adding, retiring or repricing products. A
+console command and a JSON API drive the same machine, which is stored in MongoDB. Everything runs
+in Docker: the host needs no PHP or Composer.
 
 - [Design document](docs/design.md): architecture, domain model and main flows, with diagrams.
 - [Architecture decision records](docs/adr/README.md): one short record per decision.
@@ -15,6 +16,23 @@ machine, which is stored in MongoDB. Everything runs in Docker: the host needs n
 - [`docs/openapi.yaml`](docs/openapi.yaml): the HTTP API, also in Swagger UI at
   <https://docs.vending-machine.test> once it runs.
 - [Postman collection](etc/postman/vending-machine.postman_collection.json), see [Postman](#postman).
+
+Where to look first:
+
+- [`VendingMachine`](src/VendingMachine/Domain/VendingMachine.php), the aggregate that holds every
+  rule of the machine.
+- [`FewestCoinsChangeMaker`](src/VendingMachine/Domain/Change/FewestCoinsChangeMaker.php), change
+  making as a bounded search over finite coins.
+- [`SelectProductCommandHandler`](src/VendingMachine/Application/Command/SelectProduct/SelectProductCommandHandler.php),
+  a use case that only loads, calls the domain and saves.
+- [`VendingMachineRepositoryContractTestCase`](tests/Integration/VendingMachine/Infrastructure/Persistence/VendingMachineRepositoryContractTestCase.php),
+  the behaviour any store of the machine must have.
+- The ADRs that carry the design: [6](docs/adr/0006-vending-machine-aggregate.md) (the aggregate),
+  [7](docs/adr/0007-tray-and-strict-cqrs.md) (commands return nothing),
+  [8](docs/adr/0008-change-making.md) (change making),
+  [11](docs/adr/0011-one-customer-and-optimistic-locking.md) (optimistic locking),
+  [20](docs/adr/0020-domain-events-and-outbox.md) (events and the outbox) and
+  [22](docs/adr/0022-technician-manages-the-catalog.md) (adding and retiring products).
 
 ## Contents
 

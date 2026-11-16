@@ -11,7 +11,7 @@ alternatives considered. All are accepted and built, except where a record says 
 4. [Selector as a value object, not an enum](0004-selector-as-a-value-object.md): products are data, not code.
 5. [Domain exceptions](0005-domain-exceptions.md): named after the failure, one shared base that is a `\RuntimeException`.
 6. [The VendingMachine aggregate](0006-vending-machine-aggregate.md): immutable parts, compute then apply, no `SaleService`.
-7. [Output through the tray and strict CQRS](0007-tray-and-strict-cqrs.md): commands return nothing, a query reads the tray, a command empties it.
+7. [Output through the tray and strict CQRS](0007-tray-and-strict-cqrs.md): commands return nothing, a query reads the tray, a command empties it; queries load the same aggregate, with no separate read model.
 8. [Change making](0008-change-making.md): bounded search behind `ChangeMaker`, not greedy; change only in 0.05, 0.10 and 0.25.
 9. [The ChangeMaker passed to select()](0009-change-maker-as-an-argument.md): the aggregate holds data, not services.
 10. [SERVICE sets the counts and returns pending credit first](0010-service-sets-stock-and-returns-credit.md): set, not add.

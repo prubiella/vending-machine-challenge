@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted.
+Accepted. Note: "strict" means that every command returns nothing and every read is a query. Queries
+load the same aggregate as commands; there is no separate read model
+([design, section 3](../design.md#ports-and-adapters)).
 
 ## Context
 
