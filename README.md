@@ -314,8 +314,11 @@ client address. Errors always come back as JSON: `{"error": {"code": 404, "messa
 | `make code-check` | The tests, PHPStan, deptrac, the coding standard in check mode and the container lint (no coverage) |
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
-`master`, one step per check, in the project's own PHP image on a GitHub-hosted runner. It also
-runs the skill check and validates `composer.lock`.
+`master`, in the project's own PHP image on GitHub-hosted runners. One job builds the image into
+the Actions cache; then each static check, the unit tests and the integration tests run as parallel
+jobs that load it, so a failing check does not hide the others, and only the integration tests
+start a database. It also runs the skill check and validates `composer.lock`. Branch protection
+requires the last job, `All checks passed`, which fails unless every other job passed.
 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`. The hooks run inside
 the PHP image, so the host needs no PHP: `pre-commit` checks the branch name and, when code,
