@@ -39,7 +39,9 @@ services:
             $maxRetries: 3
 
     MongoDB\Client:
-        arguments: ['%env(MONGODB_URL)%']
+        # Fail within 2 s instead of the driver's 30 s when mongo is down, so the readiness probe
+        # and the requests answer.
+        arguments: ['%env(MONGODB_URL)%', { serverSelectionTimeoutMS: 2000 }]
 
     MongoDB\Database:
         factory: ['@MongoDB\Client', 'getDatabase']

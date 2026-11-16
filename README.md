@@ -39,21 +39,21 @@ migrations and enables the git hooks. Then:
 
 ```bash
 curl https://vending-machine.test/health-check
-# {"status":"ok","checks":{"database":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
 make run -- app:health-check
-# {"status":"ok","checks":{"database":"ok"}}
+# {"status":"ok","checks":{"database":"ok","document_store":"ok"}}
 ```
 
 The same use case has two entry points: the controllers behind `/health-check` and
 `/health-check/ready` and the `app:health-check` console command all send a `HealthCheckQuery` to
 the query bus. The answer reports the application, which is `ok` whenever it answers, and each of
-its dependencies, `ok` or `ko`, under `checks`. A `ko` database logs a warning with the reason it
-did not answer.
+its dependencies, `ok` or `ko`, under `checks`: `database` is MySQL and `document_store` is
+MongoDB. A `ko` dependency logs a warning with the reason it did not answer.
 
 - Liveness: `/health-check` answers 200 and `app:health-check` exits 0 even when a dependency is
   `ko`, so a database that does not answer never marks the application itself as down.
 - Readiness: `/health-check/ready` answers 503 and `app:health-check --ready` exits 1 when any
-  dependency is `ko`, so a Docker healthcheck can wait for the database.
+  dependency is `ko`, so a Docker healthcheck can wait for the databases.
 
 Afterwards `make start` and `make stop` are enough. `make help` lists every target, and
 `make run -- <command> <options>` runs a Symfony console command, for example
