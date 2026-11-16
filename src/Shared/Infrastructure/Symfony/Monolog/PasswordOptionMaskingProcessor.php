@@ -13,7 +13,9 @@ use Monolog\LogRecord;
 #[AsMonologProcessor]
 final class PasswordOptionMaskingProcessor
 {
-    private const string PASSWORD_OPTION = <<<'REGEX'
+    // The value of --password, after "=" or a space: single-quoted (with '\'' for a quote, as the
+    // console escapes it), double-quoted, or a bare word.
+    private const string PASSWORD_OPTION_PATTERN = <<<'REGEX'
         /--password(?:=|\s+)(?:'(?:[^']|'\\'')*'|"(?:[^"\\]|\\.)*"|\S+)/
         REGEX;
 
@@ -24,7 +26,7 @@ final class PasswordOptionMaskingProcessor
             return $record;
         }
 
-        $masked = preg_replace(self::PASSWORD_OPTION, '--password=***', $command) ?? '--password=***';
+        $masked = preg_replace(self::PASSWORD_OPTION_PATTERN, '--password=***', $command) ?? '--password=***';
 
         return $record->with(context: [...$record->context, 'command' => $masked]);
     }
