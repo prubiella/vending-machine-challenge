@@ -84,11 +84,12 @@ final class OpenApiDocumentTest extends KernelTestCase
     {
         self::bootKernel();
         $operations = [];
-        foreach (self::getContainer()->get('router')->getRouteCollection() as $route) {
+        foreach (self::getContainer()->get('router')->getRouteCollection() as $name => $route) {
             $controller = $route->getDefault('_controller');
             if (!\is_string($controller) || !str_starts_with($controller, 'App\\')) {
                 continue;
             }
+            self::assertNotSame([], $route->getMethods(), \sprintf('The route %s declares no method, so the document cannot be checked against it', $name));
             foreach ($route->getMethods() as $method) {
                 $operations[] = $method.' '.$route->getPath();
             }
@@ -168,11 +169,16 @@ final class OpenApiDocumentTest extends KernelTestCase
         $framework = self::node(Yaml::parseFile(self::projectDir().'/config/packages/framework.yaml'));
         $mapping = self::at($framework, 'framework', 'exceptions');
 
-        return array_values(array_map(static function (mixed $exception): int {
-            $status = self::node($exception)['status_code'] ?? null;
+        self::assertNotSame([], $mapping, 'framework.exceptions maps no exception');
 
-            return \is_int($status) ? $status : self::fail('A mapped status is not an integer');
-        }, $mapping));
+        $statuses = [];
+        foreach ($mapping as $class => $config) {
+            $status = self::node($config)['status_code'] ?? null;
+            self::assertIsInt($status, $class.' maps no status');
+            $statuses[] = $status;
+        }
+
+        return $statuses;
     }
 
     /**
