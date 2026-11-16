@@ -74,8 +74,9 @@ flowchart LR
 
 `src/` is split by bounded context first and by layer second
 ([ADR 1](adr/0001-bounded-contexts-and-shared-kernel.md)). `Shared` is a small kernel that every
-context may use and that uses no context. `Maintenance` does not exist yet, and its place is
-reserved.
+context may use and that uses no context. `Maintenance` holds the technicians and their login
+([ADR 18](adr/0018-technician-authentication.md)); `VendingMachine` reaches it only through the
+`TechnicianAuthenticator` port of `Shared`.
 
 ```mermaid
 flowchart TB
@@ -89,7 +90,7 @@ flowchart TB
         VA[Application]
         VI[Infrastructure]
     end
-    subgraph Maintenance["Maintenance (planned)"]
+    subgraph Maintenance
         MD[Domain]
         MA[Application]
         MI[Infrastructure]
@@ -101,9 +102,11 @@ flowchart TB
     VA --> SA
     VI --> VA
     VI --> SI
-    MD -.-> SD
-    MA -.-> MD
-    MI -.-> MA
+    MD --> SD
+    MA --> MD
+    MA --> SA
+    MI --> MA
+    MI --> SI
 ```
 
 Arrows read "may use". deptrac enforces them in `make deptrac`, which also fails when a class
@@ -416,8 +419,8 @@ in `wallet_credit` and `wallet_stock` (the count of each coin by its cents), and
   ([ADR 12](adr/0012-persistence-mysql-with-dbal.md), superseded by ADR 16 as the default). Both
   adapters pass `VendingMachineRepositoryContractTestCase`, so the port, not an engine, defines the
   behaviour. Swapping them is changing two aliases in `config/services.yaml`.
-- **MySQL today** holds the migrations table and the DBAL adapter's table. It is meant for the
-  technicians when they land and for the sales history later.
+- **MySQL** holds the technicians, the migrations table and the DBAL adapter's table, and is
+  meant for the sales history later.
 
 ## 7. Security
 
@@ -501,7 +504,7 @@ The pyramid is wide at the bottom: most of the rules are tested with no framewor
 | Unit | Every domain rule, every handler with logic of its own, the mapper, the middleware, the console parser | `tests/Unit/<Context>/`, mirroring `src/` |
 | Integration | Wiring that only the kernel can prove: bus and middleware, handlers on the buses, adapters on real MySQL and MongoDB, console commands, HTTP | `tests/Integration/<Context>/` |
 | Contract | Any adapter of `VendingMachineRepository` | `VendingMachineRepositoryContractTestCase`, extended by the Mongo and DBAL tests |
-| Scenarios | The customer's stories, in the customer's words | `features/customer/*.feature`, run by Behat |
+| Scenarios | The customer's and the technician's stories, in their words | `features/customer/` and `features/technician/`, run by Behat |
 
 - **Hand-written fakes instead of mocks.** Handler unit tests use `InMemoryVendingMachineRepository`,
   which copies the machine in and out, so a change reaches the store only through `save()`, as with
