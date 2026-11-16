@@ -29,9 +29,6 @@ final readonly class VendingMachineMapper
 {
     private const array PARTS = ['inventory', 'wallet_credit', 'wallet_stock', 'wallet_cash_box', 'tray'];
 
-    // A machine stored before the cash box existed has none: it reads as an empty one.
-    private const string NO_CASH_BOX_ROW = '{}';
-
     /**
      * @return MachineDocument
      */
@@ -46,7 +43,7 @@ final readonly class VendingMachineMapper
     public function fromDocument(array $document): VendingMachine
     {
         $id = self::storedId($document, '_id');
-        $document['wallet_cash_box'] ??= [];
+        $document = self::withTheCashBoxOfAnOlderMachine($document);
         self::assertEveryPartIsPresent($document);
 
         return self::restore($id, $document);
@@ -70,11 +67,31 @@ final readonly class VendingMachineMapper
         $id = self::storedId($row, 'id');
         $parts = [];
         foreach (self::PARTS as $part) {
-            $parts[$part] = self::decode($row[$part] ?? ('wallet_cash_box' === $part ? self::NO_CASH_BOX_ROW : null));
+            if (\array_key_exists($part, $row) || 'wallet_cash_box' !== $part) {
+                $parts[$part] = self::decode($row[$part] ?? null);
+            }
         }
+        $parts = self::withTheCashBoxOfAnOlderMachine($parts);
         self::assertEveryPartIsPresent($parts);
 
         return self::restore($id, $parts);
+    }
+
+    /**
+     * A machine stored before the cash box existed has no such part and reads as one with an empty
+     * cash box; a part that is there but null is broken storage and stays so.
+     *
+     * @param array<string, mixed> $stored
+     *
+     * @return array<string, mixed>
+     */
+    private static function withTheCashBoxOfAnOlderMachine(array $stored): array
+    {
+        if (!\array_key_exists('wallet_cash_box', $stored)) {
+            $stored['wallet_cash_box'] = [];
+        }
+
+        return $stored;
     }
 
     /**
