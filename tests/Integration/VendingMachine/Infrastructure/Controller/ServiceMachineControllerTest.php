@@ -100,22 +100,25 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, array<string, int>>}>
+     * @return iterable<string, array{array<string, array<string, mixed>>}>
      */
-    public static function countsTheMachineRefuses(): iterable
+    public static function invalidCounts(): iterable
     {
         yield 'negative units' => [['units' => ['WATER' => -1], 'coins' => []]];
         yield 'a negative count of a coin' => [['units' => [], 'coins' => ['0.25' => -1]]];
         yield 'more units than a slot holds' => [['units' => ['WATER' => 201], 'coins' => []]];
         yield 'more coins than a tube holds' => [['units' => [], 'coins' => ['0.05' => 501]]];
         yield 'a count far past a tube' => [['units' => [], 'coins' => ['0.05' => 100_000_000]]];
+        yield 'a count written as text' => [['units' => ['WATER' => 'many'], 'coins' => []]];
+        yield 'a count with a fraction' => [['units' => [], 'coins' => ['0.25' => 1.5]]];
+        yield 'a count left null' => [['units' => ['WATER' => null], 'coins' => []]];
     }
 
     /**
-     * @param array<string, array<string, int>> $body
+     * @param array<string, array<string, mixed>> $body
      */
-    #[DataProvider('countsTheMachineRefuses')]
-    public function testRefusesACountTheMachineCannotHoldWith422(array $body): void
+    #[DataProvider('invalidCounts')]
+    public function testRefusesAnInvalidCountWith422AndLeavesTheMachineAsItWas(array $body): void
     {
         $authHeaders = self::asTechnician($this->client);
 

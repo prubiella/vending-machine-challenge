@@ -9,6 +9,7 @@ use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
@@ -22,11 +23,29 @@ final class ServiceMachineController extends BaseController
     ): Response {
         $this->command(new ServiceMachineCommand(
             $technician->getUserIdentifier(),
-            $request->units,
-            self::countsByCents($request->coins),
+            self::wholeCounts('units', $request->units),
+            self::countsByCents(self::wholeCounts('coins', $request->coins)),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
+    // The payload's arrays are typed by PHPDoc only, so the serializer does not check their values.
+    /**
+     * @param array<int|string, mixed> $counts
+     *
+     * @return array<int|string, int>
+     */
+    private static function wholeCounts(string $field, array $counts): array
+    {
+        foreach ($counts as $key => $count) {
+            if (!\is_int($count)) {
+                throw new UnprocessableEntityHttpException(\sprintf('Give each count of "%s" as a whole number, got %s for %s.', $field, get_debug_type($count), $key));
+            }
+        }
+
+        /* @var array<int|string, int> $counts */
+        return $counts;
     }
 
     /**
