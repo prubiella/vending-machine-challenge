@@ -39,7 +39,9 @@ to run it.
   `Shared/Domain` holds `Money`, `Uuid` (the base of every identifier) with its
   `InvalidUuidException`, and `DomainException`, the abstract base that every domain exception of
   every context extends; `Shared/Application/Bus` holds the `Command` and `Query` interfaces and
-  the `CommandBus` and `QueryBus` ports, and `Shared/Application/Uuid` the `UuidGenerator` port;
+  the `CommandBus` and `QueryBus` ports, `Shared/Application/Uuid` the `UuidGenerator` port, and
+  `Shared/Application/Security` `TechnicianAuthenticator`, the port through which `VendingMachine`
+  checks a technician's credentials without depending on `Maintenance`, which implements it;
   `Shared/Infrastructure` holds their Messenger implementations (`MessengerCommandBus`,
   `MessengerQueryBus`), `SymfonyUuidGenerator`,
   `UnpackExceptionMiddleware`, `BaseController`, `JsonExceptionListener` and the health check
@@ -48,7 +50,7 @@ to run it.
   Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
 - `Maintenance`: the technicians who service the machine, their usernames, emails and hashed
-  passwords.
+  passwords, and the check of their credentials (`AuthenticateTechnicianQuery`).
 
 ## Layers (checked by deptrac)
 

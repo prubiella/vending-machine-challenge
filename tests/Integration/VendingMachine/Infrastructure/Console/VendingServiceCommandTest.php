@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
+use App\Shared\Application\Bus\Command as BusCommand;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
+use App\Tests\Integration\Maintenance\HasATechnician;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
 use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
+use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
@@ -25,7 +28,11 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class VendingServiceCommandTest extends KernelTestCase
 {
+    use HasATechnician;
     use StartsWithNoStoredMachine;
+
+    private const string MISSING_CREDENTIALS = "The service needs the technician's username and password (--username and --password without interaction): the machine was not serviced.\n";
+    private const array CREDENTIALS = ['--username' => self::TECHNICIAN_USERNAME, '--password' => self::TECHNICIAN_PASSWORD];
 
     private const array DEFAULT_UNITS = ['WATER' => 10, 'JUICE' => 10, 'SODA' => 10];
     private const array DEFAULT_COINS = [5 => 10, 10 => 10, 25 => 10, 100 => 0];
@@ -35,6 +42,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $tester = self::tester();
 
         $exitCode = $tester->execute([
+            ...self::CREDENTIALS,
             '--units' => ['WATER:2', 'JUICE:0', 'SODA:7'],
             '--coins' => ['0.05:1', '0.10:2', '0.25:3', '1:0'],
         ]);
@@ -60,7 +68,7 @@ final class VendingServiceCommandTest extends KernelTestCase
             ...$coinsOf25Cents,
         ]);
 
-        $exitCode = $tester->execute(['--units' => ['WATER:1'], '--coins' => ['1:3']]);
+        $exitCode = $tester->execute([...self::CREDENTIALS, '--units' => ['WATER:1'], '--coins' => ['1:3']]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStringContainsString('Units of JUICE [10]', $tester->getDisplay(true));
@@ -72,7 +80,7 @@ final class VendingServiceCommandTest extends KernelTestCase
     {
         $tester = self::tester();
 
-        $exitCode = $tester->execute(['--units' => ['SODA:4']], ['interactive' => false]);
+        $exitCode = $tester->execute([...self::CREDENTIALS, '--units' => ['SODA:4']], ['interactive' => false]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStatus(['WATER' => 10, 'JUICE' => 10, 'SODA' => 4], self::DEFAULT_COINS);
@@ -87,7 +95,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $commandBus->dispatch(new CollectTrayCommand());
         $commandBus->dispatch(new InsertCoinCommand(25));
 
-        $exitCode = $tester->execute([], ['interactive' => false]);
+        $exitCode = $tester->execute(self::CREDENTIALS, ['interactive' => false]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertSame("0.25\nThe machine is serviced.\n", $tester->getDisplay(true));
@@ -102,7 +110,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $tester = self::tester();
         self::getContainer()->get(CommandBus::class)->dispatch(new InsertCoinCommand(100));
 
-        $exitCode = $tester->execute([], ['interactive' => false]);
+        $exitCode = $tester->execute(self::CREDENTIALS, ['interactive' => false]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertSame("1\nThe machine is serviced.\n", $tester->getDisplay(true));
@@ -115,7 +123,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $tester = self::tester();
         $tester->setInputs(['3']);
 
-        $exitCode = $tester->execute([], ['capture_stderr_separately' => true]);
+        $exitCode = $tester->execute(self::CREDENTIALS, ['capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame("The input ended before the service was complete: the machine was not serviced.\n", $tester->getErrorOutput(true));
@@ -128,7 +136,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::getContainer()->set(CommandBus::class, new ServiceRefusingCommandBus(new MessengerCommandBus(self::getContainer()->get('command.bus'))));
         $tester = new CommandTester($application->find('vending:service'));
 
-        $exitCode = $tester->execute(['--units' => ['WATER:2']], ['interactive' => false, 'capture_stderr_separately' => true]);
+        $exitCode = $tester->execute([...self::CREDENTIALS, '--units' => ['WATER:2']], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame(ServiceRefusingCommandBus::REFUSAL."\n", $tester->getErrorOutput(true));
@@ -148,7 +156,97 @@ final class VendingServiceCommandTest extends KernelTestCase
             self::assertSame('Give --units a product the machine has, such as WATER:5, got CHIPS.', $e->getMessage());
         }
 
+        self::assertStringNotContainsString('Username', $tester->getDisplay(true));
         self::assertStringNotContainsString('Units of', $tester->getDisplay(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testAsksTheCredentialsTheOptionsLeaveOutWithThePasswordHidden(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs([self::TECHNICIAN_USERNAME, self::TECHNICIAN_PASSWORD]);
+
+        $exitCode = $tester->execute(['--units' => ['WATER:2', 'JUICE:2', 'SODA:2'], '--coins' => ['0.05:1', '0.10:1', '0.25:1', '1:0']]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStringContainsString('Username', $tester->getDisplay(true));
+        self::assertStringContainsString('Password', $tester->getDisplay(true));
+        self::assertStringNotContainsString(self::TECHNICIAN_PASSWORD, $tester->getDisplay(true));
+        self::assertStatus(['WATER' => 2, 'JUICE' => 2, 'SODA' => 2], [5 => 1, 10 => 1, 25 => 1, 100 => 0]);
+    }
+
+    public function testServicesTheMachineInTheNameOfTheAuthenticatedTechnician(): void
+    {
+        $application = new Application(self::bootKernel());
+        $recordingBus = new class(new MessengerCommandBus(self::getContainer()->get('command.bus'))) implements CommandBus {
+            /** @var list<BusCommand> */
+            public array $dispatched = [];
+
+            public function __construct(private readonly CommandBus $commandBus)
+            {
+            }
+
+            public function dispatch(BusCommand $command): void
+            {
+                $this->dispatched[] = $command;
+                $this->commandBus->dispatch($command);
+            }
+        };
+        self::getContainer()->set(CommandBus::class, $recordingBus);
+
+        new CommandTester($application->find('vending:service'))->execute(self::CREDENTIALS, ['interactive' => false]);
+
+        $service = $recordingBus->dispatched[0] ?? null;
+        self::assertInstanceOf(ServiceMachineCommand::class, $service);
+        self::assertSame(self::TECHNICIAN_ID, $service->technicianId);
+    }
+
+    public function testRefusesAWrongPasswordAndLeavesTheMachineUnserviced(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(
+            ['--username' => self::TECHNICIAN_USERNAME, '--password' => 'wrong-horse', '--units' => ['WATER:2']],
+            ['interactive' => false, 'capture_stderr_separately' => true],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("Wrong username or password. The machine was not serviced.\n", $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testWithoutInteractionRefusesMissingCredentials(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(['--username' => self::TECHNICIAN_USERNAME, '--units' => ['WATER:2']], ['interactive' => false, 'capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame(self::MISSING_CREDENTIALS, $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testTheInputEndingBeforeTheUsernameLeavesTheMachineUnserviced(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(['--units' => ['WATER:2']], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("The input ended before the service was complete: the machine was not serviced.\n", $tester->getErrorOutput(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    // A hidden answer cannot tell the input ending from an empty password: both leave it empty.
+    public function testAnEmptyPasswordLeavesTheMachineUnserviced(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs([self::TECHNICIAN_USERNAME, '']);
+
+        $exitCode = $tester->execute(['--units' => ['WATER:2']], ['capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame(self::MISSING_CREDENTIALS, $tester->getErrorOutput(true));
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
@@ -157,7 +255,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $this->expectException(InvalidOptionException::class);
         $this->expectExceptionMessage('Give --units as KEY:COUNT, such as WATER:5 or 0.25:10, got "WATER".');
 
-        self::tester()->execute(['--units' => ['WATER']], ['interactive' => false]);
+        self::tester()->execute([...self::CREDENTIALS, '--units' => ['WATER']], ['interactive' => false]);
     }
 
     public function testRejectsAProductGivenTwice(): void
@@ -165,7 +263,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $this->expectException(InvalidOptionException::class);
         $this->expectExceptionMessage('Give --units once for each key, got WATER twice.');
 
-        self::tester()->execute(['--units' => ['WATER:2', 'WATER:5']], ['interactive' => false]);
+        self::tester()->execute([...self::CREDENTIALS, '--units' => ['WATER:2', 'WATER:5']], ['interactive' => false]);
     }
 
     public function testRejectsACoinGivenTwice(): void
@@ -173,7 +271,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $this->expectException(InvalidOptionException::class);
         $this->expectExceptionMessage('Give --coins once for each key, got 0.10 twice.');
 
-        self::tester()->execute(['--coins' => ['0.10:5', '0.10:8']], ['interactive' => false]);
+        self::tester()->execute([...self::CREDENTIALS, '--coins' => ['0.10:5', '0.10:8']], ['interactive' => false]);
     }
 
     public function testRejectsAForeignCoin(): void
@@ -181,7 +279,7 @@ final class VendingServiceCommandTest extends KernelTestCase
         $this->expectException(InvalidOptionException::class);
         $this->expectExceptionMessage('Give --coins a coin the machine takes, such as 0.25:10, got 0.50.');
 
-        self::tester()->execute(['--coins' => ['0.50:3']], ['interactive' => false]);
+        self::tester()->execute([...self::CREDENTIALS, '--coins' => ['0.50:3']], ['interactive' => false]);
     }
 
     /**

@@ -21,7 +21,7 @@ final class ServiceMachineCommandHandlerTest extends KernelTestCase
     {
         $container = self::getContainer();
 
-        $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand(['JUICE' => 2], [25 => 2]));
+        $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand('a-technician-id', ['JUICE' => 2], [25 => 2]));
 
         $machine = $container->get(VendingMachineRepository::class)->get();
         self::assertSame(2, $machine->inventory()->slotFor(Selector::fromString('JUICE'))->units());

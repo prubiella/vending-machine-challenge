@@ -13,6 +13,7 @@ final readonly class ServiceMachineCommand implements Command
      * @param array<int, int>        $coinStockByCents
      */
     public function __construct(
+        public string $technicianId,
         public array $unitsBySelector,
         public array $coinStockByCents,
     ) {

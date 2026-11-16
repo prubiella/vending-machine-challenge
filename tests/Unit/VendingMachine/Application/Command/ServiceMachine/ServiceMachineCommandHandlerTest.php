@@ -20,6 +20,7 @@ final class ServiceMachineCommandHandlerTest extends TestCase
         $repository = VendingMachineRepositoryMother::withTheStatementProducts();
 
         (new ServiceMachineCommandHandler($repository))(new ServiceMachineCommand(
+            'a-technician-id',
             ['WATER' => 1, 'SODA' => 7],
             [5 => 0, 10 => 3, 100 => 1],
         ));

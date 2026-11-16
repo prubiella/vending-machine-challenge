@@ -6,12 +6,14 @@ namespace App\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Application\Security\TechnicianAuthenticator;
 use App\Shared\Domain\DomainException;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use Symfony\Component\Console\Exception\InvalidOptionException;
+use Symfony\Component\Console\Exception\MissingInputException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -20,6 +22,7 @@ final readonly class MachineServicer
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private TechnicianAuthenticator $technicianAuthenticator,
     ) {
     }
 
@@ -27,9 +30,16 @@ final readonly class MachineServicer
      * @param array<string, int> $givenUnits the units of each selector
      * @param array<int, int>    $givenCoins the count of each coin, by its cents
      */
-    public function service(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): bool
-    {
-        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins);
+    public function service(
+        InputInterface $input,
+        SymfonyStyle $io,
+        array $givenUnits = [],
+        array $givenCoins = [],
+        ?string $username = null,
+        #[\SensitiveParameter]
+        ?string $password = null,
+    ): bool {
+        $service = $this->askForCompleteService($input, $io, $givenUnits, $givenCoins, $username, $password);
         if (null === $service) {
             return false;
         }
@@ -49,13 +59,26 @@ final readonly class MachineServicer
      * @param array<string, int> $givenUnits
      * @param array<int, int>    $givenCoins
      */
-    private function askForCompleteService(InputInterface $input, SymfonyStyle $io, array $givenUnits, array $givenCoins): ?ServiceMachineCommand
-    {
+    private function askForCompleteService(
+        InputInterface $input,
+        SymfonyStyle $io,
+        array $givenUnits,
+        array $givenCoins,
+        ?string $username,
+        #[\SensitiveParameter]
+        ?string $password,
+    ): ?ServiceMachineCommand {
         $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
         self::rejectUnknownSelectors($status, $givenUnits);
 
+        $technicianId = $this->authenticatedTechnician($input, $io, $startedInteractive, $username, $password);
+        if (null === $technicianId) {
+            return null;
+        }
+
         $service = new ServiceMachineCommand(
+            $technicianId,
             self::unitsBySelector($io, $status, $givenUnits),
             self::coinStockByCents($io, $status, $givenCoins),
         );
@@ -67,6 +90,47 @@ final readonly class MachineServicer
         }
 
         return $service;
+    }
+
+    private function authenticatedTechnician(
+        InputInterface $input,
+        SymfonyStyle $io,
+        bool $startedInteractive,
+        ?string $username,
+        #[\SensitiveParameter]
+        ?string $password,
+    ): ?string {
+        try {
+            $username ??= self::answer($io->ask('Username'));
+            $password ??= self::answer($io->askHidden('Password'));
+        } catch (MissingInputException) {
+            $input->setInteractive(false);
+        }
+
+        if (self::inputEndedWhileAsking($startedInteractive, $input)) {
+            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
+
+            return null;
+        }
+
+        if (null === $username || null === $password) {
+            $io->getErrorStyle()->writeln('The service needs the technician\'s username and password (--username and --password without interaction): the machine was not serviced.');
+
+            return null;
+        }
+
+        try {
+            return $this->technicianAuthenticator->authenticate($username, $password);
+        } catch (DomainException $refusal) {
+            $io->getErrorStyle()->writeln($refusal->getMessage().' The machine was not serviced.');
+
+            return null;
+        }
+    }
+
+    private static function answer(mixed $answer): ?string
+    {
+        return \is_string($answer) && '' !== $answer ? $answer : null;
     }
 
     // When the input runs out, the question helper turns it non-interactive and answers every

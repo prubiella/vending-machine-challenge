@@ -20,6 +20,7 @@ final class GetMachineStatusQueryHandlerTest extends KernelTestCase
     {
         $container = self::getContainer();
         $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand(
+            'a-technician-id',
             ['WATER' => 1, 'JUICE' => 2, 'SODA' => 3],
             [5 => 4, 10 => 5, 25 => 6, 100 => 7],
         ));
