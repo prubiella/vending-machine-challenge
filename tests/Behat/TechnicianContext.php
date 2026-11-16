@@ -82,6 +82,51 @@ final class TechnicianContext implements Context
         $this->client->jsonRequest('PUT', '/machine/service', ['units' => [$selector => $units], 'coins' => [$coin => $count]], $this->authHeaders);
     }
 
+    #[When('I service the machine adding :selector, :name at :price, with :units units')]
+    public function iServiceTheMachineAdding(string $selector, string $name, string $price, int $units): void
+    {
+        $this->serviceTheCatalog([self::product($selector, $name, $price, $units)], []);
+    }
+
+    #[When('I service the machine retiring :selector')]
+    public function iServiceTheMachineRetiring(string $selector): void
+    {
+        $this->serviceTheCatalog([], [$selector]);
+    }
+
+    #[When('I service the machine replacing :retired by :selector, :name at :price, with :units units')]
+    public function iServiceTheMachineReplacing(string $retired, string $selector, string $name, string $price, int $units): void
+    {
+        $this->serviceTheCatalog([self::product($selector, $name, $price, $units)], [$retired]);
+    }
+
+    #[When('a customer pays :amount for :selector')]
+    public function aCustomerPaysFor(string $amount, string $selector): void
+    {
+        foreach (self::coinsWorth(self::cents($amount)) as $coin) {
+            $this->client->jsonRequest('POST', '/machine/coins', ['coin' => $coin]);
+        }
+        $this->client->request('POST', '/machine/selections/'.$selector);
+    }
+
+    #[Then('the customer gets :selector')]
+    public function theCustomerGets(string $selector): void
+    {
+        Assert::assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->client->request('GET', '/machine/tray');
+
+        Assert::assertSame([$selector], $this->responseBody()['selectors'] ?? null);
+    }
+
+    #[Then('the machine sells no :selector')]
+    public function theMachineSellsNo(string $selector): void
+    {
+        $unitsBySelector = $this->responseBody()['unitsBySelector'] ?? null;
+        Assert::assertIsArray($unitsBySelector);
+
+        Assert::assertArrayNotHasKey($selector, $unitsBySelector);
+    }
+
     #[Then('I am let in')]
     public function iAmLetIn(): void
     {
@@ -124,6 +169,56 @@ final class TechnicianContext implements Context
 
         Assert::assertIsString($error['message']);
         Assert::assertStringContainsString($excerpt, $error['message']);
+    }
+
+    /**
+     * A service that only changes the catalog: the units of the other products stay, and the
+     * change is set to what the machine already holds.
+     *
+     * @param list<array{selector: string, name: string, priceCents: int, units: int}> $install
+     * @param list<string>                                                             $retire
+     */
+    private function serviceTheCatalog(array $install, array $retire): void
+    {
+        $this->iAskForTheStockAndTheChange();
+        $coinStockByCents = $this->responseBody()['coinStockByCents'] ?? null;
+        Assert::assertIsArray($coinStockByCents);
+        $coins = [];
+        foreach ($coinStockByCents as $cents => $count) {
+            $coins[MoneyNotation::coinToken((int) $cents)] = $count;
+        }
+
+        $this->client->jsonRequest('PUT', '/machine/service', ['units' => [], 'coins' => $coins, 'install' => $install, 'retire' => $retire], $this->authHeaders);
+    }
+
+    /**
+     * @return array{selector: string, name: string, priceCents: int, units: int}
+     */
+    private static function product(string $selector, string $name, string $price, int $units): array
+    {
+        return ['selector' => $selector, 'name' => $name, 'priceCents' => self::cents($price), 'units' => $units];
+    }
+
+    private static function cents(string $amount): int
+    {
+        Assert::assertMatchesRegularExpression('/^\d+\.\d{2}$/', $amount);
+
+        return (int) str_replace('.', '', $amount);
+    }
+
+    /**
+     * @return list<string> the coins that make up the amount, largest first
+     */
+    private static function coinsWorth(int $cents): array
+    {
+        $coins = [];
+        foreach ([100, 25, 10, 5] as $coinCents) {
+            for (; $cents >= $coinCents; $cents -= $coinCents) {
+                $coins[] = MoneyNotation::coinToken($coinCents);
+            }
+        }
+
+        return $coins;
     }
 
     private function keepTheTokenOfTheLogin(): void

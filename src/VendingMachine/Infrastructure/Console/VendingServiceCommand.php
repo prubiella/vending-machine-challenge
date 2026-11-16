@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'vending:service',
-    description: 'As a technician, set the units of each product and the count of each coin, asking what the options leave out',
+    description: 'As a technician, set the units of each product and the count of each coin, asking what the options leave out, and install or retire products',
 )]
 final readonly class VendingServiceCommand
 {
@@ -30,6 +30,8 @@ final readonly class VendingServiceCommand
     /**
      * @param list<string> $units
      * @param list<string> $coins
+     * @param list<string> $install
+     * @param list<string> $retire
      */
     public function __invoke(
         InputInterface $input,
@@ -43,8 +45,22 @@ final readonly class VendingServiceCommand
         #[Option('The technician\'s password (asked hidden when left out)')]
         #[\SensitiveParameter]
         ?string $password = null,
+        #[Option('A product to install, or to redefine, as SELECTOR:PRICE:UNITS:NAME, such as TEA:1.20:12:Green tea (repeat it for each product)')]
+        array $install = [],
+        #[Option('The selector of a product to retire, with the units left in it (repeat it for each product)')]
+        array $retire = [],
     ): int {
-        if (!$this->machineServicer->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins), $username, $password)) {
+        $serviced = $this->machineServicer->service(
+            $input,
+            $io,
+            self::countsByKey('units', $units),
+            self::countsByCents($coins),
+            $username,
+            $password,
+            self::products($install),
+            $retire,
+        );
+        if (!$serviced) {
             return Command::FAILURE;
         }
 
@@ -52,6 +68,31 @@ final readonly class VendingServiceCommand
         $io->writeln('The machine is serviced.');
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The name comes last, so it may hold the separator: TEA:1.20:12:Tea: two bags.
+     *
+     * @param list<string> $install
+     *
+     * @return list<array{selector: string, name: string, priceCents: int, units: int}>
+     */
+    private static function products(array $install): array
+    {
+        $products = [];
+        foreach ($install as $product) {
+            [$selector, $price, $units, $name] = array_pad(explode(self::PAIR_SEPARATOR, $product, 4), 4, '');
+            $priceCents = MoneyNotation::amountCents($price);
+            if ('' === $selector || null === $priceCents || !ctype_digit($units) || '' === $name) {
+                throw new InvalidOptionException(\sprintf('Give --install as SELECTOR:PRICE:UNITS:NAME, such as TEA:1.20:12:Green tea, got "%s".', $product));
+            }
+            if (\in_array($selector, array_column($products, 'selector'), true)) {
+                throw new InvalidOptionException(\sprintf('Give --install once for each product, got %s twice.', $selector));
+            }
+            $products[] = ['selector' => $selector, 'name' => $name, 'priceCents' => $priceCents, 'units' => (int) $units];
+        }
+
+        return $products;
     }
 
     /**
