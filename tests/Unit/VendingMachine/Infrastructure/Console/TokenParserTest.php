@@ -10,6 +10,7 @@ use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Infrastructure\Console\RejectedTokenException;
 use App\VendingMachine\Infrastructure\Console\TokenParser;
+use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -51,7 +52,7 @@ final class TokenParserTest extends TestCase
     #[DataProvider('foreignCoins')]
     public function testRejectsACoinTheMachineDoesNotAccept(string $token): void
     {
-        $this->expectException(RejectedTokenException::class);
+        $this->expectException(ForeignCoinException::class);
         $this->expectExceptionMessageIs(\sprintf('The machine does not accept a coin of %s: it takes 0.05, 0.10, 0.25 and 1.', $token));
 
         new TokenParser()->parse($token);

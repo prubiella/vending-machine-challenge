@@ -8,7 +8,7 @@ use App\Shared\Application\Bus\Command;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
-use App\VendingMachine\Domain\Coin\Coin;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 
 final readonly class TokenParser
 {
@@ -28,7 +28,7 @@ final readonly class TokenParser
         }
 
         if (is_numeric($token)) {
-            return new InsertCoinCommand(self::coinCents($token));
+            return new InsertCoinCommand(MoneyNotation::requireCoinCents($token));
         }
 
         throw RejectedTokenException::unknownAction($token, self::usage());
@@ -41,33 +41,11 @@ final readonly class TokenParser
 
     private static function usage(): string
     {
-        return \sprintf('insert %s, %s<SELECTOR> or %s', self::coinsAsChoice(), self::SELECT_PREFIX, self::RETURN_COINS);
-    }
-
-    private static function coinsAsChoice(): string
-    {
-        return self::coinTokensEndingWith(' or ');
-    }
-
-    private static function coinsAsList(): string
-    {
-        return self::coinTokensEndingWith(' and ');
-    }
-
-    private static function coinTokensEndingWith(string $lastSeparator): string
-    {
-        $tokens = array_map(static fn (Coin $coin): string => MoneyNotation::coinToken($coin->value), Coin::cases());
-
-        return implode(', ', \array_slice($tokens, 0, -1)).$lastSeparator.end($tokens);
+        return \sprintf('insert %s, %s<SELECTOR> or %s', MoneyNotation::coinsAsChoice(), self::SELECT_PREFIX, self::RETURN_COINS);
     }
 
     private static function isSelection(string $token): bool
     {
         return str_starts_with($token, self::SELECT_PREFIX) && \strlen($token) > \strlen(self::SELECT_PREFIX);
-    }
-
-    private static function coinCents(string $token): int
-    {
-        return MoneyNotation::coinCents($token) ?? throw RejectedTokenException::foreignCoin($token, self::coinsAsList());
     }
 }

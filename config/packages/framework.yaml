@@ -10,6 +10,13 @@ framework:
     trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
     php_errors:
         log: true
+    # Symfony logs an exception that is not an HTTP one as critical, but these are a customer's
+    # refused requests, which JsonExceptionListener answers with a 4xx status.
+    exceptions:
+        App\Shared\Domain\DomainException:
+            log_level: info
+        App\VendingMachine\Infrastructure\Notation\ForeignCoinException:
+            log_level: info
 
 when@test:
     framework:

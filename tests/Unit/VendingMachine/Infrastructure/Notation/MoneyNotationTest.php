@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\VendingMachine\Infrastructure\Console;
+namespace App\Tests\Unit\VendingMachine\Infrastructure\Notation;
 
-use App\VendingMachine\Infrastructure\Console\MoneyNotation;
+use App\VendingMachine\Infrastructure\Notation\ForeignCoinException;
+use App\VendingMachine\Infrastructure\Notation\MoneyNotation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -42,12 +43,38 @@ final class MoneyNotationTest extends TestCase
         yield 'a coin without its trailing zero' => ['0.1'];
         yield 'a coin with decimals the statement leaves out' => ['1.00'];
         yield 'a word' => ['WATER'];
+        yield 'nothing' => [''];
     }
 
     #[DataProvider('notCoins')]
     public function testReadsNoCentsFromWhatIsNotACoin(string $notation): void
     {
         self::assertNull(MoneyNotation::coinCents($notation));
+    }
+
+    #[DataProvider('coins')]
+    public function testRequiresTheCentsOfACoinWrittenAsTheStatementDoes(int $cents, string $notation): void
+    {
+        self::assertSame($cents, MoneyNotation::requireCoinCents($notation));
+    }
+
+    #[DataProvider('notCoins')]
+    public function testRejectsWhatIsNotACoinAsAForeignCoin(string $notation): void
+    {
+        $this->expectException(ForeignCoinException::class);
+        $this->expectExceptionMessageIs(\sprintf('The machine does not accept a coin of %s: it takes 0.05, 0.10, 0.25 and 1.', $notation));
+
+        MoneyNotation::requireCoinCents($notation);
+    }
+
+    public function testListsTheCoinsTheMachineAccepts(): void
+    {
+        self::assertSame('0.05, 0.10, 0.25 and 1', MoneyNotation::coinsAsList());
+    }
+
+    public function testOffersTheCoinsTheMachineAcceptsAsAChoice(): void
+    {
+        self::assertSame('0.05, 0.10, 0.25 or 1', MoneyNotation::coinsAsChoice());
     }
 
     /**
