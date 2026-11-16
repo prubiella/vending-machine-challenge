@@ -154,6 +154,40 @@ Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a
 stocked through `SERVICE`, stay in the machine as takings, as in a cash box, and are never given
 as change; `SERVICE` asks their count on purpose, so the technician can empty the cash box.
 
+## Using the machine over HTTP
+
+The customer's side of the machine is a JSON API. Commands answer `204 No Content` with no body:
+what they did is read with a query, such as the tray after a purchase.
+
+| Request | What it does | Answer |
+|---|---|---|
+| `GET /machine` | The products (selector, name, price in cents, whether one is left) and the credit in cents | `200` |
+| `POST /machine/coins` with `{"coin": "0.25"}` | Inserts a coin, written as in the statement: `0.05`, `0.10`, `0.25` or `1` | `204` |
+| `POST /machine/selections/{selector}` | Sells the product: it drops into the tray with the change | `204` |
+| `POST /machine/coin-return` | Drops the credit into the tray as coins | `204` |
+| `GET /machine/tray` | The selectors of the products in the tray and the cents of each coin, from the largest | `200` |
+| `POST /machine/tray/collect` | Empties the tray | `204` |
+
+The statement's last example, `1, GET-WATER`:
+
+```bash
+curl -X POST https://vending-machine.test/machine/coins -H 'Content-Type: application/json' -d '{"coin": "1"}'
+curl -X POST https://vending-machine.test/machine/selections/WATER
+curl https://vending-machine.test/machine/tray
+# {"selectors":["WATER"],"coins":[25,10]}
+```
+
+A refused request answers with its reason, `{"error": {"code": 409, "message": "..."}}`: `404` for
+an unknown selector; `409` when the credit does not pay the product, it is sold out or the machine
+has no exact change; `422` for a foreign coin, a body without a coin as a string or a malformed
+selector. Servicing the machine stays in the console until technicians can log in.
+
+The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
+that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
+answers above. The functional tests play the statement's three examples through the API, each from
+the default machine
+(`tests/Integration/VendingMachine/Infrastructure/Controller/StatementExamplesTest.php`).
+
 ## Logs
 
 The command bus logs every command with its name and data: at info when it is handled, at notice
@@ -169,7 +203,8 @@ at notice with the same name and data, and so is each coin or action that `vendi
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
 notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs
 no logger. It logs when the change is computed, before the sale is saved, so a retried sale logs it
-once per attempt.
+once per attempt. Symfony logs the exception behind a refused HTTP request (a domain exception or a
+foreign coin) at info, not as a critical error, since nothing failed.
 
 In dev the application's own logs go to a file a day, `var/log/dev-<YYYY-MM-DD>.log`
 (`tail -f var/log/dev-$(date +%F).log`), of which the last seven are kept, and only its warnings
@@ -258,6 +293,12 @@ environment that points `baseUrl` at `https://vending-machine.test`.
 2. Settings > Certificates: turn on CA certificates and select `etc/infrastructure/certs/rootCA.pem`,
    so Postman trusts the mkcert certificate.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
+
+The `VendingMachine` folder plays the statement's last example, `1, GET-WATER`, and checks the
+machine after each step: the credit, the water with 0.25 and 0.10 in the tray, and the empty tray
+once collected. Run it in order from a machine with no credit and an empty tray, as
+`make run -- vending:reset` leaves it. A run leaves the machine that way again, with one water and
+its change fewer, so the folder passes again until the water or the change runs out.
 
 The repository is the source of the collection: after changing it in Postman, export it (v2.1)
 over the file in `etc/postman/`. If you change `TRAEFIK_HTTPS_PORT` in `.env`, add the port to
