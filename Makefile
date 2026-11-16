@@ -13,7 +13,7 @@ help: ## Show this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Build
-.PHONY: setup-host start stop down destroy first-run
+.PHONY: env setup-host start stop down destroy first-run quick-start
 
 setup-host: ## Add the project hostname to /etc/hosts and create its local TLS certificate
 	@./etc/infrastructure/setup-hostname.sh
@@ -25,18 +25,29 @@ start: ## Build and start the containers
 	done
 	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
 
-stop: ## Stop the containers
-	@$(DOCKER_COMPOSE) stop
+stop: ## Stop the containers, the ones of quick-start and tools included
+	@$(DOCKER_COMPOSE) --profile '*' stop
 
-down: ## Stop and remove the containers
-	@$(DOCKER_COMPOSE) down
+down: ## Stop and remove the containers, the ones of quick-start and tools included
+	@$(DOCKER_COMPOSE) --profile '*' down
 
 destroy: ## Remove the containers and their volumes (the database is lost)
-	@$(DOCKER_COMPOSE) down -v
+	@$(DOCKER_COMPOSE) --profile '*' down -v
 
-first-run: ## Create .env, set up the host, start the containers, install the dependencies, create the token keys, migrate the databases and enable the git hooks
+env: ## Create .env from .env.dist unless it exists, and write your user and group in it
 	@cp -n .env.dist .env || true
 	@sed -i.bak -e "s/^USER_ID=.*/USER_ID=$$(id -u)/" -e "s/^GROUP_ID=.*/GROUP_ID=$$(id -g)/" .env && rm .env.bak
+
+quick-start: ## Run the machine with only Docker: the console, and the API on plain HTTP at localhost (no sudo, certificate or hostname)
+	@$(MAKE) env
+	@$(DOCKER_COMPOSE) up -d --build php-fpm outbox-relay nginx-http
+	@$(MAKE) install
+	@$(MAKE) jwt-keys
+	@$(MAKE) migrate
+	@echo "Ready: make run -- vending:run \"1, GET-WATER\", or the API at http://$$($(DOCKER_COMPOSE) port nginx-http 80)/machine"
+
+first-run: ## Create .env, set up the host, start the containers, install the dependencies, create the token keys, migrate the databases and enable the git hooks
+	@$(MAKE) env
 	@$(MAKE) setup-host
 	@$(MAKE) start
 	@$(MAKE) install

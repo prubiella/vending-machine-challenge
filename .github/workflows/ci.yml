@@ -152,10 +152,52 @@ jobs:
         if: failure()
         run: docker compose logs --no-color --tail 100
 
+  # What an evaluator does on a fresh clone: make quick-start with no cache, then the statement's
+  # examples in the console and over plain HTTP, so the README's quick start cannot rot.
+  quick-start:
+    name: Quick start
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: make quick-start
+        run: make quick-start
+
+      - name: The statement's examples in the console
+        run: |
+          check() { [ "$2" = "$1" ] || { echo "::error::Expected '$1', got '$2'"; exit 1; }; }
+          make run -- vending:reset
+          check 'SODA' "$(make run -- vending:run '1, 0.25, 0.25, GET-SODA')"
+          check '0.10, 0.10' "$(make run -- vending:run '0.10, 0.10, RETURN-COIN')"
+          check 'WATER, 0.25, 0.10' "$(make run -- vending:run '1, GET-WATER')"
+
+      - name: The statement's examples over HTTP
+        run: |
+          check() { [ "$2" = "$1" ] || { echo "::error::Expected '$1', got '$2'"; exit 1; }; }
+          api=http://localhost:8000/machine
+          coin() { curl -sSf -X POST "$api/coins" -H 'Content-Type: application/json' -d "{\"coin\": \"$1\"}"; }
+          post() { curl -sSf -X POST "$api/$1"; }
+          tray() { curl -sSf "$api/tray" && post tray/collect; }
+          make run -- vending:reset
+          coin 1; coin 0.25; coin 0.25; post selections/SODA
+          check '{"selectors":["SODA"],"coins":[]}' "$(tray)"
+          coin 0.10; coin 0.10; post coin-return
+          check '{"selectors":[],"coins":[10,10]}' "$(tray)"
+          coin 1; post selections/WATER
+          check '{"selectors":["WATER"],"coins":[25,10]}' "$(tray)"
+
+      - name: Show the container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
   all-checks:
     name: All checks passed
     if: always()
-    needs: [skills, static, unit, integration, behat]
+    needs: [skills, static, unit, integration, behat, quick-start]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

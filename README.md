@@ -17,8 +17,8 @@ machine, which is stored in MongoDB. Everything runs in Docker: the host needs n
 
 ## Contents
 
-- [Requirements](#requirements)
-- [Running it](#running-it)
+- [Quick start](#quick-start)
+- [Full environment (HTTPS)](#full-environment-https)
 - [The statement's examples](#the-statements-examples)
 - [Console](#console)
 - [HTTP API](#http-api)
@@ -31,16 +31,46 @@ machine, which is stored in MongoDB. Everything runs in Docker: the host needs n
 - [Infrastructure](#infrastructure)
 - [Project layout](#project-layout)
 
-## Requirements
+## Quick start
 
-- Docker Engine with Compose v2 (`docker compose`)
-- GNU make
+It needs Docker Engine with Compose v2 (`docker compose`), GNU make and free ports 8000 (the API),
+3307 (MySQL) and 27018 (MongoDB) on localhost, which `.env` can change. No sudo, no certificate and
+no hostname:
+
+```bash
+make quick-start
+# ...
+# Ready: make run -- vending:run "1, GET-WATER", or the API at http://127.0.0.1:8000/machine
+```
+
+It creates `.env` from `.env.dist`, builds and starts PHP, MySQL, MongoDB, the relay that copies the
+machine's events to the history, and an nginx that serves the API over plain HTTP; then it installs
+the Composer dependencies, creates the key pair that signs the technicians' tokens and migrates the
+databases. [The statement's examples](#the-statements-examples) run as written, and every `make`
+target that runs in the PHP container works (`make run`, `make test`, `make db-shell`). `make stop`
+stops it and `make quick-start` starts it again.
+
+```bash
+curl http://localhost:8000/health-check
+# {"status":"ok","checks":{"database":"ok","document_store":"ok","jwt_keys":"ok"}}
+```
+
+It leaves out what only development needs: Swagger UI and the Traefik dashboard, which live on
+HTTPS hostnames (read [`docs/openapi.yaml`](docs/openapi.yaml) on GitHub or in
+[Swagger Editor](https://editor.swagger.io) instead), phpMyAdmin and mongo-express (`make db-shell`
+and `make mongo-shell` reach the same databases), and the git hooks, which only matter to whoever
+commits (`make hooks`).
+
+## Full environment (HTTPS)
+
+The environment the project is developed in serves the API over HTTPS behind Traefik
+([ADR 15](docs/adr/0015-https-with-traefik.md)), with Swagger UI and the database web tools. On top
+of Docker and make it needs:
+
 - [mkcert](https://github.com/FiloSottile/mkcert#installation), for the local HTTPS certificate
 - `sudo` rights, once, to add the hostnames to `/etc/hosts` and trust the mkcert authority
 - Free ports on localhost: 80, 443, 8080 (Traefik dashboard), 3307 (MySQL) and 27018 (MongoDB).
   They can be changed in `.env`.
-
-## Running it
 
 ```bash
 make first-run
@@ -95,7 +125,7 @@ The same three over HTTP. Commands answer `204` with no body; the tray is read w
 list of selectors and the cents of each coin, from the largest:
 
 ```bash
-api=https://vending-machine.test/machine
+api=http://localhost:8000/machine # https://vending-machine.test/machine in the full environment
 json='Content-Type: application/json'
 
 # 1, 0.25, 0.25, GET-SODA
@@ -120,7 +150,8 @@ curl $api/tray
 curl -X POST $api/tray/collect
 ```
 
-If curl does not trust the certificate, add `--cacert etc/infrastructure/certs/rootCA.pem`. The API
+In the full environment, if curl does not trust the certificate, add
+`--cacert etc/infrastructure/certs/rootCA.pem`. The API
 and the console share one machine: credit inserted over HTTP is credit that `vending:run` sees,
 and the other way round.
 
@@ -323,7 +354,8 @@ steps live in `tests/Behat/`, and each scenario starts from the default machine.
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every pull request and on
 `master`, on GitHub-hosted runners, in the project's own PHP image. Each check runs as a parallel
 job, so a failing one does not hide the others, and branch protection requires the last job,
-`All checks passed`.
+`All checks passed`. The `Quick start` job runs `make quick-start` on a fresh checkout, with no
+cache, and the statement's examples in the console and over HTTP.
 
 `make hooks` (part of `make first-run`) points git at `etc/git/hooks-docker`, which runs inside the
 PHP image: `pre-commit` checks the branch name and, when code, configuration or tooling is staged,
