@@ -1,0 +1,373 @@
+openapi: 3.1.0
+
+info:
+  title: Vending machine API
+  version: 1.0.0
+  description: |
+    The customer's side of the vending machine, and the health checks.
+
+    **Money.** Amounts the machine reports are integer cents (`creditCents`, `priceCents`, the
+    `coins` of the tray): 65 is 0.65. The only amount a client sends is a coin, written as in the
+    statement: `0.05`, `0.10`, `0.25` or `1`, always as a JSON string. Any other spelling (`0.1`,
+    `1.00`, a number) is refused with 422.
+
+    **Commands and queries.** Every `POST` is a command: it answers `204 No Content` with no body,
+    and what it did is read with a `GET`, such as the tray after a purchase. Every `GET` is a query.
+
+    **Errors.** A refused request answers with `{"error": {"code": 409, "message": "..."}}`, in
+    JSON, whatever the route. A route that does not exist answers 404 and a known route called
+    with another method answers 405, in the same format. The messages are for people, not for
+    programs: a client decides by the status.
+
+    Servicing the machine (setting the stock and the change) stays in the console until technicians
+    can log in.
+
+servers:
+  - url: https://vending-machine.test
+    description: Local, behind Traefik with an mkcert certificate
+
+tags:
+  - name: Machine
+    description: Products, credit and coins
+  - name: Tray
+    description: What the machine has dropped
+  - name: Health
+    description: Liveness and readiness probes
+
+paths:
+  /machine:
+    get:
+      operationId: getMachine
+      tags: [Machine]
+      summary: Read the products and the credit
+      description: Each product with its price in cents and whether a unit is left, and the credit inserted so far, in cents.
+      responses:
+        '200':
+          description: The machine as the customer sees it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Machine'
+              example:
+                products:
+                  - { selector: WATER, name: Water, priceCents: 65, available: true }
+                  - { selector: JUICE, name: Juice, priceCents: 100, available: true }
+                  - { selector: SODA, name: Soda, priceCents: 150, available: true }
+                creditCents: 0
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /machine/coins:
+    post:
+      operationId: insertCoin
+      tags: [Machine]
+      summary: Insert a coin
+      description: Adds the coin to the credit. A coin the machine does not take is refused and the credit stays as it was.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsertCoinRequest'
+            example:
+              coin: '0.25'
+      responses:
+        '204':
+          description: The coin is in the credit.
+        '400':
+          description: The body is not valid JSON, or there is no body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 400, message: Request payload contains invalid "json" data. }
+        '415':
+          description: 'The body is not sent as JSON (`Content-Type: application/json`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 415, message: 'Unsupported format, "txt" must be explicitly listed in "acceptFormat".' }
+        '422':
+          description: |
+            The body has no `coin`, the `coin` is not a string, or it is not one of the coins the
+            machine takes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                foreignCoin:
+                  summary: A coin the machine does not take
+                  value:
+                    error: { code: 422, message: 'The machine does not accept a coin of 0.50: it takes 0.05, 0.10, 0.25 and 1.' }
+                missingCoin:
+                  summary: A body without a coin
+                  value:
+                    error: { code: 422, message: Failed to create object because the class misses the "coin" property. }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /machine/selections/{selector}:
+    post:
+      operationId: selectProduct
+      tags: [Machine]
+      summary: Select a product
+      description: |
+        Sells the product when the credit pays its price: the product drops into the tray with the
+        change, and the credit goes to zero. A refused selection keeps the credit.
+      parameters:
+        - name: selector
+          in: path
+          required: true
+          description: The selector of the product, as `GET /machine` lists it.
+          schema:
+            type: string
+            pattern: '^[A-Z0-9_]+$'
+          example: WATER
+      responses:
+        '204':
+          description: The product and the change are in the tray.
+        '404':
+          description: No product has that selector.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 404, message: There is no product with selector COFFEE. }
+        '409':
+          description: The machine cannot sell it now. The credit stays as it was.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                insufficientCredit:
+                  summary: The credit does not cover the price
+                  value:
+                    error: { code: 409, message: The credit of 25 cents does not cover the price of 65 cents. }
+                soldOut:
+                  summary: No unit is left
+                  value:
+                    error: { code: 409, message: The product of selector WATER is sold out. }
+                noExactChange:
+                  summary: The machine has not the coins to give the change
+                  value:
+                    error: { code: 409, message: Cannot give exactly 35 cents with the coins available. }
+        '422':
+          description: The selector is not made of uppercase letters, digits and underscores.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: { code: 422, message: 'A selector is made of uppercase letters, digits and underscores, got "water".' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /machine/coin-return:
+    post:
+      operationId: returnCoins
+      tags: [Machine]
+      summary: Return the credit
+      description: Drops the credit into the tray as coins, and leaves no credit.
+      responses:
+        '204':
+          description: The coins are in the tray.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /machine/tray:
+    get:
+      operationId: getTray
+      tags: [Tray]
+      summary: Read the tray
+      description: The products in the tray and the coins, each as its cents, from the largest.
+      responses:
+        '200':
+          description: The tray, empty when there is nothing in it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tray'
+              examples:
+                afterAPurchase:
+                  summary: A water bought with a coin of 1
+                  value:
+                    selectors: [WATER]
+                    coins: [25, 10]
+                empty:
+                  summary: Nothing dropped, or already collected
+                  value:
+                    selectors: []
+                    coins: []
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /machine/tray/collect:
+    post:
+      operationId: collectTray
+      tags: [Tray]
+      summary: Collect the tray
+      description: Empties the tray. Collecting an empty tray is not an error.
+      responses:
+        '204':
+          description: The tray is empty.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health-check:
+    get:
+      operationId: getLiveness
+      tags: [Health]
+      summary: Liveness
+      description: |
+        Answers 200 whenever the application answers, even when a dependency is `ko`, so a database
+        that does not answer never marks the application itself as down.
+      responses:
+        '200':
+          description: The application is alive; `checks` tells the state of each dependency.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+              examples:
+                allOk:
+                  value:
+                    status: ok
+                    checks: { database: ok }
+                databaseDown:
+                  value:
+                    status: ok
+                    checks: { database: ko }
+
+  /health-check/ready:
+    get:
+      operationId: getReadiness
+      tags: [Health]
+      summary: Readiness
+      description: Answers 503 when any dependency is `ko`, so a Docker healthcheck can wait for the database.
+      responses:
+        '200':
+          description: Every dependency is `ok`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+              example:
+                status: ok
+                checks: { database: ok }
+        '503':
+          description: At least one dependency is `ko`. The body has the same shape as in the 200 answer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+              example:
+                status: ok
+                checks: { database: ko }
+
+components:
+  schemas:
+    Machine:
+      type: object
+      required: [products, creditCents]
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        creditCents:
+          type: integer
+          minimum: 0
+          description: The credit inserted so far, in cents.
+          example: 125
+
+    Product:
+      type: object
+      required: [selector, name, priceCents, available]
+      properties:
+        selector:
+          type: string
+          pattern: '^[A-Z0-9_]+$'
+          example: WATER
+        name:
+          type: string
+          example: Water
+        priceCents:
+          type: integer
+          minimum: 1
+          description: The price in cents.
+          example: 65
+        available:
+          type: boolean
+          description: Whether a unit is left.
+
+    InsertCoinRequest:
+      type: object
+      required: [coin]
+      properties:
+        coin:
+          type: string
+          enum: ['0.05', '0.10', '0.25', '1']
+          description: The coin as written in the statement. A string, never a number.
+
+    Tray:
+      type: object
+      required: [selectors, coins]
+      properties:
+        selectors:
+          type: array
+          description: The selector of each product, in the order they dropped.
+          items:
+            type: string
+            pattern: '^[A-Z0-9_]+$'
+        coins:
+          type: array
+          description: The cents of each coin, from the largest.
+          items:
+            type: integer
+            enum: [5, 10, 25, 100]
+
+    HealthCheck:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: The application itself, which is `ok` whenever it answers.
+        checks:
+          type: object
+          description: Each dependency by its name.
+          additionalProperties:
+            type: string
+            enum: [ok, ko]
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: integer
+              description: The HTTP status of the answer.
+            message:
+              type: string
+              description: The reason, for people. A 5xx hides it outside debug mode.
+
+  responses:
+    InternalServerError:
+      description: An unexpected failure, for example a command that kept meeting concurrent updates.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: { code: 500, message: Internal server error }

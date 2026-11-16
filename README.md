@@ -21,7 +21,7 @@ Everything runs in Docker: the host needs no PHP, Composer or MySQL.
 - Docker Engine with Compose v2 (`docker compose`)
 - GNU make
 - [mkcert](https://github.com/FiloSottile/mkcert#installation), for the local HTTPS certificate
-- `sudo` rights, once, to add the hostname to `/etc/hosts` and trust the mkcert authority
+- `sudo` rights, once, to add the hostnames to `/etc/hosts` and trust the mkcert authority
 - Free ports on localhost: 80, 443, 8080 (Traefik dashboard), 3307 (MySQL) and 27018 (MongoDB).
   They can be changed in `.env`.
 
@@ -68,6 +68,7 @@ new migration).
 | Service | Where |
 |---|---|
 | Web | <https://vending-machine.test> |
+| API documentation (Swagger UI) | <https://docs.vending-machine.test> |
 | Traefik dashboard | <http://127.0.0.1:8080> |
 | MySQL | `127.0.0.1:3307`, databases `app` and `app_test`, user `app` and password `app` as set in `.env` (`make db-shell`) |
 | MongoDB (profile `mongo`) | `127.0.0.1:27018`, database `app`, user `root` and password `root` as set in `.env` |
@@ -203,6 +204,16 @@ an unknown selector; `409` when the credit does not pay the product, it is sold 
 has no exact change; `422` for a foreign coin, a body without a coin as a string or a malformed
 selector. Servicing the machine stays in the console until technicians can log in.
 
+[`docs/openapi.yaml`](docs/openapi.yaml) describes every route, with its bodies, the statuses it
+answers and an example of each. It is written by hand, so it needs no bundle or attributes in the
+code, and `tests/Integration/Shared/Infrastructure/OpenApiDocumentTest.php` fails when a route is
+missing from it, a documented route does not exist, or a status the exception listener maps is
+documented nowhere. Read it, and try the requests, in Swagger UI at <https://docs.vending-machine.test>
+(the `swagger-ui` service serves the file from `docs/`). The API answers cross-origin requests from
+that origin only, through a Traefik headers middleware on its router. Swagger UI is static, so Traefik
+reaches it over plain HTTP inside the Docker network, with no re-encryption. PhpStorm renders the
+file too, or paste it into [Swagger Editor](https://editor.swagger.io).
+
 The API and the console use the same machine, stored in MySQL: credit inserted over HTTP is credit
 that `vending:run` sees, and the other way round. Start from `make run -- vending:reset` to get the
 answers above. The functional tests play the statement's three examples through the API, each from
@@ -255,10 +266,12 @@ info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation
 
 `make setup-host` (part of `make first-run`) does two things, both idempotent:
 
-1. `etc/infrastructure/setup-hostname.sh` appends one line to `/etc/hosts` (asks for sudo):
+1. `etc/infrastructure/setup-hostname.sh` appends one line per host to `/etc/hosts` (asks for
+   sudo), the API and its Swagger UI, since `/etc/hosts` has no wildcards:
 
    ```
    127.0.0.1 vending-machine.test
+   127.0.0.1 docs.vending-machine.test
    ```
 
    `.test` is a top-level domain reserved for testing, so it never clashes with a real site.
@@ -269,7 +282,7 @@ info up (`make logs php-fpm`), all but the `event`, `messenger` and `deprecation
    its key and a copy of the authority's public certificate go to `etc/infrastructure/certs/`, which
    git ignores.
 
-To undo both: remove the line from `/etc/hosts`, and run `mkcert -uninstall` (only if no other
+To undo both: remove the lines from `/etc/hosts`, and run `mkcert -uninstall` (only if no other
 project of yours uses mkcert).
 
 ## How a request travels
@@ -363,6 +376,7 @@ tests/Integration/   Tests that boot the kernel (tests/Integration/<Context>/...
 etc/infrastructure   Docker images and the host setup scripts.
 etc/git              Git hooks.
 etc/postman          Postman collection and environment.
+docs/                The OpenAPI document of the HTTP API.
 ```
 
 A second context, `Maintenance` (technicians and their login), will arrive with technician

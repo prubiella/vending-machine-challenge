@@ -35,9 +35,29 @@ services:
       - traefik.http.routers.vending-machine.rule=Host(`${PROJECT_HOSTNAME}`)
       - traefik.http.routers.vending-machine.entrypoints=https
       - traefik.http.routers.vending-machine.tls=true
+      - traefik.http.routers.vending-machine.middlewares=vending-machine-cors
       - traefik.http.services.vending-machine.loadbalancer.server.port=443
       - traefik.http.services.vending-machine.loadbalancer.server.scheme=https
       - traefik.http.services.vending-machine.loadbalancer.serverstransport=nginx@file
+      # Only Swagger UI, served from its own subdomain, may call the API from a browser.
+      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolalloworiginlist=https://docs.${PROJECT_HOSTNAME}
+      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS
+      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolallowheaders=Content-Type
+      - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolmaxage=600
+      - traefik.http.middlewares.vending-machine-cors.headers.addvaryheader=true
+
+  swagger-ui:
+    image: "swaggerapi/swagger-ui:${SWAGGER_UI_VERSION:-v5.34.1}"
+    environment:
+      - SWAGGER_JSON=/spec/openapi.yaml
+    volumes:
+      - ./docs:/spec:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.swagger-ui.rule=Host(`docs.${PROJECT_HOSTNAME}`)
+      - traefik.http.routers.swagger-ui.entrypoints=https
+      - traefik.http.routers.swagger-ui.tls=true
+      - traefik.http.services.swagger-ui.loadbalancer.server.port=8080
 
   traefik:
     image: "traefik:${TRAEFIK_VERSION:-v3.7.18}"

@@ -116,7 +116,9 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    argument of `JsonExceptionListener` in `config/services.yaml`, by its exact class: one without
    an entry answers 400. Add the request to
    `etc/postman/vending-machine.postman_collection.json`, in its context's folder, with `{{baseUrl}}`
-   for the host and test scripts for the status and body.
+   for the host and test scripts for the status and body. Document the route in
+   `docs/openapi.yaml` with every status it can answer and an example of each:
+   `OpenApiDocumentTest` fails while a route and the document disagree.
 5. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
    and for every handler with logic of its own; integration tests in `tests/Integration/<Context>/`
    for wiring that only the kernel can prove. A handler with no logic (one that returns a
