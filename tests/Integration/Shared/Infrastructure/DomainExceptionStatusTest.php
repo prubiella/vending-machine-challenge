@@ -55,8 +55,8 @@ final class DomainExceptionStatusTest extends KernelTestCase
             if ('php' !== $file->getExtension()) {
                 continue;
             }
-            $class = 'App\\'.str_replace('/', '\\', substr($file->getPathname(), \strlen(self::projectDir().'/src/'), -4));
-            if (class_exists($class) && is_subclass_of($class, DomainException::class) && new \ReflectionClass($class)->isFinal()) {
+            $class = self::classNameOf($file);
+            if (self::isFinalDomainException($class)) {
                 $classes[] = $class;
             }
         }
@@ -65,6 +65,21 @@ final class DomainExceptionStatusTest extends KernelTestCase
         self::assertNotSame([], $classes);
 
         return $classes;
+    }
+
+    private static function classNameOf(\SplFileInfo $file): string
+    {
+        $relativePath = substr($file->getPathname(), \strlen(self::projectDir().'/src/'), -\strlen('.php'));
+
+        return 'App\\'.str_replace('/', '\\', $relativePath);
+    }
+
+    /**
+     * @phpstan-assert-if-true class-string<DomainException> $class
+     */
+    private static function isFinalDomainException(string $class): bool
+    {
+        return class_exists($class) && is_subclass_of($class, DomainException::class) && new \ReflectionClass($class)->isFinal();
     }
 
     /**
