@@ -12,8 +12,12 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Event\CreditReturned;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Event\ProductInstalled;
+use App\VendingMachine\Domain\Event\ProductRetired;
 use App\VendingMachine\Domain\Event\ProductSold;
 use App\VendingMachine\Domain\Event\StockRunningLow;
+use App\VendingMachine\Domain\Inventory\CatalogChange;
+use App\VendingMachine\Domain\Inventory\ContradictoryCatalogChangeException;
 use App\VendingMachine\Domain\Inventory\Inventory;
 use App\VendingMachine\Domain\Inventory\InventoryCapacityExceededException;
 use App\VendingMachine\Domain\Inventory\Slot;
@@ -450,6 +454,131 @@ final class VendingMachineTest extends TestCase
         self::assertSame([], $machine->releaseEvents());
     }
 
+    public function testServiceInstallsANewProductThatACustomerCanBuy(): void
+    {
+        $machine = self::serviced();
+
+        $machine->service(self::technician(), [], CoinCollection::of(Coin::TwentyFiveCents), self::installs(Slot::installed(self::product('TEA', 'Tea', 120), 4)));
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->insertCoin(Coin::TenCents);
+        $machine->insertCoin(Coin::TenCents);
+        $machine->select(Selector::fromString('TEA'), self::changeMaker());
+
+        self::assertSame(['Tea'], self::productsInTray($machine));
+        self::assertSame(3, self::unitsOf($machine, 'TEA'));
+    }
+
+    public function testServiceRetiresAProductSoNoCustomerCanBuyIt(): void
+    {
+        $machine = self::serviced();
+
+        $machine->service(self::technician(), [], CoinCollection::empty(), self::retires('WATER'));
+
+        self::assertSame(['JUICE', 'SODA'], self::selectorsOf($machine));
+        $machine->insertCoin(Coin::OneHundredCents);
+        self::assertSelectionRefused($machine, 'WATER', UnknownSelectorException::class);
+    }
+
+    public function testServiceReplacesOneProductByAnotherAtOnce(): void
+    {
+        $machine = self::serviced();
+
+        $machine->service(
+            self::technician(),
+            ['SODA' => 7],
+            CoinCollection::empty(),
+            CatalogChange::of([Slot::installed(self::product('TEA', 'Tea', 120), 6)], [Selector::fromString('JUICE')]),
+        );
+
+        self::assertSame(['WATER', 'SODA', 'TEA'], self::selectorsOf($machine));
+        self::assertSame(6, self::unitsOf($machine, 'TEA'));
+        self::assertSame(7, self::unitsOf($machine, 'SODA'));
+    }
+
+    public function testInstallingASelectorTheMachineHasChangesItsNameAndPrice(): void
+    {
+        $machine = self::serviced();
+
+        $machine->service(self::technician(), [], CoinCollection::empty(), self::installs(Slot::installed(self::product('WATER', 'Still water', 70), 9)));
+
+        $water = $machine->inventory()->slotFor(Selector::fromString('WATER'));
+        self::assertSame('Still water', $water->product()->name()->value());
+        self::assertSame(70, $water->product()->price()->cents());
+        self::assertSame(9, $water->units());
+        self::assertSame(['WATER', 'JUICE', 'SODA'], self::selectorsOf($machine));
+    }
+
+    public function testTheSameChangeOfCatalogTwiceLeavesTheSameMachine(): void
+    {
+        $machine = self::serviced();
+        $change = self::installs(Slot::installed(self::product('TEA', 'Tea', 120), 6), Slot::installed(self::product('WATER', 'Water', 70), 3));
+
+        $machine->service(self::technician(), ['SODA' => 2], CoinCollection::of(Coin::TenCents), $change);
+        $once = self::snapshot($machine);
+        $machine->service(self::technician(), ['SODA' => 2], CoinCollection::of(Coin::TenCents), $change);
+
+        self::assertSame($once, self::snapshot($machine));
+    }
+
+    public function testRetiringAProductTheMachineNoLongerHasChangesNothing(): void
+    {
+        $machine = self::serviced();
+        $machine->service(self::technician(), [], CoinCollection::empty(), self::retires('WATER'));
+
+        self::assertServiceRefused($machine, UnknownSelectorException::class, [], self::retires('WATER'));
+    }
+
+    public function testARetiredProductWaitingInTheTrayStaysThere(): void
+    {
+        $machine = self::serviced();
+        $machine->insertCoin(Coin::OneHundredCents);
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        $machine->service(self::technician(), [], CoinCollection::empty(), self::retires('WATER'));
+
+        self::assertSame(['Water'], self::productsInTray($machine));
+    }
+
+    public function testServiceRetiringAnUnknownSelectorChangesNothing(): void
+    {
+        self::assertServiceRefused(self::serviced(), UnknownSelectorException::class, ['WATER' => 1], self::retires('COFFEE'));
+    }
+
+    public function testServiceGivingUnitsToAProductItRetiresChangesNothing(): void
+    {
+        self::assertServiceRefused(self::serviced(), ContradictoryCatalogChangeException::class, ['WATER' => 1], self::retires('WATER'));
+    }
+
+    public function testServiceGivingUnitsToAProductItInstallsChangesNothing(): void
+    {
+        self::assertServiceRefused(
+            self::serviced(),
+            ContradictoryCatalogChangeException::class,
+            ['TEA' => 1],
+            self::installs(Slot::installed(self::product('TEA', 'Tea', 120), 6)),
+        );
+    }
+
+    public function testServiceInstallingAPriceTheCoinsCannotPayChangesNothing(): void
+    {
+        self::assertServiceRefused(
+            self::serviced(),
+            UnpayablePriceException::class,
+            ['WATER' => 1],
+            self::installs(Slot::installed(self::product('TEA', 'Tea', 67), 6)),
+        );
+    }
+
+    public function testServiceInstallingPastTheCapacityOfTheMachineChangesNothing(): void
+    {
+        $slots = array_map(
+            static fn (int $number): Slot => Slot::installed(self::product('P'.$number, 'Product '.$number, 100), 1),
+            range(1, Inventory::CAPACITY - 2),
+        );
+
+        self::assertServiceRefused(self::serviced(), InventoryCapacityExceededException::class, ['WATER' => 1], self::installs(...$slots));
+    }
+
     public function testInstallingAMachineRefusesAPriceTheCoinsCannotPay(): void
     {
         $this->expectException(UnpayablePriceException::class);
@@ -477,6 +606,36 @@ final class VendingMachineTest extends TestCase
         );
 
         self::assertSame(67, $machine->inventory()->slotFor(Selector::fromString('TEA'))->product()->price()->cents());
+    }
+
+    public function testServiceRecordsWhoRetiredAndInstalledWhatAfterTheService(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+        $tea = self::product('TEA', 'Tea', 120);
+
+        $machine->service(self::technician(), [], CoinCollection::empty(), CatalogChange::of([Slot::installed($tea, 3)], [Selector::fromString('WATER')]));
+
+        $events = $machine->releaseEvents();
+        self::assertSame([MachineServiced::class, ProductRetired::class, ProductInstalled::class], array_map(static fn (object $event): string => $event::class, $events));
+        self::assertInstanceOf(ProductRetired::class, $events[1]);
+        self::assertTrue($events[1]->technicianId()->equals(self::technician()));
+        self::assertSame('Water', $events[1]->product()->name()->value());
+        self::assertSame(5, $events[1]->unitsRemoved());
+        self::assertInstanceOf(ProductInstalled::class, $events[2]);
+        self::assertTrue($events[2]->technicianId()->equals(self::technician()));
+        self::assertSame($tea, $events[2]->product());
+        self::assertSame(3, $events[2]->units());
+    }
+
+    public function testAProductInstalledWithFewUnitsRecordsNoLowStock(): void
+    {
+        $machine = self::serviced();
+        $machine->releaseEvents();
+
+        $machine->service(self::technician(), [], CoinCollection::empty(), self::installs(Slot::installed(self::product('TEA', 'Tea', 120), Slot::LOW_STOCK_THRESHOLD)));
+
+        self::assertSame([MachineServiced::class, ProductInstalled::class], array_map(static fn (object $event): string => $event::class, $machine->releaseEvents()));
     }
 
     public function testASaleThatLeavesASlotAtTheLowStockThresholdRecordsThatItRunsLow(): void
@@ -550,6 +709,44 @@ final class VendingMachineTest extends TestCase
         }
     }
 
+    /**
+     * @param class-string<DomainException> $exception
+     * @param array<int|string, int>        $unitsBySelector
+     */
+    private static function assertServiceRefused(VendingMachine $machine, string $exception, array $unitsBySelector, CatalogChange $catalogChange): void
+    {
+        $machine->insertCoin(Coin::TenCents);
+        $machine->releaseEvents();
+        $before = self::snapshot($machine);
+
+        try {
+            $machine->service(self::technician(), $unitsBySelector, CoinCollection::of(Coin::TwentyFiveCents), $catalogChange);
+            self::fail(\sprintf('Expected %s.', $exception));
+        } catch (DomainException $refusal) {
+            self::assertInstanceOf($exception, $refusal);
+            self::assertSame($before, self::snapshot($machine));
+            self::assertSame([], $machine->releaseEvents());
+        }
+    }
+
+    private static function installs(Slot ...$slots): CatalogChange
+    {
+        return CatalogChange::of(array_values($slots), []);
+    }
+
+    private static function retires(string ...$selectors): CatalogChange
+    {
+        return CatalogChange::of([], array_values(array_map(Selector::fromString(...), $selectors)));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function selectorsOf(VendingMachine $machine): array
+    {
+        return array_map(static fn (Slot $slot): string => $slot->product()->selector()->value(), $machine->inventory()->slots());
+    }
+
     private static function installed(): VendingMachine
     {
         return VendingMachine::install(
@@ -583,12 +780,15 @@ final class VendingMachineTest extends TestCase
     }
 
     /**
-     * @return array{units: list<int>, credit: list<int>, stock: list<int>, trayProducts: list<string>, trayCoins: list<int>}
+     * @return array{slots: list<array{string, string, int, int}>, credit: list<int>, stock: list<int>, trayProducts: list<string>, trayCoins: list<int>}
      */
     private static function snapshot(VendingMachine $machine): array
     {
         return [
-            'units' => [self::unitsOf($machine, 'WATER'), self::unitsOf($machine, 'JUICE'), self::unitsOf($machine, 'SODA')],
+            'slots' => array_map(
+                static fn (Slot $slot): array => [$slot->product()->selector()->value(), $slot->product()->name()->value(), $slot->product()->price()->cents(), $slot->units()],
+                $machine->inventory()->slots(),
+            ),
             'credit' => self::countsOf($machine->wallet()->credit()),
             'stock' => self::countsOf($machine->wallet()->stock()),
             'trayProducts' => self::productsInTray($machine),

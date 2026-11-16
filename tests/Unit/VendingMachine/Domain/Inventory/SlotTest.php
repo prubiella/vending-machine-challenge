@@ -87,6 +87,30 @@ final class SlotTest extends TestCase
         Slot::of(self::water(), 2)->restockedTo(Slot::CAPACITY + 1);
     }
 
+    public function testAnInstalledSlotHoldsTheUnitsItIsInstalledWith(): void
+    {
+        $product = self::water();
+
+        $slot = Slot::installed($product, Slot::CAPACITY);
+
+        self::assertSame($product, $slot->product());
+        self::assertSame(Slot::CAPACITY, $slot->units());
+    }
+
+    public function testRefusesToBeInstalledPastItsCapacity(): void
+    {
+        $this->expectException(SlotCapacityExceededException::class);
+
+        Slot::installed(self::water(), Slot::CAPACITY + 1);
+    }
+
+    public function testRefusesToBeInstalledWithNegativeUnits(): void
+    {
+        $this->expectException(NegativeUnitsException::class);
+
+        Slot::installed(self::water(), -1);
+    }
+
     public function testRunsLowAtTheThresholdAndUnderIt(): void
     {
         self::assertFalse(Slot::of(self::water(), Slot::LOW_STOCK_THRESHOLD + 1)->isRunningLow());

@@ -9,6 +9,8 @@ use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Change\FewestCoinsChangeMaker;
 use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
+use App\VendingMachine\Domain\Inventory\CatalogChange;
+use App\VendingMachine\Domain\Inventory\Slot;
 use App\VendingMachine\Domain\MachineId;
 use App\VendingMachine\Domain\Product\Product;
 use App\VendingMachine\Domain\Product\ProductName;
@@ -85,6 +87,40 @@ final class OutboxEventFactoryTest extends TestCase
 
         self::assertSame(OutboxEventFactory::STOCK_RUNNING_LOW, $events[2]->type);
         self::assertSame(['selector' => 'WATER', 'units_left' => 5], $events[2]->payload);
+    }
+
+    public function testDescribesWhatAServiceRetiredAndInstalledWithWhoDidIt(): void
+    {
+        $machine = self::machine();
+        $machine->service(TechnicianId::fromString(self::TECHNICIAN_ID), ['WATER' => 4], CoinCollection::empty());
+        $machine->service(
+            TechnicianId::fromString(self::TECHNICIAN_ID),
+            [],
+            CoinCollection::empty(),
+            CatalogChange::of(
+                [Slot::installed(Product::of(Selector::fromString('TEA'), ProductName::fromString('Tea'), Money::fromCents(120)), 3)],
+                [Selector::fromString('WATER')],
+            ),
+        );
+
+        $events = self::factory()->releasedFrom($machine);
+
+        self::assertSame('product_retired', $events[2]->type);
+        self::assertSame([
+            'technician_id' => self::TECHNICIAN_ID,
+            'selector' => 'WATER',
+            'name' => 'Water',
+            'price_cents' => 65,
+            'units_removed' => 4,
+        ], $events[2]->payload);
+        self::assertSame('product_installed', $events[3]->type);
+        self::assertSame([
+            'technician_id' => self::TECHNICIAN_ID,
+            'selector' => 'TEA',
+            'name' => 'Tea',
+            'price_cents' => 120,
+            'units' => 3,
+        ], $events[3]->payload);
     }
 
     private static function factory(): OutboxEventFactory

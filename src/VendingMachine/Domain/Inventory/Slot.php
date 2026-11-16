@@ -26,6 +26,14 @@ final readonly class Slot
         return new self($product, $units);
     }
 
+    /**
+     * A slot a service installs, bounded by its capacity as a restock is.
+     */
+    public static function installed(Product $product, int $units): self
+    {
+        return self::of($product, 0)->restockedTo($units);
+    }
+
     public function product(): Product
     {
         return $this->product;
