@@ -12,7 +12,7 @@ require __DIR__.'/../../../vendor/autoload.php';
 
 use Symfony\Component\Process\Process;
 
-const CHECKED_PATHS = '/^(src\/|tests\/|config\/|migrations\/|composer\.(json|lock)$|phpunit\.dist\.xml$|phpstan\.dist\.neon$|deptrac\.yaml$|\.php-cs-fixer\.dist\.php$)/';
+const CHECKED_PATHS = '/^(src\/|tests\/|features\/|config\/|migrations\/|composer\.(json|lock)$|phpunit\.dist\.xml$|behat\.dist\.php$|phpstan\.dist\.neon$|deptrac\.yaml$|\.php-cs-fixer\.dist\.php$)/';
 const PHP_FILE = '/\.php$/';
 
 function stagedFiles(string $diffFilter): array
@@ -94,5 +94,6 @@ runCheck('PHPStan', ['vendor/bin/phpstan', 'analyse', '--no-progress']);
 runCheck('Layer dependencies', ['vendor/bin/deptrac', '--no-progress', '--fail-on-uncovered']);
 runCheck('Classes outside every layer', ['vendor/bin/deptrac', 'debug:unassigned']);
 runCheck('Tests', ['vendor/bin/phpunit']);
+runCheck('Scenarios', ['vendor/bin/behat', '--format', 'progress']);
 
 echo "\033[32mAll checks passed.\033[0m\n";

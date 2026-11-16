@@ -119,7 +119,10 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
    for the host and test scripts for the status and body. Document the route in
    `docs/openapi.yaml` with every status it can answer and an example of each:
    `OpenApiDocumentTest` fails while a route and the document disagree.
-5. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
+5. Scenario: a customer use case gets a scenario in `features/customer/<topic>.feature`, written in
+   the customer's words, reusing the steps of `tests/Behat/CustomerContext.php` and adding one only
+   when no step says it. Feature files hold no PHP and no HTTP details.
+6. Tests: unit tests in `tests/Unit/<Context>/` mirroring `src/<Context>/`, for every domain rule
    and for every handler with logic of its own; integration tests in `tests/Integration/<Context>/`
    for wiring that only the kernel can prove. A handler with no logic (one that returns a
    constant) is covered by the integration test that routes a message to it, since PHPStan rejects
@@ -144,11 +147,15 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
 
 ## Checks
 
-`make test`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or `make code-check` for
-all of them. They must pass before committing. The integration tests use the `app_test` database:
+`make test`, `make behat`, `make phpstan` (max level), `make deptrac`, `make cs-fixer`, or
+`make code-check` for all of them. They must pass before committing. The integration tests use the `app_test` database:
 `make migrate` brings it up to date (from a worktree, `bin/console doctrine:migrations:migrate -n
 --env=test` through `run-in-php-image.sh`), and a kernel test that touches the machine uses
-`StartsWithNoStoredMachine`, so it starts from the default machine. `make hooks` (part of
+`StartsWithNoStoredMachine`, so it starts from the default machine. Behat (`behat.dist.php`, the
+FriendsOfBehat Symfony extension) runs the scenarios of `features/` against the kernel through
+BrowserKit, on the same test database; `CustomerContext` deletes the stored machine before each
+scenario. `tests/Behat/` is outside `src/`, so deptrac does not see it, and PHPStan analyses it with
+the rest of `tests/`. `make hooks` (part of
 `make first-run`) enables the git hooks: pre-commit runs the checks when code, configuration or
 tooling is staged, and refuses the commit when those staged files also have unstaged changes, since
 the checks read the disk.
