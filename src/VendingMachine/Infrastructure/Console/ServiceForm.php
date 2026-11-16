@@ -25,8 +25,6 @@ final readonly class ServiceForm
     /**
      * @param array<string, int> $givenUnits the units of each selector
      * @param array<int, int>    $givenCoins the count of each coin, by its cents
-     *
-     * @return bool whether the machine was serviced
      */
     public function service(InputInterface $input, SymfonyStyle $io, array $givenUnits = [], array $givenCoins = []): bool
     {
