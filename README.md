@@ -516,8 +516,8 @@ environment that points `baseUrl` at `https://vending-machine.test`.
 3. Select the `vending-machine.test` environment and send a request, or run the whole collection.
 
 The `Maintenance` folder logs in as the technician of the environment (`technicianUsername`,
-`technicianPassword`) and keeps the token for the technician's requests, such as `Get machine
-status`. Create that technician once:
+`technicianPassword`) and keeps the token for the technician's requests, such as
+`18. Get machine status as a technician`. Create that technician once:
 `make run -- vending:technician:create --username postman --email postman@example.com --password postman-password`.
 
 The `VendingMachine` folder is a customer's session told as a story. It plays the statement's last
