@@ -97,6 +97,17 @@ final class VendingMachineMapperTest extends TestCase
         $mapper->fromDocument($document);
     }
 
+    public function testLoadsAStoredTubeAbovePastItsCapacityBecauseSalesMayFillItBeyond(): void
+    {
+        $mapper = new VendingMachineMapper();
+        $document = $mapper->toDocument(self::machine());
+        $document['wallet_stock'] = [5 => 2, 10 => 1, 25 => Wallet::TUBE_CAPACITY + 3, 100 => 0];
+
+        $loaded = $mapper->toDocument($mapper->fromDocument($document));
+
+        self::assertSame(Wallet::TUBE_CAPACITY + 3, $loaded['wallet_stock'][25]);
+    }
+
     public function testRefusesAStoredMachineThatBreaksARuleAsBrokenStorageNotAsARefusal(): void
     {
         $mapper = new VendingMachineMapper();
