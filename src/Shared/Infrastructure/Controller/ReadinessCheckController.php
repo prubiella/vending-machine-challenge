@@ -6,6 +6,7 @@ namespace App\Shared\Infrastructure\Controller;
 
 use App\Shared\Application\Query\HealthCheck\HealthCheckQuery;
 use App\Shared\Application\Query\HealthCheck\HealthCheckResponse;
+use App\Shared\Infrastructure\HealthCheck\ReadinessRule;
 use App\Shared\Infrastructure\Symfony\Controller\BaseController;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,8 +17,6 @@ final class ReadinessCheckController extends BaseController
         $health = $this->query(new HealthCheckQuery());
         \assert($health instanceof HealthCheckResponse);
 
-        $ready = !\in_array(HealthCheckResponse::KO, $health->checks, true);
-
-        return $this->json($health, $ready ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE);
+        return $this->json($health, ReadinessRule::isReady($health) ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE);
     }
 }
