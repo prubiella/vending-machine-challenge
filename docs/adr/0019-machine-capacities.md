@@ -24,6 +24,10 @@ change.
   ones that do not fit their tube, which go to the cash box (`Wallet::cashBox()`), as the overflow of
   a real machine does. Coins of 1 are never given as change, so they have no tube to fill and always go
   to the cash box. A tube already past 500 (a machine stored before the cash box) takes no more coins.
+- The coins that go to the cash box are not a rule of the wallet: `Wallet::charge()` asks the change
+  maker which coins it gives (`ChangeMaker::gives()`, answered from the coins it is configured with,
+  ADR 8) and sends every other coin to the cash box, so the configuration stays the only place that
+  says the 1 is never given as change.
 - The cash box is never used for change: the change maker only sees the tubes. It is filled by a
   sale only, and `SERVICE` empties it, since the technician takes the money; `SERVICE` still sets the
   tube of the 1s like any other.
