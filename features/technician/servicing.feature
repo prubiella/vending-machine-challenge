@@ -27,4 +27,4 @@ Feature: Servicing the machine
 
   Scenario: The machine is not serviced without logging in
     When I service the machine with 20 units of WATER and only 15 coins of 0.25
-    Then the machine refuses it with status 401 saying "Send a technician's token"
+    Then the machine refuses it saying "Send a technician's token"

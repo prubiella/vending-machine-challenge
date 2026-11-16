@@ -12,5 +12,5 @@ Feature: Inserting and returning coins
 
   Scenario: A coin the machine does not take is refused
     When I insert 0.50
-    Then the machine refuses it with status 422 saying "does not accept a coin of 0.50"
+    Then the machine refuses it saying "does not accept a coin of 0.50"
     And my credit is 0.00

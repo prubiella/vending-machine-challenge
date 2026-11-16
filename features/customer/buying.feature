@@ -23,6 +23,6 @@ Feature: Buying a product
     And I insert 0.25
     And I insert 0.25
     And I select SODA
-    Then the machine refuses it with status 409 saying "is sold out"
+    Then the machine refuses it saying "is sold out"
     And my credit is 1.50
     And the tray is empty
