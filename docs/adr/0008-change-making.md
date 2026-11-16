@@ -27,7 +27,9 @@ statement also limits what change may be made of, and says what RETURN-COIN give
   the change maker, set in `config/services.yaml`. Coins of 1 are never given as change: an
   inserted one goes to the cash box ([ADR 19](0019-machine-capacities.md)), and one stocked through
   SERVICE stays in its tube.
-- On a sale the inserted coins join the coin stock first, and change is taken from that stock.
+- On a sale the inserted coins join the coin stock first, except the 1s and the coins that do not fit
+  their tube, which go to the cash box (ADR 19); change is taken from the stock. The wallet does not
+  know which coins are change: it asks the change maker (`ChangeMaker::gives()`).
 - RETURN-COIN is not change: it gives back exactly the coins inserted, a 1 included.
 - A refusal (insufficient credit, no exact change) keeps the credit.
 

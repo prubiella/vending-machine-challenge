@@ -213,7 +213,7 @@ classDiagram
     Product --> Money
     Product --> Selector
     Product --> ProductName
-    Wallet --> CoinCollection : credit and stock
+    Wallet --> CoinCollection : credit, stock and cash box
     Wallet ..> Payout : returns
     Payout --> CoinCollection
     Payout --> Wallet
@@ -242,8 +242,8 @@ the `Maintenance` context ([ADR 17](adr/0017-uuid-identities.md)).
 - **A refusal changes nothing and keeps the credit.** The customer can insert more coins, pick
   another product or ask for the coins back.
 - **A sale moves the credit into the stock first.** The inserted coins join the coin stock, and the
-  change is taken from that stock. A coin of 1 never leaves as change, so it goes to the cash box
-  ([ADR 8](adr/0008-change-making.md), [ADR 19](adr/0019-machine-capacities.md)).
+  change is taken from that stock. A coin the change maker never gives, the 1, has no tube to fill, so it goes to the cash box
+  (the wallet asks the change maker which coins it gives; [ADR 8](adr/0008-change-making.md), [ADR 19](adr/0019-machine-capacities.md)).
 - **`RETURN-COIN` is not change.** It gives back exactly the coins inserted, a 1 included.
 - **`SERVICE` sets, it does not add.** It returns the pending credit to the tray, then sets units
   and coin counts to the values given ([ADR 10](adr/0010-service-sets-stock-and-returns-credit.md)).
@@ -403,7 +403,7 @@ The machine is one MongoDB document of the `vending_machines` collection
 ([ADR 16](adr/0016-machine-stored-in-mongodb.md)), whose `_id` is the machine's UUID: the
 `vending_machine.id` parameter, `VENDING_MACHINE_ID` ([ADR 17](adr/0017-uuid-identities.md)). The aggregate is the consistency boundary, so
 one document is one atomic write. It holds a `version`, the `inventory`, the credit and the change
-in `wallet_credit` and `wallet_stock` (the count of each coin by its cents), and the `tray`.
+in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin by its cents), and the `tray`.
 
 - **Optimistic locking.** A save updates the document only where `version` is the one that was
   loaded, and it increments it. The first save is an insert, and a duplicate key there counts as a

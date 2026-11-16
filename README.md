@@ -176,7 +176,8 @@ How the machine behaves between runs:
   changes nothing. A sale is not bounded: the coins of a sale that do not fit their full tube go to
   the cash box too, which is never used for change. `SERVICE` empties the cash box and says what the
   technician collected (`Collected from the cash box: 3 x 1, 2 x 0.25 (3.50).`), and the log records it
-  ([ADR 19](docs/adr/0019-machine-capacities.md)).
+  ([ADR 19](docs/adr/0019-machine-capacities.md)). `PUT /machine/service` empties it too but answers
+  `204` without the amount, which is only in the log: read `GET /machine/status` first to see it.
 
 ## HTTP API
 
@@ -207,7 +208,7 @@ A technician logs in for a token and sends it as a bearer token to these routes:
 |---|---|---|
 | `POST /auth/login` with `{"username": "ana", "password": "..."}` | Gives a token that lasts one hour | `200 {"token": "..."}`, `401` for a wrong username or password |
 | `GET /machine/status` | The units of each product, the count of each coin in its tube and in the cash box, by cents | `200`, `401` without a valid token, `403` without the technician's role |
-| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot or a coin tube holds |
+| `PUT /machine/service` with `{"units": {"WATER": 20}, "coins": {"0.25": 15, "1": 0}}` | Services the machine as `vending:service` does: sets the given units and the whole change (a coin left out is set to none), and drops the credit into the tray; it also empties the cash box, and the amount collected is only in the log | `204`, `401`, `403`, `404` for a product the machine lacks, `409` when the retries ran out, `422` for a foreign coin, a negative count, or more than a slot or a coin tube holds |
 
 ```bash
 token=$(curl -s -X POST https://vending-machine.test/auth/login -H 'Content-Type: application/json' \
@@ -261,7 +262,7 @@ MongoDB stores the machine as one document of the `vending_machines` collection,
 UUID: `VENDING_MACHINE_ID`, a fixed default in `config/services.yaml` that `.env` can override
 ([ADR 16](docs/adr/0016-machine-stored-in-mongodb.md), [ADR 17](docs/adr/0017-uuid-identities.md)).
 It holds the `version` that optimistic locking checks, the `inventory`, the credit and the change
-(`wallet_credit` and `wallet_stock`, the count of each coin by its cents) and the `tray`. To look at
+(`wallet_credit`, `wallet_stock` and `wallet_cash_box`, the count of each coin by its cents) and the `tray`. To look at
 it:
 
 ```bash
