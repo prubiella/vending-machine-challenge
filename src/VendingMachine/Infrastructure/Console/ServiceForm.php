@@ -8,6 +8,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 final readonly class ServiceForm
@@ -21,14 +22,25 @@ final readonly class ServiceForm
      * @param array<string, int> $givenUnitsBySelector
      * @param array<int, int>    $givenCoinStockByCents
      */
-    public function fill(SymfonyStyle $io, array $givenUnitsBySelector = [], array $givenCoinStockByCents = []): ServiceMachineCommand
+    public function fill(InputInterface $input, SymfonyStyle $io, array $givenUnitsBySelector = [], array $givenCoinStockByCents = []): ?ServiceMachineCommand
     {
+        $startedInteractive = $input->isInteractive();
         $status = $this->machineStatus();
 
-        return new ServiceMachineCommand(
+        $service = new ServiceMachineCommand(
             self::unitsBySelector($io, $status, $givenUnitsBySelector),
             self::coinStockByCents($io, $status, $givenCoinStockByCents),
         );
+
+        // When the input runs out, the question helper turns it non-interactive and answers every
+        // question left with its default, so those answers are not the technician's.
+        if ($startedInteractive && !$input->isInteractive()) {
+            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
+
+            return null;
+        }
+
+        return $service;
     }
 
     /**

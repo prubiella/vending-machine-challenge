@@ -42,18 +42,9 @@ final readonly class VendingServiceCommand
         #[Option('The count of a coin, as COIN:COUNT, such as 0.25:10 (repeat it for each coin)')]
         array $coins = [],
     ): int {
-        $startedInteractive = $input->isInteractive();
-        $service = $this->serviceForm->fill($io, self::countsByKey('units', $units), self::countsByCents($coins));
+        $service = $this->serviceForm->fill($input, $io, self::countsByKey('units', $units), self::countsByCents($coins));
 
-        // When the input runs out, the question helper turns it non-interactive and answers every
-        // question left with its default, so those answers are not the technician's.
-        if ($startedInteractive && !$input->isInteractive()) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
-            return Command::FAILURE;
-        }
-
-        return $this->service($service, $io);
+        return null === $service ? Command::FAILURE : $this->service($service, $io);
     }
 
     private function service(ServiceMachineCommand $service, SymfonyStyle $io): int

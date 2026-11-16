@@ -95,17 +95,10 @@ final readonly class VendingRunCommand
 
     private function service(InputInterface $input, SymfonyStyle $io): void
     {
-        $service = $this->serviceForm->fill($io);
-
-        // When the input runs out, the question helper turns it non-interactive and answers every
-        // question left with its default, so those answers are not the technician's.
-        if (!$input->isInteractive()) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
-            return;
+        $service = $this->serviceForm->fill($input, $io);
+        if (null !== $service) {
+            $this->commandBus->dispatch($service);
         }
-
-        $this->commandBus->dispatch($service);
     }
 
     private function showProducts(SymfonyStyle $io): void
