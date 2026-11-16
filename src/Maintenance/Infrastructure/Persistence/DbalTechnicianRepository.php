@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Maintenance\Infrastructure\Persistence;
 
+use App\Maintenance\Domain\Technician\Email;
+use App\Maintenance\Domain\Technician\EmailTakenException;
 use App\Maintenance\Domain\Technician\HashedPassword;
 use App\Maintenance\Domain\Technician\Technician;
 use App\Maintenance\Domain\Technician\TechnicianId;
@@ -26,17 +28,19 @@ final readonly class DbalTechnicianRepository implements TechnicianRepository
             $this->connection->insert('technicians', [
                 'id' => $technician->id()->value(),
                 'username' => $technician->username()->value(),
+                'email' => $technician->email()->value(),
                 'password_hash' => $technician->password()->value(),
             ]);
         } catch (UniqueConstraintViolationException) {
-            throw UsernameTakenException::of($technician->username());
+            // Both columns are unique: the stored username tells which one clashed.
+            throw null === $this->byUsername($technician->username()) ? EmailTakenException::alreadyTaken() : UsernameTakenException::alreadyTaken();
         }
     }
 
     public function byUsername(Username $username): ?Technician
     {
         $row = $this->connection->fetchAssociative(
-            'SELECT id, password_hash FROM technicians WHERE username = ?',
+            'SELECT id, email, password_hash FROM technicians WHERE username = ?',
             [$username->value()],
         );
 
@@ -47,6 +51,7 @@ final readonly class DbalTechnicianRepository implements TechnicianRepository
         return Technician::register(
             TechnicianId::fromString(self::column($row, 'id')),
             $username,
+            Email::fromString(self::column($row, 'email')),
             HashedPassword::fromString(self::column($row, 'password_hash')),
         );
     }

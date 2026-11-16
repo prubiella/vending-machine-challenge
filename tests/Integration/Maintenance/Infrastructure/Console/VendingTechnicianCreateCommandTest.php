@@ -23,24 +23,27 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
     {
         $tester = self::tester();
 
-        $exitCode = $tester->execute(['--username' => 'ana', '--password' => 'correct-horse'], ['interactive' => false]);
+        $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'Ana@Example.com', '--password' => 'correct-horse'], ['interactive' => false]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         $technician = self::storedTechnician('ana');
+        self::assertSame('ana@example.com', $technician->email()->value());
         self::assertSame(\sprintf("Technician ana created with id %s.\n", $technician->id()->value()), $tester->getDisplay(true));
         self::assertTrue(Uuid::isValid($technician->id()->value()));
         self::assertPasswordIs('correct-horse', $technician);
     }
 
-    public function testAsksTheUsernameAndThePasswordTheOptionsLeaveOut(): void
+    public function testAsksTheUsernameTheEmailAndThePasswordTheOptionsLeaveOut(): void
     {
         $tester = self::tester();
-        $tester->setInputs(['ana', 'correct-horse']);
+        $tester->setInputs(['ana', 'ana@example.com', 'correct-horse']);
 
         $exitCode = $tester->execute([]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStringContainsString('Username', $tester->getDisplay(true));
+        self::assertStringContainsString('Email', $tester->getDisplay(true));
+        self::assertSame('ana@example.com', self::storedTechnician('ana')->email()->value());
         self::assertStringContainsString('Password', $tester->getDisplay(true));
         self::assertStringNotContainsString('correct-horse', $tester->getDisplay(true));
         self::assertPasswordIs('correct-horse', self::storedTechnician('ana'));
@@ -50,7 +53,7 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
     {
         $tester = self::tester();
 
-        $exitCode = $tester->execute(['--username' => 'ana'], ['interactive' => false, 'capture_stderr_separately' => true]);
+        $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'ana@example.com'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame("Give the technician a password with --password.\n", $tester->getErrorOutput(true));
@@ -59,21 +62,44 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
 
     public function testRefusesAUsernameAlreadyTaken(): void
     {
-        self::tester()->execute(['--username' => 'ana', '--password' => 'correct-horse'], ['interactive' => false]);
+        self::tester()->execute(['--username' => 'ana', '--email' => 'ana@example.com', '--password' => 'correct-horse'], ['interactive' => false]);
         $tester = self::tester();
 
-        $exitCode = $tester->execute(['--username' => 'ana', '--password' => 'another-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
+        $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'other@example.com', '--password' => 'another-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame("A technician named \"ana\" already exists.\n", $tester->getErrorOutput(true));
+        self::assertSame("A technician with that username already exists.\n", $tester->getErrorOutput(true));
         self::assertPasswordIs('correct-horse', self::storedTechnician('ana'));
+    }
+
+    public function testWithoutInteractionRefusesAMissingEmail(): void
+    {
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(['--username' => 'ana', '--password' => 'correct-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("Give the technician an email with --email.\n", $tester->getErrorOutput(true));
+        self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
+    }
+
+    public function testRefusesAnEmailAlreadyTaken(): void
+    {
+        self::tester()->execute(['--username' => 'ana', '--email' => 'ana@example.com', '--password' => 'correct-horse'], ['interactive' => false]);
+        $tester = self::tester();
+
+        $exitCode = $tester->execute(['--username' => 'bob', '--email' => 'ANA@example.com', '--password' => 'correct-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertSame("A technician with that email already exists.\n", $tester->getErrorOutput(true));
+        self::assertNull(self::technicians()->byUsername(Username::fromString('bob')));
     }
 
     public function testRefusesAShortPassword(): void
     {
         $tester = self::tester();
 
-        $exitCode = $tester->execute(['--username' => 'ana', '--password' => 'short'], ['interactive' => false, 'capture_stderr_separately' => true]);
+        $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'ana@example.com', '--password' => 'short'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame("A password has at least 8 characters.\n", $tester->getErrorOutput(true));

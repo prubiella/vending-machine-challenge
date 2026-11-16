@@ -8,8 +8,9 @@ use App\Shared\Domain\DomainException;
 
 final class UsernameTakenException extends DomainException
 {
-    public static function of(Username $username): self
+    // The message leaves the username out, since the command bus logs a refusal's message in clear.
+    public static function alreadyTaken(): self
     {
-        return new self(\sprintf('A technician named "%s" already exists.', $username->value()));
+        return new self('A technician with that username already exists.');
     }
 }

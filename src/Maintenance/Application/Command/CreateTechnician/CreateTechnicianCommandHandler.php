@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Maintenance\Application\Command\CreateTechnician;
 
+use App\Maintenance\Domain\Technician\Email;
 use App\Maintenance\Domain\Technician\PasswordHasher;
 use App\Maintenance\Domain\Technician\PlainPassword;
 use App\Maintenance\Domain\Technician\Technician;
@@ -24,6 +25,7 @@ final readonly class CreateTechnicianCommandHandler
         $technician = Technician::register(
             TechnicianId::fromString($command->id),
             Username::fromString($command->username),
+            Email::fromString($command->email),
             $this->passwordHasher->hash(PlainPassword::fromString($command->password)),
         );
 

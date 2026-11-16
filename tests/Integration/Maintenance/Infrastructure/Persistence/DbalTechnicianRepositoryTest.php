@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Maintenance\Infrastructure\Persistence;
 
+use App\Maintenance\Domain\Technician\Email;
+use App\Maintenance\Domain\Technician\EmailTakenException;
 use App\Maintenance\Domain\Technician\HashedPassword;
 use App\Maintenance\Domain\Technician\Technician;
 use App\Maintenance\Domain\Technician\TechnicianId;
@@ -41,7 +43,17 @@ final class DbalTechnicianRepositoryTest extends KernelTestCase
 
         $this->expectException(UsernameTakenException::class);
 
-        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a62', 'ana'));
+        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a62', 'ana', 'another@example.com'));
+    }
+
+    public function testRefusesASecondTechnicianWithTheSameEmail(): void
+    {
+        $repository = self::repository();
+        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a61', 'ana', 'shared@example.com'));
+
+        $this->expectException(EmailTakenException::class);
+
+        $repository->add(self::technician('0196f1d2-7c3a-7b9e-9a1d-3f5e8c2b4a62', 'bob', 'shared@example.com'));
     }
 
     private static function repository(): DbalTechnicianRepository
@@ -49,11 +61,12 @@ final class DbalTechnicianRepositoryTest extends KernelTestCase
         return self::getContainer()->get(DbalTechnicianRepository::class);
     }
 
-    private static function technician(string $id, string $username): Technician
+    private static function technician(string $id, string $username, ?string $email = null): Technician
     {
         return Technician::register(
             TechnicianId::fromString($id),
             Username::fromString($username),
+            Email::fromString($email ?? $username.'@example.com'),
             HashedPassword::fromString('$2y$04$hashOf.'.$username),
         );
     }

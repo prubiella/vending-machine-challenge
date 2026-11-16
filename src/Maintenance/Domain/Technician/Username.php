@@ -15,7 +15,7 @@ final readonly class Username
     public static function fromString(string $value): self
     {
         if (1 !== preg_match(self::PATTERN, $value)) {
-            throw InvalidUsernameException::fromString($value);
+            throw InvalidUsernameException::notAllowed();
         }
 
         return new self($value);

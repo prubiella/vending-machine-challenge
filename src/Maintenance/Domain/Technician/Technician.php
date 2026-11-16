@@ -9,13 +9,14 @@ final readonly class Technician
     private function __construct(
         private TechnicianId $id,
         private Username $username,
+        private Email $email,
         private HashedPassword $password,
     ) {
     }
 
-    public static function register(TechnicianId $id, Username $username, HashedPassword $password): self
+    public static function register(TechnicianId $id, Username $username, Email $email, HashedPassword $password): self
     {
-        return new self($id, $username, $password);
+        return new self($id, $username, $email, $password);
     }
 
     public function id(): TechnicianId
@@ -26,6 +27,11 @@ final readonly class Technician
     public function username(): Username
     {
         return $this->username;
+    }
+
+    public function email(): Email
+    {
+        return $this->email;
     }
 
     public function password(): HashedPassword

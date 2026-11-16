@@ -28,12 +28,19 @@ final readonly class VendingTechnicianCreateCommand
         SymfonyStyle $io,
         #[Option('The technician\'s username: 3 to 32 lowercase letters, digits, dots, hyphens or underscores')]
         ?string $username = null,
+        #[Option('The technician\'s email, stored lowercased')]
+        ?string $email = null,
         #[Option('The technician\'s password, of 8 characters or more (asked hidden when left out)')]
         ?string $password = null,
     ): int {
         $username ??= self::answer($io->ask('Username'));
         if (null === $username) {
             return self::refuse($io, 'Give the technician a username with --username.');
+        }
+
+        $email ??= self::answer($io->ask('Email'));
+        if (null === $email) {
+            return self::refuse($io, 'Give the technician an email with --email.');
         }
 
         $password ??= self::answer($io->askHidden('Password'));
@@ -43,7 +50,7 @@ final readonly class VendingTechnicianCreateCommand
 
         $id = Uuid::v7()->toRfc4122();
         try {
-            $this->commandBus->dispatch(new CreateTechnicianCommand($id, $username, $password));
+            $this->commandBus->dispatch(new CreateTechnicianCommand($id, $username, $email, $password));
         } catch (DomainException $refusal) {
             return self::refuse($io, $refusal->getMessage());
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Maintenance\Application;
 
+use App\Maintenance\Domain\Technician\EmailTakenException;
 use App\Maintenance\Domain\Technician\Technician;
 use App\Maintenance\Domain\Technician\TechnicianRepository;
 use App\Maintenance\Domain\Technician\Username;
@@ -18,7 +19,12 @@ final class InMemoryTechnicianRepository implements TechnicianRepository
     {
         $username = $technician->username()->value();
         if (\array_key_exists($username, $this->technicians)) {
-            throw UsernameTakenException::of($technician->username());
+            throw UsernameTakenException::alreadyTaken();
+        }
+        foreach ($this->technicians as $stored) {
+            if ($stored->email()->value() === $technician->email()->value()) {
+                throw EmailTakenException::alreadyTaken();
+            }
         }
 
         $this->technicians[$username] = $technician;

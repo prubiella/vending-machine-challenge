@@ -47,7 +47,8 @@ to run it.
   a new dependency is one more probe port and one more entry in `HealthCheckResponse::$checks`).
   Only what several contexts need belongs here.
 - `VendingMachine`: the machine of the statement (coins, products, change, service).
-- `Maintenance`: the technicians who service the machine, their usernames and hashed passwords.
+- `Maintenance`: the technicians who service the machine, their usernames, emails and hashed
+  passwords.
 
 ## Layers (checked by deptrac)
 

@@ -12,12 +12,13 @@ final readonly class CreateTechnicianCommand implements SensitiveCommand
     public function __construct(
         public string $id,
         public string $username,
+        public string $email,
         public string $password,
     ) {
     }
 
     public function sensitiveFields(): array
     {
-        return ['username' => Masking::KeepFirstThree, 'password' => Masking::Hide];
+        return ['username' => Masking::KeepFirstThree, 'email' => Masking::KeepFirstThree, 'password' => Masking::Hide];
     }
 }

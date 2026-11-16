@@ -184,13 +184,16 @@ as change; `SERVICE` asks their count on purpose, so the technician can empty th
 
 A technician is who services the machine. `vending:technician:create` stores one in the
 `technicians` table with a username (3 to 32 lowercase letters, digits, dots, hyphens or
-underscores, unique) and the bcrypt hash of a password of 8 characters or more, and prints the id
-it gives the technician. It asks what `--username` and `--password` leave out, the password hidden;
-with `-n` both options are required. The password is never stored or logged in clear: the command
-bus logs only the first three characters of the username and the password as `***`.
+underscores, unique), an email (a valid address, stored lowercased, unique) and the bcrypt hash of
+a password of 8 characters or more, and prints the id it gives the technician. It asks what
+`--username`, `--email` and `--password` leave out, the password hidden; with `-n` the three
+options are required. The technician logs in by username; the email is only kept. The password is
+never stored or logged in clear: the command bus logs only the first three characters of the
+username and of the email, the password as `***`, and the refusals (an invalid or taken username
+or email) without the value.
 
 ```bash
-make run -- vending:technician:create --username ana
+make run -- vending:technician:create --username ana --email ana@example.com
 # Password:
 # Technician ana created with id 019a8c5e-....
 ```
