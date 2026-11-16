@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Symfony\Messenger\Middleware;
 
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
@@ -14,6 +15,7 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
 {
     public function __construct(
         private int $maxRetries,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -23,23 +25,32 @@ final readonly class RetryOnConcurrentUpdateMiddleware implements MiddlewareInte
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
         $next = $stack->next();
-        $retriesLeft = $this->maxRetries;
+        $retry = 0;
 
         while (true) {
             try {
                 return $next->handle($envelope, $stack);
             } catch (HandlerFailedException $failure) {
-                if (!self::causedByConcurrentUpdate($failure) || 0 === $retriesLeft) {
+                if (!self::causedByConcurrentUpdate($failure) || $retry === $this->maxRetries) {
                     throw $failure;
                 }
-
-                --$retriesLeft;
             }
+
+            $this->logRetry($envelope, ++$retry);
         }
     }
 
     private static function causedByConcurrentUpdate(HandlerFailedException $failure): bool
     {
         return [] !== $failure->getWrappedExceptions(ConcurrentUpdateException::class);
+    }
+
+    private function logRetry(Envelope $envelope, int $retry): void
+    {
+        $command = $envelope->getMessage();
+        $this->logger->notice(
+            \sprintf('Command %s met a concurrent update: retry %d of %d.', new \ReflectionClass($command)->getShortName(), $retry, $this->maxRetries),
+            ['command' => $command::class],
+        );
     }
 }

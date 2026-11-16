@@ -7,6 +7,10 @@ namespace App\Tests\Unit\Shared\Infrastructure\Symfony\Messenger\Middleware;
 use App\Shared\Application\Persistence\ConcurrentUpdateException;
 use App\Shared\Infrastructure\Symfony\Messenger\Middleware\RetryOnConcurrentUpdateMiddleware;
 use App\Shared\Infrastructure\Symfony\Messenger\Middleware\UnpackExceptionMiddleware;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger;
+use Monolog\LogRecord;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Handler\HandlersLocator;
 use Symfony\Component\Messenger\MessageBus;
@@ -15,17 +19,23 @@ use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
 final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
 {
     private int $attempts = 0;
+    private TestHandler $logs;
+
+    protected function setUp(): void
+    {
+        $this->logs = new TestHandler();
+    }
 
     public function testRunsTheHandlerOnceWhenItSucceeds(): void
     {
-        self::bus($this->handlerFailingWith(0), maxRetries: 3)->dispatch(new \stdClass());
+        $this->bus($this->handlerFailingWith(0), maxRetries: 3)->dispatch(new \stdClass());
 
         self::assertSame(1, $this->attempts);
     }
 
     public function testRunsTheHandlerAgainUntilItSucceeds(): void
     {
-        self::bus($this->handlerFailingWith(2), maxRetries: 3)->dispatch(new \stdClass());
+        $this->bus($this->handlerFailingWith(2), maxRetries: 3)->dispatch(new \stdClass());
 
         self::assertSame(3, $this->attempts);
     }
@@ -33,7 +43,7 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
     public function testGivesUpWithTheConcurrentUpdateAfterTheLastRetry(): void
     {
         try {
-            self::bus($this->handlerFailingWith(5), maxRetries: 2)->dispatch(new \stdClass());
+            $this->bus($this->handlerFailingWith(5), maxRetries: 2)->dispatch(new \stdClass());
             self::fail('Expected a ConcurrentUpdateException.');
         } catch (ConcurrentUpdateException) {
             self::assertSame(3, $this->attempts);
@@ -50,12 +60,22 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         };
 
         try {
-            self::bus($handler, maxRetries: 3)->dispatch(new \stdClass());
+            $this->bus($handler, maxRetries: 3)->dispatch(new \stdClass());
             self::fail('Expected the handler failure.');
         } catch (\RuntimeException $e) {
             self::assertSame($failure, $e);
             self::assertSame(1, $this->attempts);
         }
+    }
+
+    public function testLogsEachRetryAtNotice(): void
+    {
+        $this->bus($this->handlerFailingWith(2), maxRetries: 3)->dispatch(new \stdClass());
+
+        self::assertSame([
+            [Level::Notice, 'Command stdClass met a concurrent update: retry 1 of 3.'],
+            [Level::Notice, 'Command stdClass met a concurrent update: retry 2 of 3.'],
+        ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message], $this->logs->getRecords())));
     }
 
     private function handlerFailingWith(int $concurrentUpdates): \Closure
@@ -67,11 +87,11 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         };
     }
 
-    private static function bus(\Closure $handler, int $maxRetries): MessageBus
+    private function bus(\Closure $handler, int $maxRetries): MessageBus
     {
         return new MessageBus([
             new UnpackExceptionMiddleware(),
-            new RetryOnConcurrentUpdateMiddleware($maxRetries),
+            new RetryOnConcurrentUpdateMiddleware($maxRetries, new Logger('test', [$this->logs])),
             new HandleMessageMiddleware(new HandlersLocator([\stdClass::class => [$handler]])),
         ]);
     }

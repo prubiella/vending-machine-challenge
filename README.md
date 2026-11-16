@@ -132,7 +132,8 @@ as change; `SERVICE` asks their count on purpose, so the technician can empty th
 ## Logs
 
 The command bus logs every command with its name and data: at info when it is handled, at notice
-when the domain refuses it and at error when it fails for any other reason.
+when the domain refuses it and at error when it fails for any other reason. Each retry after a
+concurrent update is logged at notice.
 
 In dev the application's own logs go to `var/log/dev.log` (`tail -f var/log/dev.log`), and only its
 warnings and errors also reach stderr, so the console shows the machine's output and its refusals
