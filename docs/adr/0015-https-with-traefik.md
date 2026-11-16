@@ -38,6 +38,9 @@ client --HTTPS--> Traefik --HTTPS--> nginx --FastCGI--> php-fpm
 - Trade-off: setup needs `mkcert` and `sudo` once, which the README lists. The HTTP side cannot
   start without the certificate files, so `make start` stops with a message until they exist. The
   console needs none of it.
+- Whoever only evaluates the project skips all of it: `make quick-start` serves the API over plain
+  HTTP on a localhost port, through an nginx without TLS and without Traefik (`nginx-http`, in the
+  `quick` compose profile). This setup stays the development environment.
 - Trade-off: mounting the Docker socket is root-equivalent on the host, even read-only. It is kept
   for label-based discovery; with one route, the file provider would remove the need.
 

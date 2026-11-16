@@ -74,6 +74,18 @@ services:
       - traefik.http.middlewares.vending-machine-cors.headers.accesscontrolmaxage=600
       - traefik.http.middlewares.vending-machine-cors.headers.addvaryheader=true
 
+  # nginx without TLS on a plain HTTP port of localhost, for make quick-start: no certificate, no
+  # hostname and no Traefik. Only that target starts it, since it belongs to a profile.
+  nginx-http:
+    extends:
+      service: nginx
+    profiles: [quick]
+    volumes:
+      - ./etc/infrastructure/nginx/http:/etc/nginx/templates:ro
+    labels: !reset []
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8000}:80"
+
   swagger-ui:
     image: "swaggerapi/swagger-ui:${SWAGGER_UI_VERSION:-v5.34.1}"
     environment:
