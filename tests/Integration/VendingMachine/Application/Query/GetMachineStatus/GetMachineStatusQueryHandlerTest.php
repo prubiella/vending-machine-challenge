@@ -18,7 +18,7 @@ final class GetMachineStatusQueryHandlerTest extends KernelTestCase
 {
     use StartsWithNoStoredMachine;
 
-    public function testTheBusAnswersWithTheUnitsAndTheCoinStock(): void
+    public function testTheBusAnswersWithTheUnitsTheCoinStockAndAnEmptyCashBox(): void
     {
         $container = self::getContainer();
         $container->get(CommandBus::class)->dispatch(new ServiceMachineCommand(
