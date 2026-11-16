@@ -50,8 +50,9 @@ final readonly class Wallet
         return Payout::of($change, new self(CoinCollection::empty(), $stock->subtract($change)));
     }
 
-    // A sale is not bounded: the customer's coins join the stock and may take a tube past its
-    // capacity, as the overflow of a real machine goes to its cash box.
+    // Refuses a tube past its capacity. Only a restock is bounded: a sale is not, since the customer's
+    // coins join the stock and may take a tube past it, as the overflow of a real machine goes to its
+    // cash box.
     public function restock(CoinCollection $stock): self
     {
         foreach ($stock->countsByCents() as $cents => $count) {

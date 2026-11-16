@@ -49,7 +49,8 @@ final readonly class Slot
         return new self($this->product, $this->units - 1);
     }
 
-    // Only a restock is bounded: the units of a slot never grow any other way.
+    // Refuses more units than the slot holds. Only a restock is bounded: a sale only takes units out,
+    // so the units of a slot never grow any other way.
     public function restockedTo(int $units): self
     {
         if ($units > self::CAPACITY) {
