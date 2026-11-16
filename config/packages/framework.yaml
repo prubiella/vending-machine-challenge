@@ -8,6 +8,7 @@ parameters:
         - App\Maintenance\Domain\Technician\EmailTakenException
         - App\Maintenance\Domain\Technician\InvalidEmailException
         - App\Maintenance\Domain\Technician\InvalidUsernameException
+        - App\Maintenance\Domain\Technician\TooLongPasswordException
         - App\Maintenance\Domain\Technician\TooShortPasswordException
         - App\Maintenance\Domain\Technician\UsernameTakenException
         - App\Shared\Domain\Money\InsufficientMoneyException
