@@ -137,11 +137,17 @@ by the service: service the machine while nobody else is using it.
 
 The session needs interactive input: with `-n` or `-q` and no sequence the command reports it and
 exits with 1, the only case besides an unexpected error where it does not exit with 0.
+`vending:service` exits with 0 once the machine is serviced and with 1 whenever it is not, since
+then the technician's service did not happen: an option it cannot read (not a pair, given twice, a
+foreign coin, or a selector the machine lacks, which it checks before asking anything), input that
+ends before the last answer, or a service the machine refuses.
 
 The machine is stored in MySQL, so each run carries on where the last one left it: the stock and
 the change go down as sales are made. Until a machine is stored, and after `vending:reset`, it is
 the default machine in `config/services.yaml` (the statement's products, ten units of each and ten
-coins of 0.05, 0.10 and 0.25 for change). Credit left at the end of a sequence stays in the machine
+coins of 0.05, 0.10 and 0.25 for change). The default is read only while no machine is stored: a
+stored machine wins over a change to `vending_machine.default_products` until `vending:reset`
+removes it. Credit left at the end of a sequence stays in the machine
 until `RETURN-COIN` gives it back, as on a real one, also from a later run.
 
 Change is made only from coins of 0.05, 0.10 and 0.25. Coins of 1, inserted by a customer or
@@ -156,7 +162,9 @@ implements `SensitiveCommand` lists the fields it carries that must not be logge
 each with a `Masking` rule: `Hide` logs a secret such as a password or a token as `***`, and
 `KeepFirstThree` logs personal data such as a technician's email with its first three characters
 and `***` (`pau***`), so the log still tells who acted; a value of three characters or fewer is
-hidden whole. Each retry after a concurrent update is logged
+hidden whole. A rule for a field that is not a public property of the command stops its dispatch
+with a `LogicException`, so a misspelt or renamed field is never logged in clear. Each retry after
+a concurrent update is logged
 at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
 notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs

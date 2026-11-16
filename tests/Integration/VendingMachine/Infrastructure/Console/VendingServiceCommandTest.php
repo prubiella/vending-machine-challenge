@@ -6,8 +6,13 @@ namespace App\Tests\Integration\VendingMachine\Infrastructure\Console;
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Infrastructure\Symfony\Messenger\Bus\MessengerCommandBus;
 use App\Tests\Integration\VendingMachine\StartsWithNoStoredMachine;
+use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
+use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
+use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
+use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
 use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
 use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
@@ -73,6 +78,25 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::assertStatus(['WATER' => 10, 'JUICE' => 10, 'SODA' => 4], self::DEFAULT_COINS);
     }
 
+    public function testWithoutInteractionOrOptionsServicesTheMachineWithItsCurrentValues(): void
+    {
+        $tester = self::tester();
+        $commandBus = self::getContainer()->get(CommandBus::class);
+        $commandBus->dispatch(new InsertCoinCommand(100));
+        $commandBus->dispatch(new SelectProductCommand('WATER'));
+        $commandBus->dispatch(new CollectTrayCommand());
+        $commandBus->dispatch(new InsertCoinCommand(25));
+
+        $exitCode = $tester->execute([], ['interactive' => false]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertSame("0.25\nThe machine is serviced.\n", $tester->getDisplay(true));
+        self::assertStatus(['WATER' => 9, 'JUICE' => 10, 'SODA' => 10], [5 => 10, 10 => 9, 25 => 9, 100 => 1]);
+        $machine = self::getContainer()->get(QueryBus::class)->query(new GetMachineQuery());
+        self::assertInstanceOf(MachineResponse::class, $machine);
+        self::assertSame(0, $machine->creditCents);
+    }
+
     public function testPrintsAndCollectsTheCreditTheServiceReturns(): void
     {
         $tester = self::tester();
@@ -98,14 +122,33 @@ final class VendingServiceCommandTest extends KernelTestCase
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 
-    public function testReportsAnUnknownSelectorAndLeavesTheMachineUnserviced(): void
+    public function testReportsARefusedServiceAndFails(): void
     {
-        $tester = self::tester();
+        $application = new Application(self::bootKernel());
+        self::getContainer()->set(CommandBus::class, new ServiceRefusingCommandBus(new MessengerCommandBus(self::getContainer()->get('command.bus'))));
+        $tester = new CommandTester($application->find('vending:service'));
 
-        $exitCode = $tester->execute(['--units' => ['CHIPS:3']], ['interactive' => false, 'capture_stderr_separately' => true]);
+        $exitCode = $tester->execute(['--units' => ['WATER:2']], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame("There is no product with selector CHIPS.\n", $tester->getErrorOutput(true));
+        self::assertSame(ServiceRefusingCommandBus::REFUSAL."\n", $tester->getErrorOutput(true));
+        self::assertSame('', $tester->getDisplay(true));
+        self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
+    }
+
+    public function testRejectsAnUnknownSelectorBeforeAskingAnything(): void
+    {
+        $tester = self::tester();
+        $tester->setInputs(array_fill(0, 7, ''));
+
+        try {
+            $tester->execute(['--units' => ['WATER:2', 'CHIPS:3']]);
+            self::fail('Expected an InvalidOptionException.');
+        } catch (InvalidOptionException $e) {
+            self::assertSame('Give --units a product the machine has, such as WATER:5, got CHIPS.', $e->getMessage());
+        }
+
+        self::assertStringNotContainsString('Units of', $tester->getDisplay(true));
         self::assertStatus(self::DEFAULT_UNITS, self::DEFAULT_COINS);
     }
 

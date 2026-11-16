@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\VendingMachine\Infrastructure\Persistence;
+namespace App\Tests\Unit\VendingMachine\Application;
 
 use App\Shared\Domain\Money\Money;
 use App\VendingMachine\Domain\Coin\Coin;
@@ -11,7 +11,6 @@ use App\VendingMachine\Domain\Product\ProductName;
 use App\VendingMachine\Domain\Product\Selector;
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
-use App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository;
 use PHPUnit\Framework\TestCase;
 
 final class InMemoryVendingMachineRepositoryTest extends TestCase

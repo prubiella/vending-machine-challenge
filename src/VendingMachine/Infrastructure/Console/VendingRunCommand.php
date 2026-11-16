@@ -28,7 +28,7 @@ final readonly class VendingRunCommand
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private TokenParser $parser,
-        private ServiceForm $serviceForm,
+        private MachineServicer $machineServicer,
         private TrayPrinter $trayPrinter,
         private LoggerInterface $logger,
     ) {
@@ -87,20 +87,12 @@ final readonly class VendingRunCommand
     private function dispatchSessionAction(string $action, InputInterface $input, SymfonyStyle $io): void
     {
         if (TokenParser::SERVICE === $action) {
-            $this->service($input, $io);
+            $this->machineServicer->service($input, $io);
 
             return;
         }
 
         $this->dispatchToken($action, $io);
-    }
-
-    private function service(InputInterface $input, SymfonyStyle $io): void
-    {
-        $service = $this->serviceForm->fill($input, $io);
-        if (null !== $service) {
-            $this->commandBus->dispatch($service);
-        }
     }
 
     private function showProducts(SymfonyStyle $io): void

@@ -20,6 +20,8 @@ use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
 
 final class LoggingCommandMiddlewareTest extends TestCase
 {
+    private const array MASKED_LOG_IN = ['email' => 'pau***', 'password' => '***', 'terminal' => 'T-1'];
+
     private TestHandler $logs;
 
     protected function setUp(): void
@@ -89,6 +91,33 @@ final class LoggingCommandMiddlewareTest extends TestCase
         }
 
         self::assertSame([[Level::Error, 'Command InsertCoinCommand failed: The database went away.', ['command' => InsertCoinCommand::class, 'data' => ['cents' => 5], 'exception' => $failure]]], $this->records());
+    }
+
+    public function testLogsTheSensitiveFieldsOfARefusedCommandMasked(): void
+    {
+        $refusal = new class('The password is wrong.') extends DomainException {
+        };
+
+        try {
+            $this->bus(static fn () => throw $refusal)->dispatch(new LogInCommand('pau@example.com', 'correct horse', 'T-1'));
+            self::fail('Expected the refusal.');
+        } catch (DomainException) {
+        }
+
+        self::assertSame([[Level::Notice, 'Command LogInCommand refused: The password is wrong.', ['command' => LogInCommand::class, 'data' => self::MASKED_LOG_IN]]], $this->records());
+    }
+
+    public function testLogsTheSensitiveFieldsOfAFailedCommandMasked(): void
+    {
+        $failure = new \RuntimeException('The database went away.');
+
+        try {
+            $this->bus(static fn () => throw $failure)->dispatch(new LogInCommand('pau@example.com', 'correct horse', 'T-1'));
+            self::fail('Expected the failure.');
+        } catch (\RuntimeException) {
+        }
+
+        self::assertSame([[Level::Error, 'Command LogInCommand failed: The database went away.', ['command' => LogInCommand::class, 'data' => self::MASKED_LOG_IN, 'exception' => $failure]]], $this->records());
     }
 
     /**

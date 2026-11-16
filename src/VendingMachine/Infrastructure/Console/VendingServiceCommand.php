@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Infrastructure\Console;
 
-use App\Shared\Application\Bus\CommandBus;
-use App\Shared\Domain\DomainException;
-use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -24,8 +21,7 @@ final readonly class VendingServiceCommand
     private const string PAIR_SEPARATOR = ':';
 
     public function __construct(
-        private CommandBus $commandBus,
-        private ServiceForm $serviceForm,
+        private MachineServicer $machineServicer,
         private TrayPrinter $trayPrinter,
     ) {
     }
@@ -42,18 +38,7 @@ final readonly class VendingServiceCommand
         #[Option('The count of a coin, as COIN:COUNT, such as 0.25:10 (repeat it for each coin)')]
         array $coins = [],
     ): int {
-        $service = $this->serviceForm->fill($input, $io, self::countsByKey('units', $units), self::countsByCents($coins));
-
-        return null === $service ? Command::FAILURE : $this->service($service, $io);
-    }
-
-    private function service(ServiceMachineCommand $service, SymfonyStyle $io): int
-    {
-        try {
-            $this->commandBus->dispatch($service);
-        } catch (DomainException $refusal) {
-            $io->getErrorStyle()->writeln($refusal->getMessage());
-
+        if (!$this->machineServicer->service($input, $io, self::countsByKey('units', $units), self::countsByCents($coins))) {
             return Command::FAILURE;
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Application\Command\SelectProduct;
 
+use App\Tests\Unit\VendingMachine\Application\InMemoryVendingMachineRepository;
 use App\Tests\Unit\VendingMachine\Application\VendingMachineRepositoryMother;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommandHandler;
@@ -12,7 +13,6 @@ use App\VendingMachine\Domain\Coin\Coin;
 use App\VendingMachine\Domain\Coin\CoinCollection;
 use App\VendingMachine\Domain\Inventory\SoldOutException;
 use App\VendingMachine\Domain\Product\Product;
-use App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository;
 use PHPUnit\Framework\TestCase;
 
 final class SelectProductCommandHandlerTest extends TestCase

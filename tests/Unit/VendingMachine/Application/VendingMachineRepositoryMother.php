@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Application;
 
 use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
-use App\VendingMachine\Infrastructure\Persistence\InMemoryVendingMachineRepository;
 
 final class VendingMachineRepositoryMother
 {

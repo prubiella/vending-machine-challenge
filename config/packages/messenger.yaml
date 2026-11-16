@@ -3,8 +3,10 @@ framework:
         default_bus: command.bus
         buses:
             command.bus:
-                # The synchronous bus needs none of the default middleware, and the retry has to come
-                # right before handle_message, which the defaults would keep apart.
+                # The retry has to come right before handle_message. The defaults put send_message
+                # between them, and a retry runs that next middleware again once the stack is used
+                # up, so the handler would not run again and the retried command would pass as
+                # handled. The retry integration test fails with the defaults on.
                 default_middleware: false
                 middleware:
                     - 'App\Shared\Infrastructure\Symfony\Messenger\Middleware\LoggingCommandMiddleware'

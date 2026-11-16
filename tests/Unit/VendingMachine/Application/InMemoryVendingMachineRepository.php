@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\VendingMachine\Infrastructure\Persistence;
+namespace App\Tests\Unit\VendingMachine\Application;
 
 use App\VendingMachine\Domain\VendingMachine;
 use App\VendingMachine\Domain\VendingMachineRepository;
+use App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory;
 
 final class InMemoryVendingMachineRepository implements VendingMachineRepository
 {
