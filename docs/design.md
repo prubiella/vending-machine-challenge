@@ -496,6 +496,10 @@ in `wallet_credit`, `wallet_stock` and `wallet_cash_box` (the count of each coin
   `MachineOutbox::pending()` reads them back, oldest first.
 - **No machine stored means the default machine.** `DefaultVendingMachineFactory` builds it, and
   `vending:reset` deletes the stored document.
+- **A reset loses the events not yet relayed, a known trade-off.** `vending:reset` deletes the whole
+  document, outbox included, so what happened since the relay's last pass never reaches
+  `machine_history`. It is a development tool; a reset that kept the history would relay the outbox
+  first.
 - **One store for the machine.** It lives only in MongoDB ([ADR 21](adr/0021-machine-lives-only-in-mongodb.md)).
   A MySQL adapter existed ([ADR 12](adr/0012-persistence-mysql-with-dbal.md)) and was removed because
   nothing ran it; git keeps it. The port stays swappable: an adapter extends
