@@ -12,6 +12,7 @@ use App\Maintenance\Domain\Technician\TechnicianId;
 use App\Maintenance\Domain\Technician\TechnicianRepository;
 use App\Maintenance\Domain\Technician\Username;
 use App\Maintenance\Domain\Technician\UsernameTakenException;
+use App\Shared\Domain\DomainException;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
@@ -32,9 +33,18 @@ final readonly class DbalTechnicianRepository implements TechnicianRepository
                 'password_hash' => $technician->password()->value(),
             ]);
         } catch (UniqueConstraintViolationException) {
-            // Both columns are unique: the stored username tells which one clashed.
-            throw null === $this->byUsername($technician->username()) ? EmailTakenException::alreadyTaken() : UsernameTakenException::alreadyTaken();
+            throw $this->clashFor($technician);
         }
+    }
+
+    // Both the username and the email are unique: a stored username tells which one clashed.
+    private function clashFor(Technician $technician): DomainException
+    {
+        if (null !== $this->byUsername($technician->username())) {
+            return UsernameTakenException::alreadyTaken();
+        }
+
+        return EmailTakenException::alreadyTaken();
     }
 
     public function byUsername(Username $username): ?Technician
