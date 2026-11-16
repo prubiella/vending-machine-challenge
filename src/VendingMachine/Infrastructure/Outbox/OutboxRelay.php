@@ -22,9 +22,6 @@ final readonly class OutboxRelay
     ) {
     }
 
-    /**
-     * @return int how many events it relayed
-     */
     public function relay(): int
     {
         $pending = $this->outbox->pending();

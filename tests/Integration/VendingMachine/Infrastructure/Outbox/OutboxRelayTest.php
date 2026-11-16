@@ -12,6 +12,7 @@ use App\VendingMachine\Application\Command\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Infrastructure\History\DbalMachineHistory;
 use App\VendingMachine\Infrastructure\Notification\LowStockNotifier;
 use App\VendingMachine\Infrastructure\Outbox\MachineOutbox;
+use App\VendingMachine\Infrastructure\Outbox\OutboxEvent;
 use App\VendingMachine\Infrastructure\Outbox\OutboxRelay;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\Before;
@@ -67,11 +68,7 @@ final class OutboxRelayTest extends KernelTestCase
             }
         };
 
-        try {
-            new OutboxRelay($crashingOutbox, $history, new SpyLowStockNotifier())->relay();
-            self::fail('Expected the relay to crash.');
-        } catch (\RuntimeException) {
-        }
+        self::assertTheRelayCrashes(new OutboxRelay($crashingOutbox, $history, new SpyLowStockNotifier()));
         $historyAfterTheCrash = self::history();
         $relayedAgain = new OutboxRelay($outbox, $history, new SpyLowStockNotifier())->relay();
 
@@ -84,7 +81,7 @@ final class OutboxRelayTest extends KernelTestCase
     public function testNotifiesALowStockOnce(): void
     {
         $notifier = new SpyLowStockNotifier();
-        $relay = new OutboxRelay(self::getContainer()->get(MachineOutbox::class), self::getContainer()->get(DbalMachineHistory::class), $notifier);
+        $relay = self::relayNotifying($notifier);
         self::sellWaterUntilItRunsLow();
 
         $relay->relay();
@@ -102,17 +99,80 @@ final class OutboxRelayTest extends KernelTestCase
                 throw new \RuntimeException('The notifier is down.');
             }
         };
-        $relay = new OutboxRelay(self::getContainer()->get(MachineOutbox::class), self::getContainer()->get(DbalMachineHistory::class), $failingNotifier);
         self::sellWaterUntilItRunsLow();
 
-        try {
-            $relay->relay();
-            self::fail('Expected the notifier to fail.');
-        } catch (\RuntimeException) {
-        }
+        self::assertTheRelayCrashes(self::relayNotifying($failingNotifier));
 
         self::assertNotContains('stock_running_low', array_column(self::history(), 1));
-        self::assertContains('stock_running_low', array_map(static fn ($event): string => $event->type, self::getContainer()->get(MachineOutbox::class)->pending()));
+        self::assertContains('stock_running_low', self::pendingEventTypes());
+    }
+
+    public function testNeverNotifiesAnEventThatIsNotALowStock(): void
+    {
+        $notifier = new SpyLowStockNotifier();
+        self::aSaleAndAReturn();
+
+        self::relayNotifying($notifier)->relay();
+
+        self::assertSame([], $notifier->notified);
+        self::assertSame(['product_sold', 'credit_returned'], array_column(self::history(), 1));
+    }
+
+    public function testStopsOnALowStockWithoutItsUnitsAndLeavesItPending(): void
+    {
+        $notifier = new SpyLowStockNotifier();
+        self::sellWaterUntilItRunsLow();
+        $outbox = self::getContainer()->get(MachineOutbox::class);
+        $withoutUnits = new class($outbox) implements MachineOutbox {
+            public function __construct(private readonly MachineOutbox $outbox)
+            {
+            }
+
+            public function pending(): array
+            {
+                return array_map(
+                    static fn (OutboxEvent $event): OutboxEvent => new OutboxEvent($event->id, $event->type, $event->occurredAt, ['selector' => 'WATER']),
+                    $this->outbox->pending(),
+                );
+            }
+
+            public function remove(array $ids): void
+            {
+                $this->outbox->remove($ids);
+            }
+        };
+
+        try {
+            new OutboxRelay($withoutUnits, self::getContainer()->get(DbalMachineHistory::class), $notifier)->relay();
+            self::fail('Expected UnexpectedValueException.');
+        } catch (\UnexpectedValueException) {
+            self::assertSame([], $notifier->notified);
+            self::assertContains('stock_running_low', self::pendingEventTypes());
+        }
+    }
+
+    private static function relayNotifying(LowStockNotifier $notifier): OutboxRelay
+    {
+        return new OutboxRelay(self::getContainer()->get(MachineOutbox::class), self::getContainer()->get(DbalMachineHistory::class), $notifier);
+    }
+
+    private static function assertTheRelayCrashes(OutboxRelay $relay): void
+    {
+        try {
+            $relay->relay();
+        } catch (\RuntimeException) {
+            return;
+        }
+
+        self::fail('Expected the relay to crash.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function pendingEventTypes(): array
+    {
+        return array_map(static fn (OutboxEvent $event): string => $event->type, self::getContainer()->get(MachineOutbox::class)->pending());
     }
 
     // The default machine holds 10 units of each product, so the fifth sale leaves 5.

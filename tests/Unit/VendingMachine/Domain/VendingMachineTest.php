@@ -437,9 +437,11 @@ final class VendingMachineTest extends TestCase
     {
         $machine = self::serviced();
         $machine->releaseEvents();
+        $machine->insertCoin(Coin::TenCents);
 
         try {
             $machine->service(self::technician(), ['COFFEE' => 1], CoinCollection::empty());
+            self::fail('Expected UnknownSelectorException.');
         } catch (UnknownSelectorException) {
         }
 
@@ -463,10 +465,22 @@ final class VendingMachineTest extends TestCase
         self::assertSame(Slot::LOW_STOCK_THRESHOLD, $events[1]->unitsLeft());
     }
 
-    public function testTheLowStockIsRecordedOncePerCrossingNotOnEveryLaterSale(): void
+    public function testASaleFromASlotAlreadyAtTheLowStockThresholdRecordsNoLowStock(): void
     {
         $machine = self::installed();
         $machine->service(self::technician(), ['WATER' => Slot::LOW_STOCK_THRESHOLD], CoinCollection::fromCounts([25 => 10, 10 => 10]));
+        $machine->releaseEvents();
+        $machine->insertCoin(Coin::OneHundredCents);
+
+        $machine->select(Selector::fromString('WATER'), self::changeMaker());
+
+        self::assertSame([ProductSold::class], array_map(static fn (object $event): string => $event::class, $machine->releaseEvents()));
+    }
+
+    public function testASaleFarAboveTheLowStockThresholdRecordsNoLowStock(): void
+    {
+        $machine = self::installed();
+        $machine->service(self::technician(), ['WATER' => Slot::LOW_STOCK_THRESHOLD + 5], CoinCollection::fromCounts([25 => 10, 10 => 10]));
         $machine->releaseEvents();
         $machine->insertCoin(Coin::OneHundredCents);
 
