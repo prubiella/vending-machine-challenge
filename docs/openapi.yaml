@@ -90,6 +90,8 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: { code: 415, message: 'Unsupported format, "txt" must be explicitly listed in "acceptFormat".' }
+        '409':
+          $ref: '#/components/responses/ConcurrentUpdate'
         '422':
           description: |
             The body has no `coin`, the `coin` is not a string, or it is not one of the coins the
@@ -139,7 +141,9 @@ paths:
               example:
                 error: { code: 404, message: There is no product with selector COFFEE. }
         '409':
-          description: The machine cannot sell it now. The credit stays as it was.
+          description: |
+            The machine cannot sell it now, or another request changed the machine at the same time and
+            kept doing so through the retries. The credit stays as it was.
           content:
             application/json:
               schema:
@@ -157,6 +161,10 @@ paths:
                   summary: The machine has not the coins to give the change
                   value:
                     error: { code: 409, message: Cannot give exactly 35 cents with the coins available. }
+                concurrentUpdate:
+                  summary: Another request changed the machine, and the retries ran out
+                  value:
+                    error: { code: 409, message: The machine was changed by another request since it was loaded at version 3. The request can be retried. }
         '422':
           description: The selector is not made of uppercase letters, digits and underscores.
           content:
@@ -177,6 +185,8 @@ paths:
       responses:
         '204':
           description: The coins are in the tray.
+        '409':
+          $ref: '#/components/responses/ConcurrentUpdate'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -216,6 +226,8 @@ paths:
       responses:
         '204':
           description: The tray is empty.
+        '409':
+          $ref: '#/components/responses/ConcurrentUpdate'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -363,8 +375,17 @@ components:
               description: The reason, for people. A 5xx hides it outside debug mode.
 
   responses:
+    ConcurrentUpdate:
+      description: Another request changed the machine at the same time, and the command kept meeting it through its retries. Nothing was changed, so send the request again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: { code: 409, message: The machine was changed by another request since it was loaded at version 3. The request can be retried. }
+
     InternalServerError:
-      description: An unexpected failure, for example a command that kept meeting concurrent updates.
+      description: An unexpected failure, for example a stored machine that breaks one of its own rules. It is logged as critical.
       content:
         application/json:
           schema:
