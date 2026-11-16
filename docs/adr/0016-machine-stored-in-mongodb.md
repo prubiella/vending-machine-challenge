@@ -20,7 +20,8 @@ atomic write as the machine's state, and a document can hold both.
 
 - `mongodb/mongodb`, the library alone: no ODM and no bundle. `config/services.yaml` defines
   `MongoDB\Client` from `MONGODB_URL` and `MongoDB\Database` from `MONGODB_DATABASE`, with `_test`
-  added in the test environment, as Doctrine does for MySQL.
+  added in the test environment, as Doctrine does for MySQL. The client gives up after 2 s instead
+  of the driver's 30 s when mongo does not answer, so requests and the readiness probe answer.
 - `MongoVendingMachineRepository` stores the machine as one document of the `vending_machines`
   collection: `_id: 1`, a `version`, and the parts that ADR 12's row holds as JSON columns, as nested
   documents. `VendingMachineMapper::toDocument()` builds those parts, and the DBAL adapter encodes the
@@ -39,7 +40,8 @@ atomic write as the machine's state, and a document can hold both.
 - `VendingMachineRepositoryContractTestCase` holds the repository tests once, and each adapter's
   test case runs them, which shows that the adapters are interchangeable.
 - The `mongo` service starts with the rest of the stack, and the PHP container waits until it is
-  healthy.
+  healthy. The health check reports it as `document_store`, next to MySQL's `database`, so
+  readiness fails while it is down.
 
 ### Still planned
 
