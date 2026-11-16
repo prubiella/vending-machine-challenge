@@ -115,7 +115,7 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
     public function testRefusesAUsernameAlreadyTaken(): void
     {
         self::tester()->execute(['--username' => 'ana', '--email' => 'ana@example.com', '--password' => 'correct-horse'], ['interactive' => false]);
-        $tester = self::tester();
+        $tester = self::tester(FixedUuidGenerator::OTHER_ID);
 
         $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'other@example.com', '--password' => 'another-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
@@ -138,7 +138,7 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
     public function testRefusesAnEmailAlreadyTaken(): void
     {
         self::tester()->execute(['--username' => 'ana', '--email' => 'ana@example.com', '--password' => 'correct-horse'], ['interactive' => false]);
-        $tester = self::tester();
+        $tester = self::tester(FixedUuidGenerator::OTHER_ID);
 
         $exitCode = $tester->execute(['--username' => 'bob', '--email' => 'ANA@example.com', '--password' => 'correct-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
@@ -158,10 +158,10 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
     }
 
-    private static function tester(): CommandTester
+    private static function tester(string $id = FixedUuidGenerator::ID): CommandTester
     {
         $application = new Application(self::bootKernel());
-        self::getContainer()->set(UuidGenerator::class, new FixedUuidGenerator());
+        self::getContainer()->set(UuidGenerator::class, new FixedUuidGenerator($id));
 
         return new CommandTester($application->find('vending:technician:create'));
     }

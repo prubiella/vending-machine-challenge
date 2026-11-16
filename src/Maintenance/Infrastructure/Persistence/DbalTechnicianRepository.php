@@ -12,7 +12,6 @@ use App\Maintenance\Domain\Technician\TechnicianId;
 use App\Maintenance\Domain\Technician\TechnicianRepository;
 use App\Maintenance\Domain\Technician\Username;
 use App\Maintenance\Domain\Technician\UsernameTakenException;
-use App\Shared\Domain\DomainException;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
@@ -32,19 +31,28 @@ final readonly class DbalTechnicianRepository implements TechnicianRepository
                 'email' => $technician->email()->value(),
                 'password_hash' => $technician->password()->value(),
             ]);
-        } catch (UniqueConstraintViolationException) {
-            throw $this->clashFor($technician);
+        } catch (UniqueConstraintViolationException $violation) {
+            throw $this->clashFor($technician, $violation);
         }
     }
 
-    // Both the username and the email are unique: a stored username tells which one clashed.
-    private function clashFor(Technician $technician): DomainException
+    // The username and the email are unique, so a stored one tells which clashed. When neither is
+    // stored, the clash is on something else (the id) and the original exception is what to report.
+    private function clashFor(Technician $technician, UniqueConstraintViolationException $violation): \Throwable
     {
         if (null !== $this->byUsername($technician->username())) {
             return UsernameTakenException::alreadyTaken();
         }
+        if ($this->emailIsStored($technician->email())) {
+            return EmailTakenException::alreadyTaken();
+        }
 
-        return EmailTakenException::alreadyTaken();
+        return $violation;
+    }
+
+    private function emailIsStored(Email $email): bool
+    {
+        return false !== $this->connection->fetchOne('SELECT 1 FROM technicians WHERE email = ?', [$email->value()]);
     }
 
     public function byUsername(Username $username): ?Technician
