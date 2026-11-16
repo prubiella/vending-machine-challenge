@@ -90,6 +90,11 @@ belongs to no layer (`deptrac debug:unassigned`) or a dependency points outside 
   Messenger classes that implement them.
 - Commands return nothing. What a command produces is state that a query reads.
 - `UnpackExceptionMiddleware` rethrows the handler's original exception.
+- A repository saves with optimistic locking: it throws `ConcurrentUpdateException`
+  (`Shared/Application/Persistence`) when another save got in since the load.
+  `RetryOnConcurrentUpdateMiddleware` runs the command again, up to three more times, so a handler
+  loads what it changes inside `__invoke()`. It must stay right before `handle_message`, which is why
+  `command.bus` lists its middleware without the defaults.
 
 ## Adding a use case
 
