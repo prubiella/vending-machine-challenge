@@ -41,9 +41,21 @@ final readonly class VendingTechnicianCreateCommand
         ?string $password = null,
     ): int {
         try {
-            $resolvedUsername = self::givenOrAsked($io, $username, 'username', new Question('Username'), Username::fromString(...));
+            $resolvedUsername = self::givenOrAsked(
+                $io,
+                $username,
+                'username',
+                new Question('Username'),
+                Username::fromString(...),
+            );
             $resolvedEmail = self::givenOrAsked($io, $email, 'email', new Question('Email'), Email::fromString(...));
-            $resolvedPassword = self::givenOrAsked($io, $password, 'password', self::untrimmedHiddenQuestion('Password'), PlainPassword::fromString(...));
+            $resolvedPassword = self::givenOrAsked(
+                $io,
+                $password,
+                'password',
+                self::untrimmedHiddenQuestion('Password'),
+                PlainPassword::fromString(...),
+            );
 
             $id = $this->uuidGenerator->generate();
             $this->commandBus->dispatch(new CreateTechnicianCommand($id, $resolvedUsername, $resolvedEmail, $resolvedPassword));
@@ -59,16 +71,29 @@ final readonly class VendingTechnicianCreateCommand
     /**
      * @param \Closure(string): object $validateWithDomain
      */
-    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $optionName, Question $question, \Closure $validateWithDomain): string
-    {
-        // A given option is checked by the domain when the command is handled, so it is not asked again.
-        if (self::isGiven($option)) {
-            return $option;
+    private static function givenOrAsked(
+        SymfonyStyle $io,
+        ?string $option,
+        string $optionName,
+        Question $question,
+        \Closure $validateWithDomain,
+    ): string {
+        if (null === $option) {
+            return self::asked($io, $optionName, $question, $validateWithDomain);
         }
-        if (self::isEmpty($option)) {
+        if ('' === $option) {
             throw MissingValueException::forOption($optionName);
         }
 
+        // A given option is checked by the domain when the command is handled, so it is not asked again.
+        return $option;
+    }
+
+    /**
+     * @param \Closure(string): object $validateWithDomain
+     */
+    private static function asked(SymfonyStyle $io, string $optionName, Question $question, \Closure $validateWithDomain): string
+    {
         $answer = $io->askQuestion(self::askedAgainUntilTheDomainTakesIt($question, $validateWithDomain));
         // Without interaction nothing is asked, so the answer is null.
         if (!\is_string($answer) || '' === $answer) {
@@ -92,19 +117,6 @@ final readonly class VendingTechnicianCreateCommand
             })
             ->setMaxAttempts(self::ATTEMPTS)
         ;
-    }
-
-    /**
-     * @phpstan-assert-if-true non-empty-string $option
-     */
-    private static function isGiven(?string $option): bool
-    {
-        return null !== $option && '' !== $option;
-    }
-
-    private static function isEmpty(?string $option): bool
-    {
-        return '' === $option;
     }
 
     // A password is never trimmed, here as in --password, so the spaces typed are kept; only the line
