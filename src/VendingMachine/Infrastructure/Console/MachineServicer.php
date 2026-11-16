@@ -42,6 +42,8 @@ final readonly class MachineServicer
             return false;
         }
 
+        $cashBox = $this->machineStatus()->cashBoxByCents;
+
         try {
             $this->commandBus->dispatch($service);
         } catch (DomainException $refusal) {
@@ -50,7 +52,26 @@ final readonly class MachineServicer
             return false;
         }
 
+        self::reportCashBox($io, $cashBox);
+
         return true;
+    }
+
+    /**
+     * @param array<int, int> $cashBoxByCents
+     */
+    private static function reportCashBox(SymfonyStyle $io, array $cashBoxByCents): void
+    {
+        $collected = [];
+        $totalCents = 0;
+        foreach (array_filter($cashBoxByCents) as $cents => $count) {
+            $collected[] = \sprintf('%d x %s', $count, MoneyNotation::coinToken($cents));
+            $totalCents += $cents * $count;
+        }
+
+        if ([] !== $collected) {
+            $io->writeln(\sprintf('Collected from the cash box: %s (%s).', implode(', ', $collected), MoneyNotation::twoDecimals($totalCents)));
+        }
     }
 
     /**
