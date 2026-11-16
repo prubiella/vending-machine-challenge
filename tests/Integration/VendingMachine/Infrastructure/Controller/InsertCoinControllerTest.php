@@ -52,13 +52,4 @@ final class InsertCoinControllerTest extends VendingMachineApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(0, $this->credit());
     }
-
-    private function credit(): int
-    {
-        $this->client->request('GET', '/machine');
-        $credit = $this->responseBody()['creditCents'];
-        self::assertIsInt($credit);
-
-        return $credit;
-    }
 }

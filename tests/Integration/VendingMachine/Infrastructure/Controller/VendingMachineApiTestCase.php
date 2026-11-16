@@ -21,6 +21,13 @@ abstract class VendingMachineApiTestCase extends WebTestCase
         $this->client = self::createClient();
     }
 
+    protected function insertCoins(string ...$coins): void
+    {
+        foreach ($coins as $coin) {
+            $this->client->jsonRequest('POST', '/machine/coins', ['coin' => $coin]);
+        }
+    }
+
     /**
      * @return array<mixed>
      */
@@ -30,5 +37,14 @@ abstract class VendingMachineApiTestCase extends WebTestCase
         self::assertIsArray($body);
 
         return $body;
+    }
+
+    protected function credit(): int
+    {
+        $this->client->request('GET', '/machine');
+        $credit = $this->responseBody()['creditCents'];
+        self::assertIsInt($credit);
+
+        return $credit;
     }
 }

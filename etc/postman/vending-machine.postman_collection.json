@@ -197,6 +197,49 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Select product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 204, or 409 when the credit does not pay the product', () => pm.expect(pm.response.code).to.be.oneOf([204, 409]));",
+									"pm.test('has no body when it sells, or says why it refused', () => {",
+									"    if (pm.response.code === 204) {",
+									"        pm.expect(pm.response.text()).to.equal('');",
+									"    } else {",
+									"        pm.expect(pm.response.json().error.code).to.equal(409);",
+									"        pm.expect(pm.response.json().error.message).to.be.a('string');",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/selections/WATER",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"selections",
+								"WATER"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
