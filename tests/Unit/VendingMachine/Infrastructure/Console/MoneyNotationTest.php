@@ -27,6 +27,29 @@ final class MoneyNotationTest extends TestCase
         self::assertSame($notation, MoneyNotation::coinToken($cents));
     }
 
+    #[DataProvider('coins')]
+    public function testReadsTheCentsOfACoinWrittenAsTheStatementDoes(int $cents, string $notation): void
+    {
+        self::assertSame($cents, MoneyNotation::coinCents($notation));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function notCoins(): iterable
+    {
+        yield 'a foreign coin' => ['0.50'];
+        yield 'a coin without its trailing zero' => ['0.1'];
+        yield 'a coin with decimals the statement leaves out' => ['1.00'];
+        yield 'a word' => ['WATER'];
+    }
+
+    #[DataProvider('notCoins')]
+    public function testReadsNoCentsFromWhatIsNotACoin(string $notation): void
+    {
+        self::assertNull(MoneyNotation::coinCents($notation));
+    }
+
     /**
      * @return iterable<string, array{int, string}>
      */

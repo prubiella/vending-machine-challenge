@@ -7,15 +7,9 @@ namespace App\VendingMachine\Infrastructure\Console;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Domain\DomainException;
-use App\VendingMachine\Application\Command\CollectTray\CollectTrayCommand;
-use App\VendingMachine\Application\Command\ServiceMachine\ServiceMachineCommand;
 use App\VendingMachine\Application\Query\GetMachine\GetMachineQuery;
 use App\VendingMachine\Application\Query\GetMachine\MachineResponse;
 use App\VendingMachine\Application\Query\GetMachine\ProductResponse;
-use App\VendingMachine\Application\Query\GetMachineStatus\GetMachineStatusQuery;
-use App\VendingMachine\Application\Query\GetMachineStatus\MachineStatusResponse;
-use App\VendingMachine\Application\Query\GetTrayContents\GetTrayContentsQuery;
-use App\VendingMachine\Application\Query\GetTrayContents\TrayContentsResponse;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -33,6 +27,8 @@ final readonly class VendingRunCommand
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private TokenParser $parser,
+        private ServiceForm $serviceForm,
+        private TrayPrinter $trayPrinter,
     ) {
     }
 
@@ -68,7 +64,7 @@ final readonly class VendingRunCommand
         foreach (explode(',', $sequence) as $token) {
             $this->dispatchToken(trim($token), $io);
         }
-        $this->printAndCollectTray($io);
+        $this->trayPrinter->printAndCollect($io);
     }
 
     private function runSession(InputInterface $input, SymfonyStyle $io): void
@@ -82,7 +78,7 @@ final readonly class VendingRunCommand
             }
 
             $this->dispatchSessionAction($action, $input, $io);
-            $this->printAndCollectTray($io);
+            $this->trayPrinter->printAndCollect($io);
         }
     }
 
@@ -99,62 +95,10 @@ final readonly class VendingRunCommand
 
     private function service(InputInterface $input, SymfonyStyle $io): void
     {
-        $status = $this->machineStatus();
-        $unitsBySelector = self::askUnitsBySelector($io, $status);
-        $coinStockByCents = self::askCoinStockByCents($io, $status);
-
-        // When the input runs out, the question helper turns it non-interactive and answers every
-        // question left with its default, so those answers are not the technician's.
-        if (!$input->isInteractive()) {
-            $io->getErrorStyle()->writeln('The input ended before the service was complete: the machine was not serviced.');
-
-            return;
+        $service = $this->serviceForm->fill($input, $io);
+        if (null !== $service) {
+            $this->commandBus->dispatch($service);
         }
-
-        $this->commandBus->dispatch(new ServiceMachineCommand($unitsBySelector, $coinStockByCents));
-    }
-
-    /**
-     * @return array<int|string, int>
-     */
-    private static function askUnitsBySelector(SymfonyStyle $io, MachineStatusResponse $status): array
-    {
-        $unitsBySelector = [];
-        foreach ($status->unitsBySelector as $selector => $currentUnits) {
-            $unitsBySelector[$selector] = self::askCount($io, \sprintf('Units of %s', $selector), $currentUnits);
-        }
-
-        return $unitsBySelector;
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private static function askCoinStockByCents(SymfonyStyle $io, MachineStatusResponse $status): array
-    {
-        $coinStockByCents = [];
-        foreach ($status->coinStockByCents as $cents => $currentCount) {
-            $coinStockByCents[$cents] = self::askCount($io, \sprintf('Coins of %s', MoneyNotation::coinToken($cents)), $currentCount);
-        }
-
-        return $coinStockByCents;
-    }
-
-    private static function askCount(SymfonyStyle $io, string $question, int $currentCount): int
-    {
-        $count = $io->ask($question, (string) $currentCount, self::validCount(...));
-        \assert(\is_int($count));
-
-        return $count;
-    }
-
-    private static function validCount(mixed $answer): int
-    {
-        if (!\is_string($answer) || !ctype_digit($answer)) {
-            throw new \InvalidArgumentException('Enter a whole number, zero or more.');
-        }
-
-        return (int) $answer;
     }
 
     private function showProducts(SymfonyStyle $io): void
@@ -206,44 +150,11 @@ final readonly class VendingRunCommand
         }
     }
 
-    private function printAndCollectTray(SymfonyStyle $io): void
-    {
-        $trayLine = self::trayLine($this->trayContents());
-        if ('' !== $trayLine) {
-            $io->writeln($trayLine);
-        }
-
-        $this->commandBus->dispatch(new CollectTrayCommand());
-    }
-
-    private static function trayLine(TrayContentsResponse $tray): string
-    {
-        $coins = array_map(MoneyNotation::coinToken(...), $tray->coins);
-
-        return implode(', ', [...$tray->selectors, ...$coins]);
-    }
-
     private function machine(): MachineResponse
     {
         $machine = $this->queryBus->query(new GetMachineQuery());
         \assert($machine instanceof MachineResponse);
 
         return $machine;
-    }
-
-    private function machineStatus(): MachineStatusResponse
-    {
-        $status = $this->queryBus->query(new GetMachineStatusQuery());
-        \assert($status instanceof MachineStatusResponse);
-
-        return $status;
-    }
-
-    private function trayContents(): TrayContentsResponse
-    {
-        $tray = $this->queryBus->query(new GetTrayContentsQuery());
-        \assert($tray instanceof TrayContentsResponse);
-
-        return $tray;
     }
 }
