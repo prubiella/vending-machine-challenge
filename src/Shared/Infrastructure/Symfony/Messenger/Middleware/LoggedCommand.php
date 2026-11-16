@@ -16,17 +16,17 @@ final class LoggedCommand
     }
 
     /**
-     * @return array{command: class-string}
+     * @return array{command: class-string, data: array<mixed>}
      */
     public static function context(object $command): array
     {
-        return ['command' => $command::class];
+        return ['command' => $command::class, 'data' => self::data($command)];
     }
 
     /**
      * @return array<mixed>
      */
-    public static function data(object $command): array
+    private static function data(object $command): array
     {
         $data = get_object_vars($command);
         if ($command instanceof SensitiveCommand) {

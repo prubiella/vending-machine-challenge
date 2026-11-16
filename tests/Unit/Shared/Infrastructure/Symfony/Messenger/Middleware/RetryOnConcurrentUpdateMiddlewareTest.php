@@ -68,14 +68,18 @@ final class RetryOnConcurrentUpdateMiddlewareTest extends TestCase
         }
     }
 
-    public function testLogsEachRetryAtNotice(): void
+    public function testLogsEachRetryAtNoticeWithTheCommandAndItsData(): void
     {
-        $this->bus($this->handlerFailingWith(2), maxRetries: 3)->dispatch(new \stdClass());
+        $command = new \stdClass();
+        $command->cents = 25;
 
+        $this->bus($this->handlerFailingWith(2), maxRetries: 3)->dispatch($command);
+
+        $context = ['command' => \stdClass::class, 'data' => ['cents' => 25]];
         self::assertSame([
-            [Level::Notice, 'Command stdClass met a concurrent update: retry 1 of 3.'],
-            [Level::Notice, 'Command stdClass met a concurrent update: retry 2 of 3.'],
-        ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message], $this->logs->getRecords())));
+            [Level::Notice, 'Command stdClass met a concurrent update: retry 1 of 3.', $context],
+            [Level::Notice, 'Command stdClass met a concurrent update: retry 2 of 3.', $context],
+        ], array_values(array_map(static fn (LogRecord $record): array => [$record->level, $record->message, $record->context], $this->logs->getRecords())));
     }
 
     private function handlerFailingWith(int $concurrentUpdates): \Closure

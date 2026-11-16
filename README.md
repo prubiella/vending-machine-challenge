@@ -134,8 +134,8 @@ as change; `SERVICE` asks their count on purpose, so the technician can empty th
 The command bus logs every command with its name and data: at info when it is handled, at notice
 when the domain refuses it and at error when it fails for any other reason. A command that
 implements `SensitiveCommand` lists the fields it carries that must not be logged, such as a
-password, and the log shows `***` in their place. Each retry after a
-concurrent update is logged at notice, and so is each coin or action that `vending:run` rejects.
+password, and the log shows `***` in their place. Each retry after a concurrent update is logged
+at notice with the same name and data, and so is each coin or action that `vending:run` rejects.
 The change computed for a sale is logged at info, and a sale refused for want of exact change at
 notice, by `LoggingChangeMaker`: a decorator in Infrastructure, so the domain's `ChangeMaker` needs
 no logger. It logs when the change is computed, before the sale is saved, so a retried sale logs it
