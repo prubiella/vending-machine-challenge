@@ -56,7 +56,7 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         $exitCode = $tester->execute(['--username' => 'ana', '--email' => 'ana@example.com'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame("Give the technician a password with --password.\n", $tester->getErrorOutput(true));
+        self::assertSame("Give the technician's password with --password.\n", $tester->getErrorOutput(true));
         self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
     }
 
@@ -79,7 +79,7 @@ final class VendingTechnicianCreateCommandTest extends KernelTestCase
         $exitCode = $tester->execute(['--username' => 'ana', '--password' => 'correct-horse'], ['interactive' => false, 'capture_stderr_separately' => true]);
 
         self::assertSame(Command::FAILURE, $exitCode);
-        self::assertSame("Give the technician an email with --email.\n", $tester->getErrorOutput(true));
+        self::assertSame("Give the technician's email with --email.\n", $tester->getErrorOutput(true));
         self::assertNull(self::technicians()->byUsername(Username::fromString('ana')));
     }
 

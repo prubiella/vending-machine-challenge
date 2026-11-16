@@ -33,25 +33,14 @@ final readonly class VendingTechnicianCreateCommand
         #[Option('The technician\'s password, of 8 characters or more (asked hidden when left out)')]
         ?string $password = null,
     ): int {
-        $username ??= self::answer($io->ask('Username'));
-        if (null === $username) {
-            return self::refuse($io, 'Give the technician a username with --username.');
-        }
-
-        $email ??= self::answer($io->ask('Email'));
-        if (null === $email) {
-            return self::refuse($io, 'Give the technician an email with --email.');
-        }
-
-        $password ??= self::answer($io->askHidden('Password'));
-        if (null === $password) {
-            return self::refuse($io, 'Give the technician a password with --password.');
-        }
-
-        $id = Uuid::v7()->toRfc4122();
         try {
+            $username = self::givenOrAsked($io, $username, 'Username', 'username');
+            $email = self::givenOrAsked($io, $email, 'Email', 'email');
+            $password = self::givenOrAsked($io, $password, 'Password', 'password', hidden: true);
+
+            $id = Uuid::v7()->toRfc4122();
             $this->commandBus->dispatch(new CreateTechnicianCommand($id, $username, $email, $password));
-        } catch (DomainException $refusal) {
+        } catch (DomainException|MissingValueException $refusal) {
             return self::refuse($io, $refusal->getMessage());
         }
 
@@ -60,9 +49,17 @@ final readonly class VendingTechnicianCreateCommand
         return Command::SUCCESS;
     }
 
-    private static function answer(mixed $answer): ?string
+    /**
+     * @throws MissingValueException when the option is left out and the answer is blank, or never asked
+     */
+    private static function givenOrAsked(SymfonyStyle $io, ?string $option, string $question, string $optionName, bool $hidden = false): string
     {
-        return \is_string($answer) && '' !== $answer ? $answer : null;
+        $value = $option ?? ($hidden ? $io->askHidden($question) : $io->ask($question));
+        if (!\is_string($value) || '' === $value) {
+            throw MissingValueException::forOption($optionName);
+        }
+
+        return $value;
     }
 
     private static function refuse(SymfonyStyle $io, string $reason): int
