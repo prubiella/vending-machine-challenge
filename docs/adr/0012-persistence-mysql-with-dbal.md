@@ -66,3 +66,17 @@ field in the `updateOne` filter, raising the same concurrency exception, so the 
 works unchanged; the adapter chosen by configuration (for example `VENDING_MACHINE_STORE=mysql` or
 `mongo` deciding the port's alias); and one contract test run against both adapters, which shows
 they are interchangeable.
+
+With that adapter, each store holds what fits it:
+
+- The machine and its outbox in MongoDB. Domain events waiting to be published (a sale, the change
+  given, a service) are saved inside the machine's document, in the same atomic `updateOne` as its
+  state, so a crash can never keep one without the other. A relay then publishes them and marks
+  them as sent.
+- The sales, change and service history in MySQL, fed from that outbox, because reports such as
+  sales per product and day are a plain `GROUP BY`. The outbox must live with the aggregate; the
+  history can live wherever it is easiest to query.
+- Technicians and their login in MySQL, in their own `Maintenance` context.
+
+While the machine stays on the DBAL adapter, the outbox is a MySQL table written in the same
+transaction as the machine's row.
