@@ -118,6 +118,42 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Get tray contents",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('responds 200', () => pm.response.to.have.status(200));",
+									"pm.test('lists the selectors of the products', () => pm.response.json().selectors.forEach((selector) => pm.expect(selector).to.be.a('string')));",
+									"pm.test('lists the cents of each coin', () => pm.response.json().coins.forEach((cents) => pm.expect(cents).to.be.a('number')));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/machine/tray",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"machine",
+								"tray"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
