@@ -25,6 +25,7 @@ final class GetMachineStatusControllerTest extends VendingMachineApiTestCase
             [
                 'unitsBySelector' => ['WATER' => 10, 'JUICE' => 10, 'SODA' => 10],
                 'coinStockByCents' => [5 => 10, 10 => 10, 25 => 10, 100 => 0],
+                'cashBoxByCents' => [5 => 0, 10 => 0, 25 => 0, 100 => 0],
             ],
             $this->responseBody(),
         );

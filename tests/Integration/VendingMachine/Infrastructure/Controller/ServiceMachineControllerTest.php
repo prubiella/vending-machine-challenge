@@ -21,6 +21,7 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
     private const array DEFAULT_STATUS = [
         'unitsBySelector' => ['WATER' => 10, 'JUICE' => 10, 'SODA' => 10],
         'coinStockByCents' => [5 => 10, 10 => 10, 25 => 10, 100 => 0],
+        'cashBoxByCents' => [5 => 0, 10 => 0, 25 => 0, 100 => 0],
     ];
 
     public function testSetsTheGivenUnitsAndTheWholeCoinStock(): void
@@ -37,6 +38,7 @@ final class ServiceMachineControllerTest extends VendingMachineApiTestCase
         $expectedStatus = [
             'unitsBySelector' => ['WATER' => 2, 'JUICE' => 10, 'SODA' => 0],
             'coinStockByCents' => [5 => 1, 10 => 0, 25 => 3, 100 => 4],
+            'cashBoxByCents' => [5 => 0, 10 => 0, 25 => 0, 100 => 0],
         ];
         self::assertSame($expectedStatus, $this->machineStatus($authHeaders));
     }
