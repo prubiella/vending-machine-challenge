@@ -5,6 +5,7 @@ parameters:
         - { selector: SODA, name: Soda, price_cents: 150, units: 10 }
     # The count of each coin by its cents.
     vending_machine.default_coin_stock: { 5: 10, 10: 10, 25: 10, 100: 0 }
+    mongodb.database: '%env(MONGODB_DATABASE)%'
 
 services:
     _defaults:
@@ -47,13 +48,20 @@ services:
         arguments:
             $maxRetries: 3
 
+    MongoDB\Client:
+        arguments: ['%env(MONGODB_URL)%']
+
+    MongoDB\Database:
+        factory: ['@MongoDB\Client', 'getDatabase']
+        arguments: ['%mongodb.database%']
+
     App\VendingMachine\Infrastructure\Persistence\DefaultVendingMachineFactory:
         arguments:
             $products: '%vending_machine.default_products%'
             $coinStockByCents: '%vending_machine.default_coin_stock%'
 
-    App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository'
-    App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\DbalVendingMachineRepository'
+    App\VendingMachine\Domain\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
+    App\VendingMachine\Infrastructure\Persistence\StoredMachineResetter: '@App\VendingMachine\Infrastructure\Persistence\MongoVendingMachineRepository'
 
     App\VendingMachine\Domain\Change\FewestCoinsChangeMaker:
         arguments:
@@ -67,3 +75,7 @@ services:
         decorates: App\VendingMachine\Domain\Change\ChangeMaker
         arguments:
             $changeMaker: '@.inner'
+
+when@test:
+    parameters:
+        mongodb.database: '%env(MONGODB_DATABASE)%_test'
